@@ -19,14 +19,3 @@ fn main() {
     }
     dbg!(now.elapsed().unwrap());
 }
-//starting speed: 14.5-15.8ms
-//faster twiddles: 14.8-15.2ms
-//assert removal: 14.7-14.9 ms
-//if removal: 14.7-15.4
-//with dbg: 15.7-17.4
-//complex1: 8.57 ms
-//complex2: 8.4-9.5 ms (degreded in fft_n)
-//cache twiddle: 7.6-8.2
-//optimizations: 0.5
-//twiddle loop move: 390 us
-//more opts: 331 us
