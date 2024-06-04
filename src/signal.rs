@@ -1,1 +1,2 @@
-pub mod fft;
+pub mod fourier;
+pub mod gabor;

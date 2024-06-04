@@ -32,6 +32,39 @@ impl FastFourierTransform {
         Self::reverse(x, n);
     }
 
+    //Untested
+    fn ifft(&self, x: &mut [Complex64]) {
+        let twiddles = &mut self.twiddles.clone();
+
+        for c in x.iter_mut() {
+            *c = (*c).conj();
+        }
+
+        let n: usize = x.len().ilog2() as usize;
+
+        for t in (0..n).rev() {
+            let dist = 1 << t;
+            let chunk_size = dist << 1;
+
+            if chunk_size > 4 {
+                if t < n - 1 {
+                    Self::collapse_twiddles(twiddles);
+                }
+                Self::fft_chunk_n(x, twiddles, dist);
+            } else if chunk_size == 2 {
+                Self::fft_chunk_2(x);
+            } else if chunk_size == 4 {
+                Self::fft_chunk_4(x);
+            }
+        }
+        Self::reverse(x, n);
+
+        let sf = (x.len() as f32).recip();
+        for c in x.iter_mut() {
+            *c = (*c) * -sf;
+        }
+    }
+
     #[inline]
     fn generate_twiddles(dist: usize) -> Vec<Complex64> {
         let angle = -std::f32::consts::PI / dist as f32;
@@ -57,8 +90,8 @@ impl FastFourierTransform {
                 let temp = *c_s0 - *c_s1;
                 *c_s0 = *c_s0 + *c_s1;
 
-                (*c_s1).real = temp.real * w.real - temp.imaginary * w.imaginary;
-                (*c_s1).imaginary = temp.real * w.imaginary + temp.imaginary * w.real;
+                (*c_s1).real = temp.real * w.real - temp.imag * w.imag;
+                (*c_s1).imag = temp.real * w.imag + temp.imag * w.real;
             }
         });
     }
@@ -96,7 +129,6 @@ impl FastFourierTransform {
     }
     #[inline]
     fn reverse(buf: &mut [Complex64], log_n: usize) {
-
         let big_n = 1 << log_n;
         let half_n = big_n >> 1;
         let quart_n = big_n >> 2;
@@ -104,7 +136,7 @@ impl FastFourierTransform {
 
         let mut forward = half_n;
         let mut rev = 1;
-        for i in (0..quart_n).rev(){
+        for i in (0..quart_n).rev() {
             let zeros = (i as usize).trailing_ones();
 
             forward ^= 2 << zeros;
@@ -115,7 +147,7 @@ impl FastFourierTransform {
                 buf.swap(nmin1 ^ forward, nmin1 ^ rev);
             }
 
-            buf.swap(forward ^ 1,  rev ^ half_n);
+            buf.swap(forward ^ 1, rev ^ half_n);
         }
     }
 }
