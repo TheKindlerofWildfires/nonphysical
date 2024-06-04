@@ -17,32 +17,39 @@ impl GaborTransform {
     }
     pub fn gaussian(nfft: usize, std: f32) -> Vec<Complex64> {
         let sigma2 = 2.0 * std * std;
-        let sub = (nfft as f32 - 1.0) / 2.0;
-        (0..nfft)
-            .map(|i| Complex64::new(((i as f32 - sub) / sigma2).exp(), 0.0))
-            .collect()
+        let sub = (nfft >> 1) as f32 - 0.5;
+        let mut window = Vec::with_capacity(nfft);
+        for i in 0..nfft {
+            let value = ((i as f32 - sub) / sigma2).exp();
+            window.push(Complex64::new(value, 0.0));
+        }
+        window
     }
 
     pub fn gabor(&self, x: &mut [Complex64]) -> Vec<Complex64> {
         let win_step = self.window.len() / self.over_sample;
-        let win_count = x.len() / win_step;
-        let size = self.window.len() * win_count;
-        let mut gabor: Vec<Complex64> = Vec::with_capacity(size);
+        let win_count = x.len() / win_step - self.over_sample + 1;
+        let size = x.len() * self.over_sample;
+        let mut gabor = Vec::with_capacity(size);
 
         for i in 0..win_count {
+            let gs = i * self.window.len();
+            let ge = gs + self.window.len();
             gabor.extend_from_slice(&x[i * win_step..i * win_step + self.window.len()]);
-            Self::convolve(
-                &mut gabor[i * self.window.len()..(i + 1) * self.window.len()],
-                &self.window,
-            );
-
-            self.fourier
-                .fft(&mut gabor[i * self.window.len()..(i + 1) * self.window.len()]);
+            Self::convolve(&mut gabor[gs..ge], &self.window);
+            self.fourier.fft(&mut gabor[gs..ge]);
         }
         gabor
     }
+
+    pub fn square_len(&self) -> usize {
+        self.window.len() / self.over_sample * (self.window.len() - 1 + self.over_sample)
+    }
+    #[inline(always)]
     fn convolve(x: &mut [Complex64], y: &[Complex64]) {
-        x.iter_mut().zip(y).for_each(|(xi, yi)| *xi = *xi * *yi);
+        x.iter_mut()
+            .zip(y)
+            .for_each(|(xi, yi)| *xi = *xi * yi.conj());
     }
 }
 //baseline

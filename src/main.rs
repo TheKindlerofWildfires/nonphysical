@@ -37,10 +37,15 @@ fn main() {
     let now: SystemTime = SystemTime::now();
 
     let window: Vec<Complex64> = GaborTransform::gaussian(256, 12.0);
+    println!("Window time {:?} ", now.elapsed().unwrap());
 
-    let gabor = GaborTransform::new(1, window);
+    let now: SystemTime = SystemTime::now();
+    let gabor = GaborTransform::new(4, window);
 
-    let spec = gabor.gabor(&mut signal);
+    let ideal_len = gabor.square_len();
+    dbg!(ideal_len);
+
+    let spec = gabor.gabor(&mut signal[0..ideal_len]);
     //dbg!(spec);
 
     println!("Gabor time {:?} ", now.elapsed().unwrap());
