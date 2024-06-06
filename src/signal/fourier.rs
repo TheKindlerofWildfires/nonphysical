@@ -1,15 +1,15 @@
-use crate::shared::complex::Complex64;
+use crate::shared::complex::{Complex, Float};
 
-pub struct FastFourierTransform {
-    twiddles: Vec<Complex64>,
+pub struct FastFourierTransform<T: Float> {
+    twiddles: Vec<Complex<T>>,
 }
-impl FastFourierTransform {
+impl<T: Float> FastFourierTransform<T> {
     pub fn new(len: usize) -> Self {
         let twiddles = Self::generate_twiddles(len >> 1);
         FastFourierTransform { twiddles }
     }
 
-    pub fn fft(&self, x: &mut [Complex64]) {
+    pub fn fft(&self, x: &mut [Complex<T>]) {
         let twiddles = &mut self.twiddles.clone();
 
         let n: usize = x.len().ilog2() as usize;
@@ -33,7 +33,7 @@ impl FastFourierTransform {
     }
 
     //Untested
-    fn ifft(&self, x: &mut [Complex64]) {
+    fn ifft(&self, x: &mut [Complex<T>]) {
         let twiddles = &mut self.twiddles.clone();
 
         for c in x.iter_mut() {
@@ -59,24 +59,35 @@ impl FastFourierTransform {
         }
         Self::reverse(x, n);
 
-        let sf = (x.len() as f32).recip();
+        let sf = T::usize(1)/T::usize(x.len());
         for c in x.iter_mut() {
             *c = (*c) * -sf;
         }
     }
 
     #[inline]
-    fn generate_twiddles(dist: usize) -> Vec<Complex64> {
-        let angle = -std::f32::consts::PI / dist as f32;
+    fn generate_twiddles(dist: usize) -> Vec<Complex<T>> {
+        let angle = -T::pi() / T::usize(dist);
         let mut twiddles = Vec::with_capacity(dist);
         for i in 0..dist {
-            let phase = angle * i as f32;
-            twiddles.push(Complex64::new(phase.cos(), phase.sin()));
+            let phase = angle * T::usize(i);
+            let (sin,cos) = phase.sin_cos();
+            twiddles.push(Complex::<T>::new(cos, sin));
         }
         twiddles
     }
+
     #[inline]
-    fn fft_chunk_n(x: &mut [Complex64], twiddles: &[Complex64], dist: usize) {
+    fn collapse_twiddles(twiddles: &mut Vec<Complex<T>>) {
+        let len = twiddles.len() >> 1;
+        for i in 0..len {
+            twiddles[i] = twiddles[i << 1];
+        }
+        twiddles.resize(len, Complex::<T>::new(T::zero(), T::zero()));
+    }
+
+    #[inline]
+    fn fft_chunk_n(x: &mut [Complex<T>], twiddles: &[Complex<T>], dist: usize) {
         let chunk_size = dist << 1;
 
         x.chunks_exact_mut(chunk_size).for_each(|chunk| {
@@ -95,17 +106,9 @@ impl FastFourierTransform {
             }
         });
     }
-    #[inline]
-    fn collapse_twiddles(twiddles: &mut Vec<Complex64>) {
-        let len = twiddles.len() >> 1;
-        for i in 0..len {
-            twiddles[i] = twiddles[i << 1];
-        }
-        twiddles.resize(len, Complex64::new(0.0, 0.0));
-    }
 
     #[inline]
-    fn fft_chunk_4(x: &mut [Complex64]) {
+    fn fft_chunk_4(x: &mut [Complex<T>]) {
         x.chunks_exact_mut(4).for_each(|chunk| {
             let (complex_s0, complex_s1) = chunk.split_at_mut(2);
 
@@ -120,7 +123,7 @@ impl FastFourierTransform {
     }
 
     #[inline]
-    fn fft_chunk_2(x: &mut [Complex64]) {
+    fn fft_chunk_2(x: &mut [Complex<T>]) {
         x.chunks_exact_mut(2).for_each(|chunk| {
             let temp = chunk[0];
             chunk[0] = chunk[0] + chunk[1];
@@ -128,7 +131,7 @@ impl FastFourierTransform {
         });
     }
     #[inline]
-    fn reverse(buf: &mut [Complex64], log_n: usize) {
+    fn reverse(buf: &mut [Complex<T>], log_n: usize) {
         let big_n = 1 << log_n;
         let half_n = big_n >> 1;
         let quart_n = big_n >> 2;
