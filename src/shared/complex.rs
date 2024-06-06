@@ -1,9 +1,11 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-pub trait Float: Neg<Output = Self>+Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Clone+ Copy + Sized {
+pub trait Float: Neg<Output = Self>+Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Clone+ Copy+ PartialOrd+Sized{
     //constants
     fn pi() -> Self;
     fn zero() -> Self;
+    fn maximum() -> Self;
+    fn minimum() -> Self;
     //conversion functions
     fn usize(u:usize) -> Self;
     fn float(f:f32) ->Self;
@@ -15,22 +17,37 @@ pub trait Float: Neg<Output = Self>+Add<Output = Self> + Sub<Output = Self> + Mu
 }
 
 impl Float for f32 {
-    #[inline(always)]
-    fn sin_cos(&self) -> (Self,Self) {
-        (*self as f32).sin_cos()
-    }
+
     #[inline(always)]
     fn pi() -> Self{
         std::f32::consts::PI
     }
-    #[inline(always)]
-    fn usize(u:usize) -> Self {
-        u as f32
-    }
+
     #[inline(always)]
     fn zero() -> Self {
         0.0
     }
+
+    #[inline(always)]
+    fn maximum() -> Self {
+       f32::MAX
+    }
+
+    #[inline(always)]
+    fn minimum() -> Self {
+        f32::MIN
+    }
+
+    #[inline(always)]
+    fn sin_cos(&self) -> (Self,Self) {
+        (*self as f32).sin_cos()
+    }
+
+    #[inline(always)]
+    fn usize(u:usize) -> Self {
+        u as f32
+    }
+
     #[inline(always)]
     fn exp(&self) -> Self {
         self.exp2()
@@ -45,29 +62,32 @@ impl Float for f32 {
     fn double(f:f64) -> Self {
         f as f32
     }
-
-
 }
 impl Float for f64 {
-    #[inline(always)]
-    fn sin_cos(&self) -> (Self,Self) {
-        (*self as f64).sin_cos()
-    }
+
     #[inline(always)]
     fn pi() -> Self{
         std::f64::consts::PI
     }
-    #[inline(always)]
-    fn usize(u:usize) -> Self {
-        u as f64
-    }
+
     #[inline(always)]
     fn zero() -> Self {
         0.0
     }
+
     #[inline(always)]
-    fn exp(&self) -> Self {
-        self.exp2()
+    fn maximum() -> Self {
+       f64::MAX
+    }
+
+    #[inline(always)]
+    fn minimum() -> Self {
+        f64::MIN
+    }
+
+    #[inline(always)]
+    fn usize(u:usize) -> Self {
+        u as f64
     }
 
     #[inline(always)]
@@ -78,6 +98,15 @@ impl Float for f64 {
     #[inline(always)]
     fn double(f:f64) -> Self {
         f
+    }
+
+    #[inline(always)]
+    fn sin_cos(&self) -> (Self,Self) {
+        (*self as f64).sin_cos()
+    }
+    #[inline(always)]
+    fn exp(&self) -> Self {
+        self.exp2()
     }
 }
 
@@ -109,6 +138,9 @@ impl<T: Float> Complex<T> {
             real: self.real,
             imag: -self.imag,
         }
+    }
+    pub fn magnitude(&self) -> T {
+        self.real*self.real+self.imag*self.imag
     }
 }
 

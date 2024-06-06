@@ -15,4 +15,26 @@ impl<T: Float> Matrix<T>{
             data,
         }
     }
+
+    pub fn norm_max(&self) -> T{
+        self.data.iter().fold(T::maximum(),|max, &x| {
+            let mag = x.magnitude();
+            if max>mag{
+                max
+            }else{
+                mag
+            }
+        })
+    }
+
+    pub fn norm_min(&self) -> T{
+        self.data.iter().fold(T::minimum(),|min: T, &x| {
+            let mag = x.magnitude();
+            if min<mag{
+                min
+            }else{
+                mag
+            }
+        })
+    }
 }

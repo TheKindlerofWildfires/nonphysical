@@ -7,6 +7,7 @@ use signal::gabor::GaborTransform;
 
 pub mod shared;
 pub mod signal;
+pub mod linear;
 
 fn main() {
     let mut signal: Vec<Complex<f32>> = (0..16)
