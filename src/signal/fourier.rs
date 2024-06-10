@@ -1,4 +1,4 @@
-use crate::shared::complex::{Complex, Float};
+use crate::shared::{complex::Complex, float::Float};
 
 pub struct FastFourierTransform<T: Float> {
     twiddles: Vec<Complex<T>>,
@@ -14,7 +14,7 @@ impl<T: Float> FastFourierTransform<T> {
 
         let n: usize = x.len().ilog2() as usize;
 
-        for t in (0..n).rev() {
+        (0..n).rev().for_each(|t| {
             let dist = 1 << t;
             let chunk_size = dist << 1;
 
@@ -28,7 +28,7 @@ impl<T: Float> FastFourierTransform<T> {
             } else if chunk_size == 4 {
                 Self::fft_chunk_4(x);
             }
-        }
+        });
         Self::reverse(x, n);
     }
 
@@ -36,13 +36,10 @@ impl<T: Float> FastFourierTransform<T> {
     fn ifft(&self, x: &mut [Complex<T>]) {
         let twiddles = &mut self.twiddles.clone();
 
-        for c in x.iter_mut() {
-            *c = (*c).conj();
-        }
-
+        x.iter_mut().for_each(|c| *c = (*c).conj());
         let n: usize = x.len().ilog2() as usize;
 
-        for t in (0..n).rev() {
+        (0..n).rev().for_each(|t| {
             let dist = 1 << t;
             let chunk_size = dist << 1;
 
@@ -56,54 +53,50 @@ impl<T: Float> FastFourierTransform<T> {
             } else if chunk_size == 4 {
                 Self::fft_chunk_4(x);
             }
-        }
+        });
         Self::reverse(x, n);
 
-        let sf = T::usize(1)/T::usize(x.len());
-        for c in x.iter_mut() {
-            *c = (*c) * -sf;
-        }
+        let sf = T::usize(1) / T::usize(x.len());
+        x.iter_mut().for_each(|c| *c = (*c) * -sf);
     }
 
     #[inline]
     fn generate_twiddles(dist: usize) -> Vec<Complex<T>> {
         let angle = -T::pi() / T::usize(dist);
         let mut twiddles = Vec::with_capacity(dist);
-        for i in 0..dist {
+        (0..dist).for_each(|i| {
             let phase = angle * T::usize(i);
-            let (sin,cos) = phase.sin_cos();
+            let (sin, cos) = phase.sin_cos();
             twiddles.push(Complex::<T>::new(cos, sin));
-        }
+        });
         twiddles
     }
 
     #[inline]
     fn collapse_twiddles(twiddles: &mut Vec<Complex<T>>) {
         let len = twiddles.len() >> 1;
-        for i in 0..len {
+        (0..len).for_each(|i| {
             twiddles[i] = twiddles[i << 1];
-        }
+        });
         twiddles.resize(len, Complex::<T>::new(T::zero(), T::zero()));
     }
 
     #[inline]
     fn fft_chunk_n(x: &mut [Complex<T>], twiddles: &[Complex<T>], dist: usize) {
         let chunk_size = dist << 1;
-
         x.chunks_exact_mut(chunk_size).for_each(|chunk| {
             let (complex_s0, complex_s1) = chunk.split_at_mut(dist);
-
-            for ((c_s0, c_s1), w) in complex_s0
+            complex_s0
                 .iter_mut()
                 .zip(complex_s1.iter_mut())
                 .zip(twiddles)
-            {
-                let temp = *c_s0 - *c_s1;
-                *c_s0 = *c_s0 + *c_s1;
+                .for_each(|((c_s0, c_s1), w)| {
+                    let temp = *c_s0 - *c_s1;
+                    *c_s0 = *c_s0 + *c_s1;
 
-                (*c_s1).real = temp.real * w.real - temp.imag * w.imag;
-                (*c_s1).imag = temp.real * w.imag + temp.imag * w.real;
-            }
+                    (*c_s1).real = temp.real * w.real - temp.imag * w.imag;
+                    (*c_s1).imag = temp.real * w.imag + temp.imag * w.real;
+                });
         });
     }
 
@@ -135,11 +128,11 @@ impl<T: Float> FastFourierTransform<T> {
         let big_n = 1 << log_n;
         let half_n = big_n >> 1;
         let quart_n = big_n >> 2;
-        let nmin1 = big_n - 1;
+        let min = big_n - 1;
 
         let mut forward = half_n;
         let mut rev = 1;
-        for i in (0..quart_n).rev() {
+        (0..quart_n).rev().for_each(|i| {
             let zeros = (i as usize).trailing_ones();
 
             forward ^= 2 << zeros;
@@ -147,10 +140,10 @@ impl<T: Float> FastFourierTransform<T> {
 
             if forward < rev {
                 buf.swap(forward, rev);
-                buf.swap(nmin1 ^ forward, nmin1 ^ rev);
+                buf.swap(min ^ forward, min ^ rev);
             }
 
             buf.swap(forward ^ 1, rev ^ half_n);
-        }
+        });
     }
 }

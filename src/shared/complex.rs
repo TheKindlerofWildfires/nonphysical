@@ -1,130 +1,28 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-pub trait Float: Neg<Output = Self>+Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Clone+ Copy+ PartialOrd+Sized{
-    //constants
-    fn pi() -> Self;
-    fn zero() -> Self;
-    fn maximum() -> Self;
-    fn minimum() -> Self;
-    //conversion functions
-    fn usize(u:usize) -> Self;
-    fn float(f:f32) ->Self;
-    fn double(f:f64) -> Self;
+use super::float::Float;
 
-    //utility
-    fn sin_cos(&self) -> (Self,Self);
-    fn exp(&self) -> Self;
-}
-
-impl Float for f32 {
-
-    #[inline(always)]
-    fn pi() -> Self{
-        std::f32::consts::PI
-    }
-
-    #[inline(always)]
-    fn zero() -> Self {
-        0.0
-    }
-
-    #[inline(always)]
-    fn maximum() -> Self {
-       f32::MAX
-    }
-
-    #[inline(always)]
-    fn minimum() -> Self {
-        f32::MIN
-    }
-
-    #[inline(always)]
-    fn sin_cos(&self) -> (Self,Self) {
-        (*self as f32).sin_cos()
-    }
-
-    #[inline(always)]
-    fn usize(u:usize) -> Self {
-        u as f32
-    }
-
-    #[inline(always)]
-    fn exp(&self) -> Self {
-        self.exp2()
-    }
-
-    #[inline(always)]
-    fn float(f:f32) -> Self {
-        f
-    }
-
-    #[inline(always)]
-    fn double(f:f64) -> Self {
-        f as f32
-    }
-}
-impl Float for f64 {
-
-    #[inline(always)]
-    fn pi() -> Self{
-        std::f64::consts::PI
-    }
-
-    #[inline(always)]
-    fn zero() -> Self {
-        0.0
-    }
-
-    #[inline(always)]
-    fn maximum() -> Self {
-       f64::MAX
-    }
-
-    #[inline(always)]
-    fn minimum() -> Self {
-        f64::MIN
-    }
-
-    #[inline(always)]
-    fn usize(u:usize) -> Self {
-        u as f64
-    }
-
-    #[inline(always)]
-    fn float(f:f32) -> Self {
-        f as f64
-    }
-
-    #[inline(always)]
-    fn double(f:f64) -> Self {
-        f
-    }
-
-    #[inline(always)]
-    fn sin_cos(&self) -> (Self,Self) {
-        (*self as f64).sin_cos()
-    }
-    #[inline(always)]
-    fn exp(&self) -> Self {
-        self.exp2()
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Complex<T: Float> {
     pub real: T,
     pub imag: T,
 }
 
 impl<T: Float> Complex<T> {
+    pub fn zero() -> Self {
+        Self {
+            real: T::zero(),
+            imag: T::zero(),
+        }
+    }
     pub fn new(real: T, imag: T) -> Self {
         Self { real, imag }
     }
-    pub fn new_phase(magnitude: T, phase: T) -> Self {
+    pub fn new_phase(norm: T, phase: T) -> Self {
         let (st, ct) = phase.sin_cos();
         Self {
-            real: ct * magnitude,
-            imag: st * magnitude,
+            real: ct * norm,
+            imag: st * norm,
         }
     }
     pub fn swap(&self) -> Self {
@@ -139,8 +37,25 @@ impl<T: Float> Complex<T> {
             imag: -self.imag,
         }
     }
-    pub fn magnitude(&self) -> T {
-        self.real*self.real+self.imag*self.imag
+    pub fn norm(&self) -> T {
+        (self.real * self.real + self.imag * self.imag).sqrt()
+    }
+    pub fn square_norm(&self) -> T {
+        self.real * self.real + self.imag * self.imag
+    }
+    pub fn recip(&self) -> Self {
+        self.conj() / self.square_norm()
+    }
+}
+
+impl<T: Float> Neg for Complex<T> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            real: -self.real,
+            imag: -self.imag,
+        }
     }
 }
 
@@ -171,5 +86,19 @@ impl<T: Float> Mul<T> for Complex<T> {
     type Output = Self;
     fn mul(self, scaler: T) -> Self {
         Self::new(self.real * scaler, self.imag * scaler)
+    }
+}
+
+impl<T: Float> Div for Complex<T> {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        self * rhs.conj() / rhs.square_norm()
+    }
+}
+
+impl<T: Float> Div<T> for Complex<T> {
+    type Output = Self;
+    fn div(self, scaler: T) -> Self {
+        Self::new(self.real / scaler, self.imag / scaler)
     }
 }
