@@ -31,6 +31,7 @@ pub trait Float:
 
     //utility
     fn sin_cos(&self) -> (Self, Self);
+    fn atan2(&self, other: Self) -> Self;
     fn exp(&self) -> Self;
     fn recip(&self) -> Self;
     fn sqrt(&self) -> Self;
@@ -135,6 +136,10 @@ impl Float for f32 {
     fn square_norm(&self) -> Self {
         (*self as f32).powi(2)
     }
+    #[inline(always)]
+    fn atan2(&self, other: Self) -> Self{
+        (*self as f32).atan2(other as f32)
+    }
 }
 impl Float for f64 {
     #[inline(always)]
@@ -211,5 +216,10 @@ impl Float for f64 {
     #[inline(always)]
     fn square_norm(&self) -> Self {
         (*self as f64).powi(2)
+    }
+
+    #[inline(always)]
+    fn atan2(&self, other: Self) -> Self{
+        (*self as f64).atan2(other as f64)
     }
 }

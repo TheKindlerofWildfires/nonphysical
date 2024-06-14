@@ -20,10 +20,10 @@ impl<T: Float> GaborTransform<T> {
     pub fn gaussian(nfft: usize, std: T) -> Vec<Complex<T>> {
         let sigma2 = T::usize(2) * std * std;
         let sub = T::usize(nfft >> 1) - T::float(0.5);
-        let mut window = Vec::with_capacity(nfft);
-        (0..nfft).for_each(|i| {
+        let mut window = vec![Complex::zero();nfft];
+        window.iter_mut().enumerate().for_each(|(i,w)| {
             let value = ((T::usize(i) - sub) / sigma2).exp();
-            window.push(Complex::<T>::new(value, T::usize(0)));
+            *w = Complex::<T>::new(value, T::usize(0));
         });
         window
     }
@@ -31,16 +31,19 @@ impl<T: Float> GaborTransform<T> {
     pub fn gabor(&self, x: &mut [Complex<T>]) -> Matrix<T> {
         let win_step = self.window.len() / self.over_sample;
         let win_count = x.len() / win_step - self.over_sample + 1;
-        let size = x.len() * self.over_sample;
+        let size = win_count * self.window.len();
         let mut gabor_data = Vec::with_capacity(size);
-
         (0..win_count).for_each(|i| {
-            let gs = i * self.window.len();
-            let ge = gs + self.window.len();
-            gabor_data.extend_from_slice(&x[i * win_step..i * win_step + self.window.len()]);
-            Self::convolve(&mut gabor_data[gs..ge], &self.window);
-            self.fourier.fft(&mut gabor_data[gs..ge]);
+            gabor_data.extend_from_slice(&x[i*win_step..i*win_step+self.window.len()])
         });
+
+        gabor_data
+            .chunks_exact_mut(self.window.len())
+            .for_each(|g_chunk| {
+                Self::convolve(g_chunk, &self.window);
+                self.fourier.fft(g_chunk);
+            });
+
         Matrix::new(self.window.len(), gabor_data)
     }
 

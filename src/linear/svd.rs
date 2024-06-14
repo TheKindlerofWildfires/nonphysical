@@ -27,7 +27,7 @@ pub trait SingularValueDecomposition<T: Float> {
         //step 2. with improvement options
         let mut finished = false;
 
-        (0..4).for_each(|i| {
+        while !finished{
             finished = true;
             //note: these norms involve sqrt, but so far as just comparisons...
             (1..diag_size).for_each(|p| {
@@ -47,7 +47,7 @@ pub trait SingularValueDecomposition<T: Float> {
                     }
                 })
             });
-        });
+        };
         //step3 recover the singular values -> essentially get the positive real numbers
         let mut singular = Vec::with_capacity(diag_size);
         (0..diag_size).for_each(|i| {
@@ -71,7 +71,7 @@ pub trait SingularValueDecomposition<T: Float> {
         });
         
         singular.iter_mut().for_each(|s| *s *= scale);
-        let mut indices: Vec<_> = (0..singular.len()).collect();
+        let mut indices = (0..singular.len()) .collect::<Vec<_>>();
         indices.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
         indices.iter().enumerate().for_each(|(new_idx, &old_idx)| {
             let tmp = singular[new_idx];
@@ -153,7 +153,7 @@ pub trait SingularValueDecomposition<T: Float> {
             matrix.coeff(p, q),
             matrix.coeff(q, q),
         ];
-        sub_data.iter_mut().for_each(|c| c.imag = T::zero());
+        sub_data.iter_mut().for_each(|c| c.imag=T::zero());
         let mut sub_matrix = Matrix::new(2, sub_data);
         let t = (sub_matrix.coeff(0, 0) + sub_matrix.coeff(1, 1)).real;
         let d = (sub_matrix.coeff(1, 0) - sub_matrix.coeff(0, 1)).real;

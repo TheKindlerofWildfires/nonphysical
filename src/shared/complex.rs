@@ -46,6 +46,18 @@ impl<T: Float> Complex<T> {
     pub fn recip(&self) -> Self {
         self.conj() / self.square_norm()
     }
+    pub fn mul_i(&self) -> Self {
+        Self {
+            real: -self.imag,
+            imag: self.real,
+        }
+    }
+    pub fn mul_ni(&self) -> Self {
+        Self {
+            real: self.imag,
+            imag: -self.real,
+        }
+    }
 }
 
 impl<T: Float> Neg for Complex<T> {
@@ -62,30 +74,39 @@ impl<T: Float> Neg for Complex<T> {
 impl<T: Float> Add for Complex<T> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        Self::new(self.real + rhs.real, self.imag + rhs.imag)
+        Self {
+            real: self.real + rhs.real,
+            imag: self.imag + rhs.imag,
+        }
     }
 }
 impl<T: Float> Sub for Complex<T> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        Self::new(self.real - rhs.real, self.imag - rhs.imag)
+        Self {
+            real: self.real - rhs.real,
+            imag: self.imag - rhs.imag,
+        }
     }
 }
 
 impl<T: Float> Mul for Complex<T> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        Self::new(
-            self.real * rhs.real - self.imag * rhs.imag,
-            self.real * rhs.imag + self.imag * rhs.real,
-        )
+        Self {
+            real: self.real * rhs.real - self.imag * rhs.imag,
+            imag: self.real * rhs.imag + self.imag * rhs.real,
+        }
     }
 }
 
 impl<T: Float> Mul<T> for Complex<T> {
     type Output = Self;
     fn mul(self, scaler: T) -> Self {
-        Self::new(self.real * scaler, self.imag * scaler)
+        Self {
+            real: self.real * scaler,
+            imag: self.imag * scaler,
+        }
     }
 }
 
@@ -99,6 +120,9 @@ impl<T: Float> Div for Complex<T> {
 impl<T: Float> Div<T> for Complex<T> {
     type Output = Self;
     fn div(self, scaler: T) -> Self {
-        Self::new(self.real / scaler, self.imag / scaler)
+        Self {
+            real: self.real / scaler,
+            imag: self.imag / scaler,
+        }
     }
 }

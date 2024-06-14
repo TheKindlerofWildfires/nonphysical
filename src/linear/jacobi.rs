@@ -43,52 +43,47 @@ impl<'a, T: Float + 'a> Jacobi<T> {
 
     //this method does n extra copy operations to be safe incase p == q or there is a bug in data_row
     pub fn apply_left(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
-        //safety check
+        //safety check could be removed to reduce branching if necessary 
         let j = self;
         if j.c == Complex::<T>::new(T::usize(1), T::zero()) && j.s == Complex::<T>::zero() {
             return;
         }
+        matrix.data_rows_ref().for_each(|row| {
+            let tmp = row[p];
+            row[p] = self.c * row[p] + self.s.conj() * row[q];
+            row[q] = -self.s * tmp + self.c.conj() * row[q];
+        });
         
-        //Get a temp copy of x and y
-        let x: Vec<_> = matrix.data_row(p).map(|c| c.clone()).collect();
-        let y: Vec<_> = matrix.data_row(q).map(|c| c.clone()).collect();
-
-        //apply the transform to a mutable copy of x
-        let xm = matrix.data_row_ref(p);
-        xm.zip(y).for_each(|(xp, yp)| {
-            *xp = j.c * *xp + j.s.conj() * yp;
-            
-        });
-
-        //apply the transform to a mutable copy of y
-        let ym = matrix.data_row_ref(q);
-        ym.zip(x).for_each(|(yp, xp)| {
-            *yp = -j.s * xp + j.c.conj() * *yp;
-            
-        });
     }
 
     //this method does n extra copy operations to be safe incase p == q or there is a bug in data_column
     pub fn apply_right(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
-        //safety check
+        //safety check could be removed to reduce branching if necessary 
         let j = self.transpose();
         if j.c == Complex::<T>::new(T::usize(1), T::zero()) && j.s == Complex::<T>::zero() {
             return;
         }
-        //Get a temp copy of x and y
-        let x: Vec<_> = matrix.data_column(p).map(|c| c.clone()).collect();
-        let y: Vec<_> = matrix.data_column(q).map(|c| c.clone()).collect();
-        //apply the transform to a mutable copy of x
-        let xm = matrix.data_column_ref(p);
-        xm.zip(y).for_each(|(xp, yp)| {
-            *xp = j.c * *xp + j.s.conj() * yp;
+        let mut rows = matrix.data_rows_ref();
+        let (row_p, row_q) = match q>p{
+            true => {
+                let rp = rows.nth(p).unwrap();
+                let rq = rows.nth(q-p-1).unwrap();
+                (rp, rq)
+            },
+            false => {
+                let rq = rows.nth(q).unwrap();
+                let rp = rows.nth(p-q-1).unwrap();
+ 
+                (rp, rq)
+            }
+        };
+        
+        row_p.iter_mut().zip(row_q.iter_mut()).for_each(|(pp,qp)|{
+            let tmp = *pp;
+            *pp = j.c* *pp +j.s.conj()**qp; 
+            *qp = -j.s*tmp +j.c.conj() ** qp;
         });
-
-        //apply the transform to a mutable copy of y
-        let ym = matrix.data_column_ref(q);
-        ym.zip(x).for_each(|(yp, xp)| {
-            *yp = -j.s * xp + j.c.conj() * *yp;
-        });
+        
     }
 
     pub fn transpose(&self) -> Self {
