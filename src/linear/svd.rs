@@ -65,14 +65,14 @@ pub trait SingularValueDecomposition<T: Float> {
                 singular.push(a.norm());
                 
                 if a < T::zero() {
-                    <Vec<&'_ Complex<T>> as Vector<T>>::scale(u.data_column_ref(i), T::isize(-1));
+                    <Vec<&'_ Complex<T>> as Vector<T>>::scale(u.data_column_ref(i), -T::one());
                 }
             }
         });
         
         singular.iter_mut().for_each(|s| *s *= scale);
         let mut indices = (0..singular.len()) .collect::<Vec<_>>();
-        indices.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
+        indices.sort_unstable_by(|&a, &b| singular[a].partial_cmp(&singular[b]).unwrap());
         indices.iter().enumerate().for_each(|(new_idx, &old_idx)| {
             let tmp = singular[new_idx];
             singular[new_idx] = singular[old_idx];
@@ -81,7 +81,7 @@ pub trait SingularValueDecomposition<T: Float> {
             v.col_swap(new_idx, old_idx);
         });
         //step 4 sort the singular values
-        singular.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
+
         (u, singular, v)
     }
 
@@ -104,7 +104,7 @@ pub trait SingularValueDecomposition<T: Float> {
         //step 2. with improvement options
         let mut finished = false;
 
-        (0..4).for_each(|i| {
+        while !finished{
             finished = true;
             //note: these norms involve sqrt, but so far as just comparisons...
             (1..diag_size).for_each(|p| {
@@ -127,7 +127,7 @@ pub trait SingularValueDecomposition<T: Float> {
                     }
                 })
             });
-        });
+        };
         //step3 recover the singular values -> essentially get the positive real numbers
         let mut singular = Vec::with_capacity(diag_size);
         (0..diag_size).for_each(|i| {
@@ -160,14 +160,14 @@ pub trait SingularValueDecomposition<T: Float> {
 
         let rot1 = match d.norm() < T::small() {
             true => Jacobi::<T>::new(
-                Complex::<T>::new(T::zero(), T::zero()),
-                Complex::<T>::new(T::usize(1), T::zero()),
+                Complex::<T>::zero(),
+                Complex::<T>::one()
             ),
             false => {
                 let u = t / d;
-                let tmp = (T::usize(1) + u.square_norm()).sqrt();
+                let tmp = (T::one() + u.square_norm()).sqrt();
                 Jacobi::<T>::new(
-                    Complex::<T>::new(T::usize(1) / tmp, T::zero()),
+                    Complex::<T>::new( tmp.recip(), T::zero()),
                     Complex::<T>::new(u / tmp, T::zero()),
                 )
             }

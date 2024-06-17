@@ -19,6 +19,7 @@ pub trait Float:
     //constants
     fn pi() -> Self;
     fn zero() -> Self;
+    fn one() -> Self;
     fn maximum() -> Self;
     fn minimum() -> Self;
     fn small() -> Self;
@@ -35,6 +36,9 @@ pub trait Float:
     fn exp(&self) -> Self;
     fn recip(&self) -> Self;
     fn sqrt(&self) -> Self;
+    fn ln(&self) -> Self;
+    fn sin(&self) -> Self;
+    fn cos(&self) -> Self;
     fn norm(&self) -> Self;
     fn square_norm(&self) -> Self;
 
@@ -65,6 +69,11 @@ impl Float for f32 {
     #[inline(always)]
     fn zero() -> Self {
         0.0
+    }
+
+    #[inline(always)]
+    fn one() -> Self {
+        1.0
     }
 
     #[inline(always)]
@@ -140,6 +149,20 @@ impl Float for f32 {
     fn atan2(&self, other: Self) -> Self{
         (*self as f32).atan2(other as f32)
     }
+
+    #[inline(always)]
+    fn ln(&self) -> Self {
+        (*self as f32).ln()
+    }
+
+    #[inline(always)]
+    fn sin(&self) -> Self {
+        (*self as f32).sin()
+    }
+    #[inline(always)]
+    fn cos(&self) -> Self {
+        (*self as f32).cos()
+    }
 }
 impl Float for f64 {
     #[inline(always)]
@@ -150,6 +173,11 @@ impl Float for f64 {
     #[inline(always)]
     fn zero() -> Self {
         0.0
+    }
+
+    #[inline(always)]
+    fn one() -> Self {
+        1.0
     }
 
     #[inline(always)]
@@ -221,5 +249,18 @@ impl Float for f64 {
     #[inline(always)]
     fn atan2(&self, other: Self) -> Self{
         (*self as f64).atan2(other as f64)
+    }
+    #[inline(always)]
+    fn ln(&self) -> Self {
+        (*self as f64).ln()
+    }
+
+    #[inline(always)]
+    fn sin(&self) -> Self {
+        (*self as f64).sin()
+    }
+    #[inline(always)]
+    fn cos(&self) -> Self {
+        (*self as f64).cos()
     }
 }

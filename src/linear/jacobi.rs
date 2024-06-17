@@ -19,21 +19,21 @@ impl<'a, T: Float + 'a> Jacobi<T> {
         let deno = T::usize(2) * y.norm();
         match deno < T::small() {
             true => Self::new(
-                Complex::<T>::new(T::usize(1), T::zero()),
-                Complex::<T>::new(T::zero(), T::zero()),
+                Complex::<T>::one(),
+                Complex::<T>::zero(),
             ),
             false => {
                 let tau = (x - z) / deno;
-                let w = (tau.square_norm() + T::usize(1)).sqrt();
+                let w = (tau.square_norm() + T::one()).sqrt();
                 let t = match tau > T::zero() {
-                    true => T::usize(1) / (tau + w),
-                    false => T::usize(1) / (tau - w),
+                    true => (tau + w).recip(),
+                    false => (tau - w).recip(),
                 };
                 let sign = match t > T::zero() {
-                    true => T::usize(1),
-                    false => T::isize(-1),
+                    true => T::one(),
+                    false => -T::one(),
                 };
-                let n = (t.square_norm() + T::usize(1)).sqrt().recip();
+                let n = (t.square_norm() + T::one()).sqrt().recip();
                 let s: Complex<T> = -(y.conj() / y.norm()) * sign * t.norm() * n;
 
                 Self::new(s, Complex::<T>::new(n, T::zero()))
@@ -45,7 +45,7 @@ impl<'a, T: Float + 'a> Jacobi<T> {
     pub fn apply_left(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
         //safety check could be removed to reduce branching if necessary 
         let j = self;
-        if j.c == Complex::<T>::new(T::usize(1), T::zero()) && j.s == Complex::<T>::zero() {
+        if j.c == Complex::<T>::new(T::one(), T::zero()) && j.s == Complex::<T>::zero() {
             return;
         }
         matrix.data_rows_ref().for_each(|row| {
@@ -60,7 +60,7 @@ impl<'a, T: Float + 'a> Jacobi<T> {
     pub fn apply_right(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
         //safety check could be removed to reduce branching if necessary 
         let j = self.transpose();
-        if j.c == Complex::<T>::new(T::usize(1), T::zero()) && j.s == Complex::<T>::zero() {
+        if j.c == Complex::<T>::one() && j.s == Complex::<T>::zero() {
             return;
         }
         let mut rows = matrix.data_rows_ref();

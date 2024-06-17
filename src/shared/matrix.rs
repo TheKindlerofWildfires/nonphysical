@@ -1,6 +1,6 @@
 use std::{
     borrow::BorrowMut,
-    ops::{Mul, MulAssign},
+    ops::{Add, Mul, MulAssign},
 };
 
 use super::{complex::Complex, float::Float, vector::Vector};
@@ -22,7 +22,7 @@ impl<T: Float> Matrix<T> {
     }
 
     pub fn zero(rows: usize, columns: usize) -> Self {
-        let data = vec![Complex::<T>::zero();rows*columns];
+        let data = vec![Complex::<T>::zero(); rows * columns];
         Matrix {
             rows,
             columns,
@@ -31,18 +31,18 @@ impl<T: Float> Matrix<T> {
     }
 
     pub fn identity(rows: usize, columns: usize) -> Self {
-        let data = vec![Complex::<T>::zero();rows*columns];
+        let data = vec![Complex::<T>::zero(); rows * columns];
         let mut id = Matrix {
             rows,
             columns,
             data,
         };
-        <Vec<&'_ Complex<T>> as Vector<T>>::add(id.data_diag_ref(),Complex::<T>::new(T::usize(1), T::zero()));
+        <Vec<&'_ Complex<T>> as Vector<T>>::add(id.data_diag_ref(), Complex::<T>::one());
         id
     }
     #[inline(always)]
     fn index(&self, row: usize, column: usize) -> usize {
-        column *self.rows +row
+        column * self.rows + row
     }
 
     #[inline(always)]
@@ -57,12 +57,12 @@ impl<T: Float> Matrix<T> {
     }
 
     #[inline(always)]
-    pub fn row(&self, index: usize) -> usize{
+    pub fn row(&self, index: usize) -> usize {
         index % self.rows
     }
 
     #[inline(always)]
-    pub fn column(&self, index: usize) -> usize{
+    pub fn column(&self, index: usize) -> usize {
         index / self.rows
     }
 
@@ -89,7 +89,6 @@ impl<T: Float> Matrix<T> {
     #[inline(always)]
     pub fn data_column(&self, column: usize) -> impl Iterator<Item = &Complex<T>> {
         self.data[column * self.columns..(column + 1) * self.columns].iter()
-        
     }
 
     #[inline(always)]
@@ -113,73 +112,113 @@ impl<T: Float> Matrix<T> {
     }
 
     #[inline(always)]
-    pub fn data_column_ref(&mut self, column: usize) ->impl Iterator<Item = &mut Complex<T>> {
+    pub fn data_column_ref(&mut self, column: usize) -> impl Iterator<Item = &mut Complex<T>> {
         self.data[column * self.columns..(column + 1) * self.columns].iter_mut()
     }
 
-    pub fn transpose(&mut self){
-        (0..self.columns).for_each(|i|{
-            (i..self.rows).for_each(|j|{
-                let tmp = self.data[i*self.columns+j];
-                self.data[i*self.columns+j] = self.data[j*self.rows+i];
-                self.data[j*self.rows+i]=tmp;
+    pub fn transpose(&mut self) {
+        (0..self.columns).for_each(|i| {
+            (i..self.rows).for_each(|j| {
+                let tmp = self.data[i * self.columns + j];
+                self.data[i * self.rows + j] = self.data[j * self.rows + i];
+                self.data[j * self.columns + i] = tmp;
             });
         });
         let temp = self.columns;
         self.columns = self.rows;
         self.rows = temp;
-
     }
 
-    pub fn transposed(&self) -> Self{
+    pub fn transposed(&self) -> Self {
         let mut transposed_data = vec![Complex::<T>::zero(); self.data.len()];
 
-        (0..self.columns).for_each(|i|{
-            (i..self.rows).for_each(|j|{
-                transposed_data[i*self.columns+j] = self.data[j*self.rows+i];
-                transposed_data[j*self.columns+i] = self.data[i*self.rows+j];
+        (0..self.columns).for_each(|i| {
+            (i..self.rows).for_each(|j| {
+                transposed_data[i * self.rows + j] = self.data[j * self.columns + i];
+                transposed_data[j * self.columns + i] = self.data[i * self.rows + j];
             })
         });
-        Matrix::<T>::new(self.columns,transposed_data)
+        Matrix::<T>::new(self.columns, transposed_data)
     }
 
-    pub fn row_swap(&mut self, a: usize, b: usize){
-        
+    pub fn row_swap(&mut self, a: usize, b: usize) {
         self.data.chunks_exact_mut(self.columns).for_each(|row| {
             let tmp = row[a];
-            row[a]= row[b];
-            row[b]= tmp;
+            row[a] = row[b];
+            row[b] = tmp;
         });
     }
 
-    pub fn col_swap(&mut self, a: usize, b: usize){
-        let xb = self.data_column(a).map(|c| c.clone()).collect::<Vec<_>>();
-        let yb = self.data_column(b).map(|c| c.clone()).collect::<Vec<_>>();
+    pub fn col_swap(&mut self, a: usize, b: usize) {
+        let mut rows = self.data_rows_ref();
+        let (row_a, row_b) = match b > a {
+            true => {
+                let ra = rows.nth(a).unwrap();
+                let rb = rows.nth(b - a - 1).unwrap();
+                (ra, rb)
+            }
+            false => {
+                let rb = rows.nth(b).unwrap();
+                let ra = rows.nth(a - b - 1).unwrap();
 
-        let x = self.data_column_ref(a);
-        x.zip(yb).for_each(|(xp,yp)|{
-            *xp = yp;
+                (ra, rb)
+            }
+        };
+
+        row_a.iter_mut().zip(row_b.iter_mut()).for_each(|(ap, bp)| {
+            let tmp = *ap;
+            *ap = *bp;
+            *bp = tmp;
         });
-        let y= self.data_column_ref(b);
-        y.zip(xb).for_each(|(yp,xp)|{
-           *yp = xp; 
-        })
     }
 }
+impl<T: Float> Add for Matrix<T> {
+    type Output = Self;
+    fn add(self, rhs: Matrix<T>) -> Self {
+        let out_data = self.data().map(|c| c.clone()).collect();
+        let mut out_matrix = Matrix::new(self.rows, out_data);
+        <Vec<&'_ Complex<T>> as Vector<T>>::acc(out_matrix.data_ref(), rhs.data());
+        out_matrix
+    }
+}
+
+/* This is a bad multiplication impl */
+impl<T: Float> Mul for Matrix<T> {
+    type Output = Self;
+    fn mul(self, rhs: Matrix<T>) -> Self {
+        debug_assert!(self.columns == rhs.rows);
+        
+        let mut output = Matrix::new(
+            self.rows,
+            vec![Complex::<T>::zero(); self.rows * rhs.columns],
+        );
+
+        for c in 0..rhs.columns {
+            for r in 0..self.rows {
+                let mut tmp = Complex::<T>::zero();
+                for a in 0..self.columns {
+                    tmp = tmp + self.coeff(r, a) * rhs.coeff(a, c);
+                }
+                *output.coeff_ref(r, c) = tmp;
+            }
+        }
+        output
+    }
+}
+
 
 impl<T: Float> Mul<T> for Matrix<T> {
     type Output = Self;
     fn mul(self, scaler: T) -> Self {
-        Self {
-            rows: self.rows,
-            columns: self.columns,
-            data: self.data.iter().map(|c| *c * scaler).collect(),
-        }
+        let out_data = self.data().map(|c| c.clone()).collect();
+        let mut out_matrix = Matrix::new(self.rows, out_data);
+        <Vec<&'_ Complex<T>> as Vector<T>>::scale(out_matrix.data_ref(), scaler);
+        out_matrix
     }
 }
 
 impl<T: Float> MulAssign<T> for Matrix<T> {
     fn mul_assign(&mut self, rhs: T) {
-        self.data.iter_mut().for_each(|c| *c = *c * rhs);
+        <Vec<&'_ Complex<T>> as Vector<T>>::scale(self.data_ref(), rhs);
     }
 }

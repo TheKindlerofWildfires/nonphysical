@@ -32,12 +32,10 @@ impl<T: Float> FastFourierTransform<T> {
         Self::reverse(x, n);
     }
 
-    //Untested
     fn ifft(&self, x: &mut [Complex<T>]) {
         x.iter_mut().for_each(|c| *c = c.conj());
         self.fft(x);
-        let sf = T::usize(1) / T::usize(x.len());
-        dbg!(sf);
+        let sf = T::one() / T::usize(x.len());
         x.iter_mut().for_each(|c| *c = c.conj()*sf);
     }
 
@@ -347,7 +345,6 @@ mod fourier_tests {
 
         fft.ifft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            dbg!(xp,yp);
             assert!((*xp - yp).square_norm() < f32::epsilon());
         });
 

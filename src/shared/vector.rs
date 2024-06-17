@@ -15,6 +15,13 @@ pub trait Vector<'a, T: Float + 'a> {
         iter.fold(T::maximum(), |acc, x| acc.lesser(x.norm()))
     }
 
+    fn norm_sum<I>(iter: I) -> T
+    where
+        I: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.fold(T::zero(), |acc, x| acc+ x.norm())
+    }
+
     fn scale<I>(iter: I, scaler: T)
     where
         I: Iterator<Item = &'a mut Complex<T>>,
@@ -35,6 +42,15 @@ pub trait Vector<'a, T: Float + 'a> {
     {
         iter.for_each(|c| *c = *c + rhs)
     }
+
+    fn acc<I,J>(iter: I, rhs:J)
+    where
+        I: Iterator<Item = &'a mut Complex<T>>,
+        J: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.zip(rhs).for_each(|(i,j)| *i = *i + *j)
+    }
+    
 }
 
 impl<'a, T: Float> Vector<'a, T> for Vec<&'a Complex<T>> {}
