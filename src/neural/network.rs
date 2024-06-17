@@ -40,8 +40,6 @@ impl<T: Float> Network<T> {
             let mut index_table: Vec<_> = (0..data.rows).collect();
             pcg.shuffle_usize(&mut index_table);
 
-            let mut batch_number = 0;
-
             let rows = data.data_rows().collect::<Vec<_>>();
             index_table
                 .chunks_exact(self.batch_size)
@@ -59,6 +57,7 @@ impl<T: Float> Network<T> {
                         .collect::<Vec<_>>();
 
                     let predictions = self.evaluate(&batch_matrix);
+                    
 
                     let loss = self.loss(&predictions, &batch_label);
 
@@ -111,7 +110,11 @@ impl<T: Float> Network<T> {
     }
 
     fn loss(&mut self, output: &Matrix<T>, labels: &Vec<usize>) -> Complex<T> {
-        self.cross_entropy(output, labels) + self.l2_reg(&self.layers)
+        //a never changes and b grows
+        let a = self.cross_entropy(output, labels);
+        let b = self.l2_reg(&self.layers);
+        dbg!(a,b);
+        a+b
     }
 
     fn score(&mut self, score: &Matrix<T>, labels: &Vec<usize>) -> Matrix<T> {
@@ -132,7 +135,6 @@ impl<T: Float> Network<T> {
 
     fn cross_entropy(&self, output: &Matrix<T>, labels: &Vec<usize>) -> Complex<T> {
         let mut o1 = Vec::with_capacity(output.rows);
-        dbg!(output.rows, output.columns);
         //this seems to expect a square matrix, but output came in as a 1x10 matrix
         for c in 0..output.rows {
             o1.push(output.coeff(c, labels[c]));
@@ -220,16 +222,14 @@ impl<T: Float> Network<T> {
     fn drelu(&self, input: &Matrix<T>, zm1: &Matrix<T>) -> Matrix<T> {
         let mut output = Matrix::zero(input.rows, input.columns);
 
-        for r in 0..input.rows {
-            for c in 0..input.columns {
-                if zm1.coeff(r, c).norm() <= T::zero() {
-                    *output.coeff_ref(r, c) = Complex::<T>::zero();
-                } else {
-                    *output.coeff_ref(r, c) = input.coeff(r, c);
+        output.data_ref().zip(zm1.data()).for_each(|(o,c)| {
+            if c.norm()<T::zero() {
+                *o = match c.norm()<=T::zero(){
+                    true => Complex::<T>::zero(),
+                    false => *c,
                 }
             }
-        }
-
+        });
         output
     }
 }

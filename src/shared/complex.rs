@@ -72,7 +72,7 @@ impl<T: Float> Complex<T> {
         self.real * self.real + self.imag * self.imag
     }
     pub fn phase(&self)-> T{
-        self.real.atan2(self.imag)
+        self.imag.atan2(self.real)
     }
     pub fn recip(&self) -> Self {
         self.conj() / self.square_norm()
