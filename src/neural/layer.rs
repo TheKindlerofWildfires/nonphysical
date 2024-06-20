@@ -51,16 +51,11 @@ impl<T: Float> Layer<T> for MultiplyLayer<T> {
     }
 
     fn backward(&mut self, x: &Matrix<T>, memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
-        dbg!(&x);//eq dz
-        dbg!(&self.weights);
-        dbg!(memory); //eq x
         let mut dw = memory.transposed()*x.explicit_copy();
         let dx = x.explicit_copy() *self.weights.transposed();
-
-        dbg!(&dw);//wrong
-        dbg!(&dx); //wrong
+                
         dw = dw + self.weights.explicit_copy() * lambda;
-        self.weights = self.weights.explicit_copy() + dw * epsilon;
+        self.weights = self.weights.explicit_copy()  + dw * -epsilon;
         dx
     }
 }
@@ -77,8 +72,6 @@ impl<T: Float> Layer<T> for AddLayer<T> {
     }
 
     fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
-        dbg!(&x);
-        dbg!(&self.biases);
         let mut output = x.explicit_copy();
         output.data_rows_ref().for_each(|row| {
             row.into_iter()
@@ -88,10 +81,10 @@ impl<T: Float> Layer<T> for AddLayer<T> {
         output
     }
 
-    fn backward(&mut self, x: &Matrix<T>,memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
+    fn backward(&mut self, x: &Matrix<T>,_memory: &Matrix<T>, _lambda: T, epsilon: T) -> Matrix<T> {
         let dx = x.explicit_copy();
         let db = Matrix::single(1, x.rows, Complex::one()) * x.explicit_copy(); //could prealloc
-        self.biases = self.biases.explicit_copy() + db * epsilon;
+        self.biases = self.biases.explicit_copy() + db * -epsilon;
 
         dx
     }
@@ -223,23 +216,17 @@ impl<T: Float> Layer<T> for PerceptronLayer<T> {
     }
 
     fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
-        dbg!(&x);
         let mut output = self.mul_layer.forward(x); //broken
-        dbg!(&output);
         self.memories.push(output.explicit_copy());
         output = self.add_layer.forward(&output);
-        dbg!(&output);
         self.memories.push(output.explicit_copy());
         output = self.activation_layer.forward(&output);
         output
     }
 
-    fn backward(&mut self, x: &Matrix<T>,memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
-        println!("dtanh\n {:?}", x);
+    fn backward(&mut self, x: &Matrix<T>,memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {        
         let mut output = self.activation_layer.backward(x, &self.memories[1], lambda, epsilon);
-        println!("dadd\n {:?}", output);
         output = self.add_layer.backward(&output, &self.memories[0], lambda, epsilon);
-        println!("dmul\n {:?}", output);
         output = self.mul_layer.backward(&output, memory, lambda, epsilon);
         output
     }

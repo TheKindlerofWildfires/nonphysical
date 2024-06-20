@@ -84,7 +84,7 @@ pub fn play_neural(){
     let layer_map = vec![LayerType::Identity, LayerType::PerceptronLayer, LayerType::PerceptronLayer];
 
     let direct_layers:Vec<Box<dyn Layer<f32>>> = vec![Box::new(IdentityLayer::new(10, 10)), Box::new(PerceptronLayer::layer_one()),  Box::new(PerceptronLayer::layer_two())];
-    let mut network = Network::<f32>::new_direct(direct_layers, 0.01, 0.01, 10, 1);
+    let mut network = Network::<f32>::new_direct(direct_layers, 0.01, 0.01, 200, 10000);
     println!("Network created");
     println!("Data created");
 
@@ -124,10 +124,12 @@ pub fn play_neural(){
         Complex::new(1.0,0.0),
     ];
 
+    
+
     let x_mat = Matrix::new(10,known_x);
     let y_mat = Matrix::new(10,known_y);
 
-    
+    let (x_mat, y_mat) = simulate_moons();
 
     network.fit(&x_mat, &y_mat);
     println!("Network fitted");
@@ -143,7 +145,7 @@ pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>){
         let value = f32::from_le_bytes(vb);
         x.push(Complex::<f32>::new(value as f32, 0.0));
     });
-    let x_matrix = Matrix::<f32>::new(10,x[0..20].to_vec());
+    let x_matrix = Matrix::<f32>::new(200,x);
 
     let mut file = std::fs::File::open("y.np").unwrap();
     let mut buffer = Vec::new();
@@ -155,7 +157,7 @@ pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>){
         y.push(Complex::<f32>::new(value as f32, 0.0));
     });
 
-    let y_matrix = Matrix::<f32>::new(10,y[0..10].to_vec());
+    let y_matrix = Matrix::<f32>::new(200,y);
 
     (x_matrix,y_matrix)
 

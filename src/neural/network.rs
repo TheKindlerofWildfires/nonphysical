@@ -7,7 +7,7 @@ use crate::{
 
 use super::{
     layer::{
-        AddLayer, IdentityLayer, Layer, LayerType, MultiplyLayer, PerceptronLayer, TanhLayer,
+        self, AddLayer, IdentityLayer, Layer, LayerType, MultiplyLayer, PerceptronLayer, TanhLayer
     },
     predictor::{Predictor, SoftPredictor},
 };
@@ -84,9 +84,8 @@ impl<T: Float + 'static> Network<T> {
 
                     //transmute batch_x to pred_y, but batch_x isn't used again
                     self.forward(&mut batch_x);
-                    let res = SoftPredictor::<T>::predict(&batch_x); //prediction is always 1? but somehow loss changes I guess I'm shuffling
                     let loss = self.loss(&batch_y);
-                    if epoch % 1 == 0 {
+                    if epoch % 100 == 0 {
                         println!("On Epoch {}", epoch);
                         dbg!(loss);
                     }
@@ -126,7 +125,6 @@ impl<T: Float + 'static> Network<T> {
         //the copy operations here are not very well done
         let mut i = 0;
         self.layers.iter_mut().for_each(|layer| {
-            dbg!(i);
             *input = layer.forward(input);
             self.memories.push(input.explicit_copy());
             i+=1;
@@ -135,11 +133,12 @@ impl<T: Float + 'static> Network<T> {
 
     fn backwards(&mut self, output: &mut Matrix<T>) {
         //hack while testing
-        *output = SoftPredictor::diff(&self.memories.pop().unwrap(), output);
-        self.layers.iter_mut().zip(&self.memories).rev().for_each(|(layer,memory)| {
-            *output = layer.backward(output, memory,self.lambda, self.epsilon);
-        })
+        *output = SoftPredictor::diff(&self.memories.last().unwrap(), output);
+        for i in (1..self.layers.len()).rev(){
+            *output = self.layers[i].backward(output, &self.memories[i-1],self.lambda, self.epsilon);
+        }
     }
+    
 
     fn loss(&self, output: &Matrix<T>) -> T {
         SoftPredictor::<T>::loss(&self.memories.last().unwrap(), output)

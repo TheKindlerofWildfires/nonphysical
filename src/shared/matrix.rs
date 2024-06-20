@@ -134,9 +134,9 @@ impl<T: Float> Matrix<T> {
 
     pub fn transpose(&mut self) {
         (0..self.columns).for_each(|i| {
-            (i..self.rows).for_each(|j| {
-                let tmp = self.data[i * self.columns + j];
-                self.data[i * self.rows + j] = self.data[j * self.rows + i];
+            (0..self.rows).for_each(|j| {
+                let tmp = self.data[i * self.rows + j];
+                self.data[i * self.rows + j] = self.data[j * self.columns + i];
                 self.data[j * self.columns + i] = tmp;
             });
         });
@@ -149,9 +149,8 @@ impl<T: Float> Matrix<T> {
         let mut transposed_data = vec![Complex::zero(); self.data.len()];
 
         (0..self.columns).for_each(|i| {
-            (i..self.rows).for_each(|j| {
+            (0..self.rows).for_each(|j| {
                 transposed_data[i * self.rows + j] = self.data[j * self.columns + i];
-                transposed_data[j * self.columns + i] = self.data[i * self.rows + j];
             })
         });
         Matrix::new(self.columns, transposed_data)
