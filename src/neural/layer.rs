@@ -1,114 +1,246 @@
+use std::{marker::PhantomData, mem};
+
 use crate::{
     random::pcg::PermutedCongruentialGenerator,
     shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector},
 };
 
-pub struct Layer<T: Float> {
-    pub weights: Matrix<T>,
-    pub biases: Matrix<T>,
-    pub output: Matrix<T>,
-    delta_weights: Matrix<T>,
-    delta_biases: Matrix<T>,
-    function: fn(&mut Complex<T>),
+pub enum LayerType {
+    Multiply,
+    Add,
+    Tanh,
+    Identity,
+    PerceptronLayer,
 }
 
-impl<T: Float> Layer<T> {
-    pub fn new_identity(size: usize, function: fn(&mut Complex<T>)) -> Self {
-        Self {
-            weights: Matrix::<T>::identity(size, size),
-            biases: Matrix::<T>::zero(1, size),
-            output: Matrix::<T>::zero(size, size),
-            delta_weights: Matrix::<T>::zero(size, size),
-            delta_biases: Matrix::<T>::zero(size, 1),
-            function: function,
-        }
-    }
+pub trait Layer<T: Float> {
+    fn new(size: usize, previous_size: usize) -> Self
+    where
+        Self: Sized;
+    fn forward(&mut self, x: &Matrix<T>) -> Matrix<T>;
+    fn backward(&mut self, x: &Matrix<T>, memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T>;
 
-    pub fn new_random(size: usize, previous_size: usize, function: fn(&mut Complex<T>)) -> Self {
-        Self {
-            weights: Self::kaiming_he(previous_size, size),
-            biases: Matrix::<T>::zero(1, size),
-            output: Matrix::<T>::zero(previous_size, size),
-            delta_weights: Matrix::<T>::zero(previous_size, size),
-            delta_biases: Matrix::<T>::zero(size, 1),
-            function: function,
-        }
-    }
-
-    fn kaiming_he(rows: usize, columns: usize) -> Matrix<T> {
-        let mut pcg = PermutedCongruentialGenerator::<T>::new_timed();
-        let mut data = pcg.normal(Complex::<T>::zero(), T::one(), rows * columns);
+    fn kaiming_he(rows: usize, columns: usize) -> Matrix<T>
+    where
+        Self: Sized,
+    {
+        let mut pcg = PermutedCongruentialGenerator::new_timed();
+        let mut data = pcg.normal(Complex::zero(), T::one(), rows * columns);
         <Vec<&'_ Complex<T>> as Vector<T>>::scale(
             data.iter_mut(),
             T::usize(columns).sqrt().recip(),
         );
         Matrix::new(rows, data)
     }
+}
 
-    pub fn update_weights(&mut self, input: &Matrix<T>, step: T) {
-        self.weights
-            .data_ref()
-            .zip(input.data())
-            .for_each(|(w, i)| *w = *w - *i * step);
-    }
+pub struct MultiplyLayer<T: Float> {
+    weights: Matrix<T>,
+}
 
-    pub fn update_biases(&mut self, input: &Vec<Complex<T>>, step: T) {
-        self.biases
-            .data_ref()
-            .zip(input.iter())
-            .for_each(|(w, i)| *w = *w - *i * step);
-    }
-
-    pub fn forward(&mut self, input: &Matrix<T>) -> Matrix<T> {
-        let wc = Matrix::<T>::new(
-            self.weights.rows,
-            self.weights.data().map(|c| c.clone()).collect(),
-        );
-        let input_copy = Matrix::<T>::new(input.rows, input.data().map(|c| c.clone()).collect());
-        //matrix multiplication here got the dimensionality wrong
-        let mut output = input_copy * wc;
-        let bc = Matrix::<T>::new(
-            self.biases.rows,
-            self.biases.data().map(|c| c.clone()).collect(),
-        );
-        output = output + bc; //what are the odds this is reliably right?
-                              //apply activation function
-        output.data_ref().for_each(|c| (self.function)(c));
-
-        let oc = Matrix::<T>::new(output.rows, output.data().map(|c| c.clone()).collect());
-
-        self.output = oc;
-
-        output
-    }
-
-    pub fn relu(x: &mut Complex<T>) {
-        if x.norm() < T::zero() {
-            *x = Complex::<T>::zero();
+impl<T: Float> Layer<T> for MultiplyLayer<T> {
+    fn new(size: usize, previous_size: usize) -> Self {
+        Self {
+            weights: Self::kaiming_he(size, previous_size),
         }
     }
 
-    pub fn linear(_: &mut Complex<T>) {}
+    fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
+        //opportunity to stream directly into preallocated memory
+        x.explicit_copy() * self.weights.explicit_copy()
+    }
 
-    pub fn soft_max(x: &Matrix<T>) -> Matrix<T> {
-        let mut input_sub_max = Matrix::zero(x.rows, x.columns);
+    fn backward(&mut self, x: &Matrix<T>, memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
+        dbg!(&x);//eq dz
+        dbg!(&self.weights);
+        dbg!(memory); //eq x
+        let mut dw = memory.transposed()*x.explicit_copy();
+        let dx = x.explicit_copy() *self.weights.transposed();
 
-        //the abuse of norm max here over real max may be ugly when using actual complex numbers
-        //this is possible to combine into single loop
-        input_sub_max.data_rows_ref().for_each(|row| {
-            let max = -Complex::<T>::new(
-                <Vec<&'_ Complex<T>> as Vector<T>>::norm_max(row.iter()),
-                T::zero(),
-            );
-            <Vec<&'_ Complex<T>> as Vector<T>>::add(row.iter_mut(), max);
+        dbg!(&dw);//wrong
+        dbg!(&dx); //wrong
+        dw = dw + self.weights.explicit_copy() * lambda;
+        self.weights = self.weights.explicit_copy() + dw * epsilon;
+        dx
+    }
+}
+
+pub struct AddLayer<T: Float> {
+    biases: Matrix<T>,
+}
+
+impl<T: Float> Layer<T> for AddLayer<T> {
+    fn new(size: usize, _previous_size: usize) -> Self {
+        Self {
+            biases: Self::kaiming_he(1, size),
+        }
+    }
+
+    fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
+        dbg!(&x);
+        dbg!(&self.biases);
+        let mut output = x.explicit_copy();
+        output.data_rows_ref().for_each(|row| {
+            row.into_iter()
+                .zip(self.biases.data())
+                .for_each(|(c_row, c_bias)| *c_row = *c_row + *c_bias)
         });
+        output
+    }
 
-        input_sub_max.data_ref().for_each(|c| *c = c.exp());
+    fn backward(&mut self, x: &Matrix<T>,memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
+        let dx = x.explicit_copy();
+        let db = Matrix::single(1, x.rows, Complex::one()) * x.explicit_copy(); //could prealloc
+        self.biases = self.biases.explicit_copy() + db * epsilon;
 
-        input_sub_max.data_rows_ref().for_each(|row| {
-            let inv_sum = <Vec<&'_ Complex<T>> as Vector<T>>::norm_sum(row.iter()).recip();
-            <Vec<&'_ Complex<T>> as Vector<T>>::scale(row.iter_mut(), inv_sum);
-        });
-        input_sub_max
+        dx
+    }
+}
+
+pub struct TanhLayer<T: Float> {
+    phantom_data: PhantomData<T>,
+}
+
+impl<T: Float> Layer<T> for TanhLayer<T> {
+    fn new(_size: usize, _previous_size: usize) -> Self {
+
+        Self { phantom_data: PhantomData::default() }
+    }
+
+    fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
+        Matrix::new(x.rows, x.data().map(|c| c.tanh()).collect::<Vec<_>>())
+    }
+
+    fn backward(&mut self, x: &Matrix<T>,memory: &Matrix<T>, _lambda: T, _epsilon: T) -> Matrix<T> {
+        let mut output = self.forward(&memory);
+        output
+            .data_ref()
+            .for_each(|c| *c = Complex::one() - *c * *c);
+        output
+            .data_ref()
+            .zip(x.data())
+            .for_each(|(oc, xc)| *oc = *oc * *xc);
+        output
+    }
+
+}
+
+pub struct IdentityLayer<T: Float> {
+    phantom_data: PhantomData<T>,
+}
+
+impl<T: Float> Layer<T> for IdentityLayer<T> {
+    fn new(_size: usize, _previous_size: usize) -> Self {
+        Self {
+            phantom_data: PhantomData::default() 
+        }
+    }
+
+    fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
+        x.explicit_copy()
+    }
+
+    fn backward(&mut self, x: &Matrix<T>,_memory: &Matrix<T>, _lambda: T, _epsilon: T) -> Matrix<T> {
+        x.explicit_copy()
+    }
+}
+
+pub struct PerceptronLayer<T: Float> {
+    mul_layer: MultiplyLayer<T>,
+    add_layer: AddLayer<T>,
+    activation_layer: TanhLayer<T>,
+    memories: Vec<Matrix<T>>,
+}
+
+impl<T: Float> PerceptronLayer<T> {
+    pub fn layer_one() -> Self {
+        let kw1 = vec![
+            Complex::new(T::float(0.03235616), T::zero()),
+            Complex::new(T::float(-0.13235897), T::zero()),
+            Complex::new(T::float(1.08383858), T::zero()),
+            Complex::new(T::float(1.03899355), T::zero()),
+            Complex::new(T::float(0.10956438), T::zero()),
+            Complex::new(T::float(0.26740128), T::zero()),
+        ];
+        let kb1 = vec![
+            Complex::new(T::float(-0.88778575), T::zero()),
+            Complex::new(T::float(-1.98079647), T::zero()),
+            Complex::new(T::float(-0.34791215), T::zero()),
+        ];
+        let mut mul_layer = MultiplyLayer::new(3, 2);
+        let mut add_layer = AddLayer::new(3, 2);
+        let activation_layer = TanhLayer::new(3, 2);
+        mul_layer.weights = Matrix::new(2, kw1);
+        add_layer.biases = Matrix::new(1, kb1);
+
+        Self {
+            mul_layer,
+            add_layer,
+            activation_layer,
+            memories: Vec::new(),
+        }
+    }
+
+    pub fn layer_two() -> Self {
+        let kw1 = vec![
+            Complex::new(T::float(0.09026812), T::zero()),
+            Complex::new(T::float(0.71030866), T::zero()),
+            Complex::new(T::float(0.69419433), T::zero()),
+            Complex::new(T::float(-0.22362324), T::zero()),
+            Complex::new(T::float(-0.17453457), T::zero()),
+            Complex::new(T::float(-0.60538234), T::zero()),
+        ];
+        let kb1 = vec![
+            Complex::new(T::float(-1.42001794), T::zero()),
+            Complex::new(T::float(-1.70627019), T::zero()),
+        ];
+        let mut mul_layer = MultiplyLayer::new(2, 3);
+        let mut add_layer = AddLayer::new(2, 3);
+        let activation_layer = TanhLayer::new(2, 3);
+        mul_layer.weights = Matrix::new(3, kw1);
+        add_layer.biases = Matrix::new(1, kb1);
+
+        Self {
+            mul_layer,
+            add_layer,
+            activation_layer,
+            memories: Vec::new(),
+        }
+    }
+}
+
+impl<T: Float> Layer<T> for PerceptronLayer<T> {
+    fn new(size: usize, previous_size: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self {
+            mul_layer: MultiplyLayer::new(size, previous_size),
+            add_layer: AddLayer::new(size, previous_size),
+            activation_layer: TanhLayer::new(size, previous_size),
+            memories: Vec::new(),
+        }
+    }
+
+    fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
+        dbg!(&x);
+        let mut output = self.mul_layer.forward(x); //broken
+        dbg!(&output);
+        self.memories.push(output.explicit_copy());
+        output = self.add_layer.forward(&output);
+        dbg!(&output);
+        self.memories.push(output.explicit_copy());
+        output = self.activation_layer.forward(&output);
+        output
+    }
+
+    fn backward(&mut self, x: &Matrix<T>,memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
+        println!("dtanh\n {:?}", x);
+        let mut output = self.activation_layer.backward(x, &self.memories[1], lambda, epsilon);
+        println!("dadd\n {:?}", output);
+        output = self.add_layer.backward(&output, &self.memories[0], lambda, epsilon);
+        println!("dmul\n {:?}", output);
+        output = self.mul_layer.backward(&output, memory, lambda, epsilon);
+        output
     }
 }

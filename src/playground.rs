@@ -1,4 +1,5 @@
 use crate::linear::svd::SingularValueDecomposition;
+use crate::neural::layer::{IdentityLayer, Layer, LayerType, PerceptronLayer};
 use crate::neural::network::Network;
 use crate::shared::complex::Complex;
 use crate::shared::matrix::Matrix;
@@ -70,7 +71,7 @@ pub fn play_svd() {
     let mut svd_mat = Matrix::<f32>::new(ci, svd_data);
     //dbg!(&svd_mat.data);
     let now: SystemTime = SystemTime::now();
-    let (u, s, v) = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd_full(&mut svd_mat);
+    let (_u, s, _v) = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd_full(&mut svd_mat);
     //let s = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd(&mut svd_mat);
 
     println!("SVD time {:?} ", now.elapsed().unwrap());
@@ -79,15 +80,83 @@ pub fn play_svd() {
 
 pub fn play_neural(){
     println!("Started neural network");
-    let layer_shape = vec![1,3,3,10];
-    let mut network = Network::<f32>::new(layer_shape,0.1,0.1,10,10);
-    println!("Network created");
+    let layer_shape = vec![2,3,2];
+    let layer_map = vec![LayerType::Identity, LayerType::PerceptronLayer, LayerType::PerceptronLayer];
 
-    let labels:Vec<_> = (0..10).map(|i| i).collect();
-    let data_vec:Vec<_> = (0..10).map(|i| Complex::<f32>::new((i as f32)*2.0+1.0,0.0)).collect();
-    let data_mat = Matrix::<f32>::new(10,data_vec);
+    let direct_layers:Vec<Box<dyn Layer<f32>>> = vec![Box::new(IdentityLayer::new(10, 10)), Box::new(PerceptronLayer::layer_one()),  Box::new(PerceptronLayer::layer_two())];
+    let mut network = Network::<f32>::new_direct(direct_layers, 0.01, 0.01, 10, 1);
+    println!("Network created");
     println!("Data created");
 
-    network.fit(&data_mat, &labels);
+    let known_x = vec![
+        Complex::new(0.19001768,0.0),
+        Complex::new(0.96972856,0.0),
+        Complex::new(1.68646301,0.0),
+        Complex::new( -0.12498708,0.0),
+        Complex::new(-0.97119129,0.0),
+        Complex::new(0.2908547,0.0),
+        Complex::new(2.15220755,0.0),
+        Complex::new( 0.524335,0.0),
+        Complex::new(0.79587943,0.0),
+        Complex::new(0.77384165,0.0),
+        Complex::new(0.59170903,0.0),
+        Complex::new(-0.24813843,0.0),
+        Complex::new(1.06261354,0.0),
+        Complex::new(-0.67081915,0.0),
+        Complex::new(-1.21770474,0.0),
+        Complex::new(0.8378305,0.0),
+        Complex::new(1.17288724,0.0),
+        Complex::new(-0.148433,0.0),
+        Complex::new(0.45395092,0.0),
+        Complex::new(0.20912687,0.0),
+    ];
+
+    let known_y = vec![
+        Complex::new(0.0,0.0),
+        Complex::new(1.0,0.0),
+        Complex::new(0.0,0.0),
+        Complex::new(1.0,0.0),
+        Complex::new(0.0,0.0),
+        Complex::new(1.0,0.0),
+        Complex::new(1.0,0.0),
+        Complex::new(0.0,0.0),
+        Complex::new(0.0,0.0),
+        Complex::new(1.0,0.0),
+    ];
+
+    let x_mat = Matrix::new(10,known_x);
+    let y_mat = Matrix::new(10,known_y);
+
+    
+
+    network.fit(&x_mat, &y_mat);
     println!("Network fitted");
+}
+
+pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>){
+    let mut file = std::fs::File::open("x.np").unwrap();
+    let mut buffer = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut buffer).unwrap();
+    let mut x = Vec::new();
+    buffer.chunks_exact(4).for_each(|chunk| {
+        let vb: [u8; std::mem::size_of::<f32>()] = chunk.try_into().unwrap();
+        let value = f32::from_le_bytes(vb);
+        x.push(Complex::<f32>::new(value as f32, 0.0));
+    });
+    let x_matrix = Matrix::<f32>::new(10,x[0..20].to_vec());
+
+    let mut file = std::fs::File::open("y.np").unwrap();
+    let mut buffer = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut buffer).unwrap();
+    let mut y = Vec::new();
+    buffer.chunks_exact(4).for_each(|chunk| {
+        let vb: [u8; std::mem::size_of::<f32>()] = chunk.try_into().unwrap();
+        let value = f32::from_le_bytes(vb);
+        y.push(Complex::<f32>::new(value as f32, 0.0));
+    });
+
+    let y_matrix = Matrix::<f32>::new(10,y[0..10].to_vec());
+
+    (x_matrix,y_matrix)
+
 }

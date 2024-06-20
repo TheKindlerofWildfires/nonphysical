@@ -1,235 +1,147 @@
+use std::process::exit;
+
 use crate::{
     random::pcg::PermutedCongruentialGenerator,
-    shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector},
+    shared::{complex::Complex, float::Float, matrix::Matrix},
 };
 
-use super::layer::Layer;
+use super::{
+    layer::{
+        AddLayer, IdentityLayer, Layer, LayerType, MultiplyLayer, PerceptronLayer, TanhLayer,
+    },
+    predictor::{Predictor, SoftPredictor},
+};
 pub struct Network<T: Float> {
-    layer_shape: Vec<usize>,
-    layers: Vec<Layer<T>>,
+    layers: Vec<Box<dyn Layer<T>>>, //I couldn't think of a better way to do this without dynamic dispatch
     lambda: T,
-    learning_step: T,
+    epsilon: T,
     batch_size: usize,
     epochs: usize,
+    memories: Vec<Matrix<T>>,
 }
 
-impl<T: Float> Network<T> {
+impl<T: Float + 'static> Network<T> {
+    //this lifetime math is weird
     pub fn new(
         layer_shape: Vec<usize>,
+        layer_map: Vec<LayerType>,
         lambda: T,
-        learning_step: T,
+        epsilon: T,
         batch_size: usize,
         epochs: usize,
     ) -> Self {
-        let layers = Self::create_layers(&layer_shape);
-
+        let layers = Self::compile_layers(&layer_shape, &layer_map);
         Self {
-            layer_shape,
             layers,
             lambda,
-            learning_step,
+            epsilon,
             batch_size,
             epochs,
+            memories: Vec::new(),
         }
     }
-    pub fn fit(&mut self, data: &Matrix<T>, labels: &Vec<usize>) {
+
+    pub fn new_direct(
+        layers: Vec<Box<dyn Layer<T>>>,
+        lambda: T,
+        epsilon: T,
+        batch_size: usize,
+        epochs: usize,
+    ) -> Self {
+        Self {
+            layers,
+            lambda,
+            epsilon,
+            batch_size,
+            epochs,
+            memories: Vec::new(),
+        }
+    }
+    pub fn fit(&mut self, x: &Matrix<T>, y: &Matrix<T>) {
         let mut pcg = PermutedCongruentialGenerator::<T>::new_timed();
         (0..self.epochs).for_each(|epoch| {
-            println!("On Epoch {}", epoch);
             let mut sum_loss = Complex::<T>::zero();
-            let mut index_table: Vec<_> = (0..data.rows).collect();
-            pcg.shuffle_usize(&mut index_table);
+            let mut index_table: Vec<_> = (0..x.rows).collect();
+            //pcg.shuffle_usize(&mut index_table);
 
-            let rows = data.data_rows().collect::<Vec<_>>();
+            let rows_x = x.data_rows().collect::<Vec<_>>();
+            let rows_y = y.data_rows().collect::<Vec<_>>();
             index_table
                 .chunks_exact(self.batch_size)
                 .for_each(|index_row| {
-                    //this clones the batch into a new matrix
-                    let batch_data = index_row
+                    //this clones the batch into new matrices
+                    let batch_x_data = index_row
                         .into_iter()
-                        .flat_map(|&i| rows[i].into_iter().map(|r| r.clone()))
+                        .flat_map(|&i| rows_x[i].into_iter().map(|r| r.clone()))
                         .collect::<Vec<_>>();
+                    let mut batch_x = Matrix::new(self.batch_size, batch_x_data);
 
-                    let batch_matrix = Matrix::<T>::new(self.batch_size, batch_data);
-                    let batch_label = index_row
+                    let batch_y_data = index_row
                         .into_iter()
-                        .map(|&i| labels[i])
+                        .flat_map(|&i| rows_y[i].into_iter().map(|r| r.clone()))
                         .collect::<Vec<_>>();
+                    let mut batch_y = Matrix::new(self.batch_size, batch_y_data);
 
-                    let predictions = self.evaluate(&batch_matrix);
-                    
-
-                    let loss = self.loss(&predictions, &batch_label);
-
-                    sum_loss += loss;
-                    dbg!(sum_loss);
-
-                    let score = self.score(&predictions, &batch_label);
-
-                    self.update(score, batch_matrix);
-                })
-        });
-    }
-
-    fn create_layers(layer_shape: &Vec<usize>) -> Vec<Layer<T>> {
-        let length = layer_shape.len() - 1;
-        let mut previous_size = 0;
-        layer_shape
-            .iter()
-            .enumerate()
-            .map(|(i, layer_size)| {
-                let j = match i {
-                    0 => Layer::<T>::new_identity(*layer_size, Layer::<T>::linear),
-                    n if n == length => {
-                        Layer::<T>::new_random(*layer_size, previous_size, Layer::<T>::linear)
+                    //transmute batch_x to pred_y, but batch_x isn't used again
+                    self.forward(&mut batch_x);
+                    let res = SoftPredictor::<T>::predict(&batch_x); //prediction is always 1? but somehow loss changes I guess I'm shuffling
+                    let loss = self.loss(&batch_y);
+                    if epoch % 1 == 0 {
+                        println!("On Epoch {}", epoch);
+                        dbg!(loss);
                     }
-                    _ => Layer::<T>::new_random(*layer_size, previous_size, Layer::<T>::relu),
-                };
-                previous_size = *layer_size;
-                j
-            })
-            .collect()
-    }
 
-    fn evaluate(&mut self, input: &Matrix<T>) -> Matrix<T> {
-        let mut index = 0;
-
-        //could do better with a fold operation here I think
-        let mut tmp = Matrix::<T>::zero(0, 0);
-        self.layers.iter_mut().for_each(|layer| {
-            if index == 0 {
-                tmp = layer.forward(input);
-            } else {
-                tmp = layer.forward(&tmp);
-            }
-            index += 1;
-        });
-
-        let output = Layer::<T>::soft_max(&tmp);
-        output
-    }
-
-    fn loss(&mut self, output: &Matrix<T>, labels: &Vec<usize>) -> Complex<T> {
-        //a never changes and b grows
-        let a = self.cross_entropy(output, labels);
-        let b = self.l2_reg(&self.layers);
-        dbg!(a,b);
-        a+b
-    }
-
-    fn score(&mut self, score: &Matrix<T>, labels: &Vec<usize>) -> Matrix<T> {
-        let mut output = Matrix::<T>::zero(score.columns, score.rows);
-
-        //this loop can probably be a single clone and  then subtract the identity matrix
-        for r in 0..score.rows {
-            for c in 0..score.columns {
-                if labels[r] == c {
-                    *output.coeff_ref(r, c) = score.coeff(r, c) - Complex::<T>::one()
-                } else {
-                    *output.coeff_ref(r, c) = score.coeff(r, c);
-                }
-            }
-        }
-        output
-    }
-
-    fn cross_entropy(&self, output: &Matrix<T>, labels: &Vec<usize>) -> Complex<T> {
-        let mut o1 = Vec::with_capacity(output.rows);
-        //this seems to expect a square matrix, but output came in as a 1x10 matrix
-        for c in 0..output.rows {
-            o1.push(output.coeff(c, labels[c]));
-        }
-
-        let mut loss = Complex::<T>::zero();
-
-        for c in 0..o1.len() {
-            loss += -o1[c].ln(); //principle log
-        }
-
-        loss = loss / T::usize(o1.len());
-
-        loss
-    }
-
-    fn l2_reg(&self, layers: &Vec<Layer<T>>) -> Complex<T> {
-        let mut l2 = Complex::<T>::zero();
-
-        for layer in layers {
-            l2 += layer.weights.data().fold(Complex::<T>::zero(), |acc, c| {
-                acc + Complex::<T>::new(c.square_norm(), T::zero())
-            }) * T::float(0.5)
-                * self.lambda;
-        }
-
-        l2
-    }
-
-    //doing a bunch of copies for poc
-    fn update(&mut self, score: Matrix<T>, batch: Matrix<T>) {
-        let mut index = self.layers.len() - 1;
-        let mut dz = Matrix::<T>::new(score.rows, score.data().map(|c| c.clone()).collect());
-
-        loop {
-            let zm1 = match index > 0 {
-                true => Matrix::<T>::new(
-                    self.layers[index - 1].output.rows,
-                    self.layers[index - 1]
-                        .output
-                        .data()
-                        .map(|c| c.clone())
-                        .collect(),
-                ),
-                false => Matrix::<T>::new(batch.rows, batch.data().map(|c| c.clone()).collect()),
-            };
-
-            let dz_copy = Matrix::<T>::new(dz.rows, dz.data().map(|c| c.clone()).collect());
-            let zm1_copy = Matrix::<T>::new(zm1.rows, zm1.data().map(|c| c.clone()).collect());
-            let tmp = zm1_copy.transposed()*dz_copy;
-
-            let weight_copy = Matrix::<T>::new(
-                self.layers[index].weights.rows,
-                self.layers[index]
-                    .weights
-                    .data()
-                    .map(|c| c.clone())
-                    .collect(),
-            );
-            let dw = tmp + (weight_copy * self.lambda);
-            let db = score
-                .data_rows()
-                .map(|row| {
-                    Complex::<T>::new(
-                        <Vec<&'_ Complex<T>> as Vector<T>>::norm_sum(row.iter()),
-                        T::zero(),
-                    )
+                    //push the details backwards up the matrix
+                    self.backwards(&mut batch_y);
                 })
-                .collect::<Vec<_>>();
-
-            dz = dz * self.layers[index].weights.transposed();
-
-            self.layers[index].update_weights(&dw, self.learning_step);
-            self.layers[index].update_biases(&db, self.learning_step);
-
-            if index == 0 {
-                break;
-            }
-            self.drelu(&dz, &zm1);
-
-            index -= 1;
-        }
+        });
     }
 
-    fn drelu(&self, input: &Matrix<T>, zm1: &Matrix<T>) -> Matrix<T> {
-        let mut output = Matrix::zero(input.rows, input.columns);
+    fn compile_layers(
+        layer_shapes: &Vec<usize>,
+        layer_map: &Vec<LayerType>,
+    ) -> Vec<Box<dyn Layer<T>>> {
+        let mut previous_size = layer_shapes.first().unwrap(); //assume it's identity like
 
-        output.data_ref().zip(zm1.data()).for_each(|(o,c)| {
-            if c.norm()<T::zero() {
-                *o = match c.norm()<=T::zero(){
-                    true => Complex::<T>::zero(),
-                    false => *c,
-                }
-            }
+        layer_shapes
+            .iter()
+            .zip(layer_map)
+            .map(|(size, layer_type)| {
+                let layer: Box<dyn Layer<T>> = match layer_type {
+                    LayerType::Multiply => Box::new(MultiplyLayer::new(*size, *previous_size)),
+                    LayerType::Add => Box::new(AddLayer::new(*size, *previous_size)),
+                    LayerType::Tanh => Box::new(TanhLayer::new(*size, *previous_size)),
+                    LayerType::PerceptronLayer => {
+                        Box::new(PerceptronLayer::new(*size, *previous_size))
+                    }
+                    LayerType::Identity => Box::new(IdentityLayer::new(*size, *previous_size)),
+                };
+                previous_size = size;
+                layer
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn forward(&mut self, input: &mut Matrix<T>) {
+        //the copy operations here are not very well done
+        let mut i = 0;
+        self.layers.iter_mut().for_each(|layer| {
+            dbg!(i);
+            *input = layer.forward(input);
+            self.memories.push(input.explicit_copy());
+            i+=1;
         });
-        output
+    }
+
+    fn backwards(&mut self, output: &mut Matrix<T>) {
+        //hack while testing
+        *output = SoftPredictor::diff(&self.memories.pop().unwrap(), output);
+        self.layers.iter_mut().zip(&self.memories).rev().for_each(|(layer,memory)| {
+            *output = layer.backward(output, memory,self.lambda, self.epsilon);
+        })
+    }
+
+    fn loss(&self, output: &Matrix<T>) -> T {
+        SoftPredictor::<T>::loss(&self.memories.last().unwrap(), output)
     }
 }

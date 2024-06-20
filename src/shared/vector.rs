@@ -22,6 +22,13 @@ pub trait Vector<'a, T: Float + 'a> {
         iter.fold(T::zero(), |acc, x| acc+ x.norm())
     }
 
+    fn sum<I>(iter: I) -> Complex<T>
+    where
+        I: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.fold(Complex::<T>::zero(), |acc, x| acc+ *x)
+    }
+
     fn scale<I>(iter: I, scaler: T)
     where
         I: Iterator<Item = &'a mut Complex<T>>,

@@ -16,14 +16,14 @@ impl<'a, T: Float + 'a> Jacobi<T> {
         let x = matrix.coeff(p, p).real;
         let y = matrix.coeff(q, p);
         let z = matrix.coeff(q, q).real;
-        let deno = T::usize(2) * y.norm();
-        match deno < T::small() {
+        let denominator = T::usize(2) * y.norm();
+        match denominator < T::small() {
             true => Self::new(
                 Complex::<T>::one(),
                 Complex::<T>::zero(),
             ),
             false => {
-                let tau = (x - z) / deno;
+                let tau = (x - z) / denominator;
                 let w = (tau.square_norm() + T::one()).sqrt();
                 let t = match tau > T::zero() {
                     true => (tau + w).recip(),

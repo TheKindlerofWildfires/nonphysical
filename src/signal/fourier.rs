@@ -46,7 +46,7 @@ impl<T: Float> FastFourierTransform<T> {
         (0..dist).for_each(|i| {
             let phase = angle * T::usize(i);
             let (sin, cos) = phase.sin_cos();
-            twiddles.push(Complex::<T>::new(cos, sin));
+            twiddles.push(Complex::new(cos, sin));
         });
         twiddles
     }
@@ -57,7 +57,7 @@ impl<T: Float> FastFourierTransform<T> {
         (0..len).for_each(|i| {
             twiddles[i] = twiddles[i << 1];
         });
-        twiddles.resize(len, Complex::<T>::new(T::zero(), T::zero()));
+        twiddles.resize(len, Complex::new(T::zero(), T::zero()));
     }
 
     #[inline]

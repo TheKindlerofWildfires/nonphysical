@@ -1,6 +1,7 @@
 use std::{
     borrow::BorrowMut,
     ops::{Add, Mul, MulAssign},
+    fmt::Debug
 };
 
 use super::{complex::Complex, float::Float, vector::Vector};
@@ -22,7 +23,16 @@ impl<T: Float> Matrix<T> {
     }
 
     pub fn zero(rows: usize, columns: usize) -> Self {
-        let data = vec![Complex::<T>::zero(); rows * columns];
+        let data = vec![Complex::zero(); rows * columns];
+        Matrix {
+            rows,
+            columns,
+            data,
+        }
+    }
+
+    pub fn single(rows: usize, columns: usize, c: Complex<T>) -> Self {
+        let data = vec![c; rows * columns];
         Matrix {
             rows,
             columns,
@@ -31,18 +41,24 @@ impl<T: Float> Matrix<T> {
     }
 
     pub fn identity(rows: usize, columns: usize) -> Self {
-        let data = vec![Complex::<T>::zero(); rows * columns];
+        let data = vec![Complex::zero(); rows * columns];
         let mut id = Matrix {
             rows,
             columns,
             data,
         };
-        <Vec<&'_ Complex<T>> as Vector<T>>::add(id.data_diag_ref(), Complex::<T>::one());
+        <Vec<&'_ Complex<T>> as Vector<T>>::add(id.data_diag_ref(), Complex::one());
         id
+    }
+
+    pub fn explicit_copy(&self) -> Self{
+        let new_data = self.data.clone();
+        
+        Self::new(self.rows, new_data)
     }
     #[inline(always)]
     fn index(&self, row: usize, column: usize) -> usize {
-        column * self.rows + row
+        row * self.columns + column //changed this, may echo
     }
 
     #[inline(always)]
@@ -130,7 +146,7 @@ impl<T: Float> Matrix<T> {
     }
 
     pub fn transposed(&self) -> Self {
-        let mut transposed_data = vec![Complex::<T>::zero(); self.data.len()];
+        let mut transposed_data = vec![Complex::zero(); self.data.len()];
 
         (0..self.columns).for_each(|i| {
             (i..self.rows).for_each(|j| {
@@ -138,7 +154,7 @@ impl<T: Float> Matrix<T> {
                 transposed_data[j * self.columns + i] = self.data[i * self.rows + j];
             })
         });
-        Matrix::<T>::new(self.columns, transposed_data)
+        Matrix::new(self.columns, transposed_data)
     }
 
     pub fn row_swap(&mut self, a: usize, b: usize) {
@@ -175,6 +191,8 @@ impl<T: Float> Matrix<T> {
 impl<T: Float> Add for Matrix<T> {
     type Output = Self;
     fn add(self, rhs: Matrix<T>) -> Self {
+        debug_assert!(self.columns == rhs.columns);
+        debug_assert!(self.rows == rhs.rows);
         let out_data = self.data().map(|c| c.clone()).collect();
         let mut out_matrix = Matrix::new(self.rows, out_data);
         <Vec<&'_ Complex<T>> as Vector<T>>::acc(out_matrix.data_ref(), rhs.data());
@@ -190,12 +208,11 @@ impl<T: Float> Mul for Matrix<T> {
         
         let mut output = Matrix::new(
             self.rows,
-            vec![Complex::<T>::zero(); self.rows * rhs.columns],
+            vec![Complex::zero(); self.rows * rhs.columns],
         );
-
         for c in 0..rhs.columns {
             for r in 0..self.rows {
-                let mut tmp = Complex::<T>::zero();
+                let mut tmp = Complex::zero();
                 for a in 0..self.columns {
                     tmp = tmp + self.coeff(r, a) * rhs.coeff(a, c);
                 }
@@ -220,5 +237,17 @@ impl<T: Float> Mul<T> for Matrix<T> {
 impl<T: Float> MulAssign<T> for Matrix<T> {
     fn mul_assign(&mut self, rhs: T) {
         <Vec<&'_ Complex<T>> as Vector<T>>::scale(self.data_ref(), rhs);
+    }
+}
+
+impl<T:Float> Debug for Matrix<T>{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Matrix").field("rows", &self.rows).field("columns", &self.columns);
+        for row in self.data_rows() {
+            write!(f,"{:?}",row).unwrap();
+            writeln!(f).unwrap();
+        }
+        Ok(())
+
     }
 }

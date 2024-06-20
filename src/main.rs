@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
-use std::process::exit;
 
 
 pub mod linear;

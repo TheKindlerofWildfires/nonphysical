@@ -23,7 +23,7 @@ impl<T: Float> GaborTransform<T> {
         let mut window = vec![Complex::zero();nfft];
         window.iter_mut().enumerate().for_each(|(i,w)| {
             let value = ((T::usize(i) - sub) / sigma2).exp();
-            *w = Complex::<T>::new(value, T::usize(0));
+            *w = Complex::new(value, T::usize(0));
         });
         window
     }

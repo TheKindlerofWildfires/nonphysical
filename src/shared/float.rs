@@ -29,6 +29,8 @@ pub trait Float:
     fn isize(i: isize) -> Self;
     fn float(f: f32) -> Self;
     fn double(f: f64) -> Self;
+    fn to_usize(&self) -> usize;
+    fn is_nan(&self) -> bool;
 
     //utility
     fn sin_cos(&self) -> (Self, Self);
@@ -39,8 +41,14 @@ pub trait Float:
     fn ln(&self) -> Self;
     fn sin(&self) -> Self;
     fn cos(&self) -> Self;
+    fn sinh(&self) -> Self;
+    fn cosh(&self) -> Self;
     fn norm(&self) -> Self;
     fn square_norm(&self) -> Self;
+
+    fn tan(&self) -> Self;
+
+    fn tanh(&self) -> Self;
 
     //shared
     fn greater(&self, other: Self) -> Self {
@@ -163,6 +171,26 @@ impl Float for f32 {
     fn cos(&self) -> Self {
         (*self as f32).cos()
     }
+    fn tan(&self) -> Self{
+        (*self as f32).tan()
+    }
+
+    fn to_usize(&self) -> usize{
+        *self as usize 
+    }
+    fn is_nan(&self) -> bool{
+        (*self as f32).is_nan()
+    }
+
+    fn sinh(&self) -> Self{
+        (*self as f32).sinh()
+    }
+    fn cosh(&self) -> Self{
+        (*self as f32).cosh()
+    }
+    fn tanh(&self) -> Self{
+        (*self as f32).tanh()
+    }
 }
 impl Float for f64 {
     #[inline(always)]
@@ -262,5 +290,27 @@ impl Float for f64 {
     #[inline(always)]
     fn cos(&self) -> Self {
         (*self as f64).cos()
+    }
+
+    fn tan(&self) -> Self{
+        (*self as f64).tan()
+    }
+
+    fn to_usize(&self) -> usize{
+        *self as usize 
+    }
+    fn is_nan(&self) -> bool{
+        (*self as f64).is_nan()
+    }
+
+    fn sinh(&self) -> Self{
+        (*self as f64).sinh()
+    }
+    fn cosh(&self) -> Self{
+        (*self as f64).cosh()
+    }
+
+    fn tanh(&self) -> Self{
+        (*self as f64).tanh()
     }
 }
