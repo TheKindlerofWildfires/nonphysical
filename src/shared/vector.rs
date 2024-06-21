@@ -57,6 +57,14 @@ pub trait Vector<'a, T: Float + 'a> {
     {
         iter.zip(rhs).for_each(|(i,j)| *i = *i + *j)
     }
+
+    fn prod<I,J>(iter: I, rhs:J)
+    where
+        I: Iterator<Item = &'a mut Complex<T>>,
+        J: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.zip(rhs).for_each(|(i,j)| *i = *i * *j)
+    }
     
 }
 

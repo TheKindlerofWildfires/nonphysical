@@ -103,8 +103,11 @@ pub trait SingularValueDecomposition<T: Float> {
         let mut max_diag = <Vec<&'_ Complex<T>> as Vector<T>>::norm_max(matrix.data_diag());
         //step 2. with improvement options
         let mut finished = false;
-
+        let now: std::time::SystemTime = std::time::SystemTime::now();
+        let mut i = 0;
         while !finished{
+            dbg!(i);
+            i+=1; //this used to converge in 4 iterations, now it takes 27...
             finished = true;
             //note: these norms involve sqrt, but so far as just comparisons...
             (1..diag_size).for_each(|p| {
@@ -142,6 +145,7 @@ pub trait SingularValueDecomposition<T: Float> {
         singular.iter_mut().for_each(|s| *s *= scale);
         //step 4 sort the singular values
         singular.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
+        dbg!(now.elapsed().unwrap());
         singular
     }
     /*sub problem related */

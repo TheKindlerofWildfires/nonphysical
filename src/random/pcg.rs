@@ -3,14 +3,14 @@ use std::{marker::PhantomData, num::Wrapping, time::SystemTime};
 use crate::shared::{complex::Complex, float::Float};
 
 pub struct PermutedCongruentialGenerator<T> {
-    state: usize,
-    inc: usize,
+    state: u32,
+    inc: u32,
     phantom: PhantomData<T>,
 }
 
 //this is probably not cryptographically secure
 impl<T:Float> PermutedCongruentialGenerator<T> {
-    pub fn new(state: usize, inc: usize) -> Self {
+    pub fn new(state: u32, inc: u32) -> Self {
         Self { state, inc, phantom: PhantomData::default() }
     }
 
@@ -22,31 +22,28 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
         let state = (!time
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
-            .as_nanos()) as usize;
+            .as_nanos()) as u32;
 
-        let inc = (!time
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()) as usize;
+        let inc = state<<1 |1;
 
         Self { state, inc,phantom: PhantomData::default() }
     }
 
-    pub fn next_usize(&mut self) -> usize {
-        let old_state = Wrapping(self.state);
-        // I suspect there is a bug here when usize=u32 and the multiplicand to state wraps. 
-        // Could fix this by breaking the large number to smaller chunks, but the prime decomposition is too large
-        self.state = (old_state * Wrapping(6_364_136_223_846_793_005) + Wrapping(self.inc | 1)).0;  
-        let shift = ((old_state >> 18) ^ old_state >> 26).0;
-        let rot = (old_state >> 59).0;
-        (shift >> rot) | (shift << (-(rot as isize) & 31))
+    pub fn next_u32(&mut self) -> u32 {
+        let old_state = self.state;
+        self.state = (Wrapping(old_state)*Wrapping(747796405)+Wrapping(self.inc)).0;
+        let word = Wrapping((old_state >>((old_state>>28)+4))^old_state) *Wrapping(277803737);
+        ((word>>22) ^word).0
     }
 
     pub fn normal(&mut self, mean: Complex<T>, scale: T, size: usize) -> Vec<Complex<T>>{
         let mut samples = Vec::with_capacity(size);
         (0..size).for_each(|_| {
-            let u1 = T::usize(self.next_usize())/T::usize(usize::MAX);
-            let u2 = T::usize(self.next_usize())/T::usize(usize::MAX);
+            let mut u1 = T::usize(self.next_u32() as usize)/T::usize(u32::MAX as usize);
+            while u1==T::zero(){
+                u1 = T::usize(self.next_u32()as usize)/T::usize(u32::MAX as usize);
+            }
+            let u2 = T::usize(self.next_u32()as usize)/T::usize(u32::MAX as usize);
             let z0 = (-T::usize(2)*u1.ln()).sqrt() * (T::usize(2)*T::pi()*u2).cos();
             samples.push(mean+Complex::new(z0*scale,T::zero()));
         });
@@ -55,7 +52,7 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
 
     pub fn shuffle_usize(&mut self, x: &mut Vec<usize>) {
         (1..x.len()).rev().for_each(|i|{
-            let j = self.next_usize() % i; //this introduces bias when x.len() approaches usize, I find this to be a non problem
+            let j = (self.next_u32() as usize) % i; //this introduces bias when x.len() approaches usize, I find this to be a non problem
             x.swap(i, j);
         })
     }

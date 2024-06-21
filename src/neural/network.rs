@@ -60,9 +60,14 @@ impl<T: Float + 'static> Network<T> {
     pub fn fit(&mut self, x: &Matrix<T>, y: &Matrix<T>) {
         let mut pcg = PermutedCongruentialGenerator::<T>::new_timed();
         (0..self.epochs).for_each(|epoch| {
+            self.memories.clear(); //critical patch
             let mut sum_loss = Complex::<T>::zero();
-            let mut index_table: Vec<_> = (0..x.rows).collect();
-            //pcg.shuffle_usize(&mut index_table);
+            let mut index_table: Vec<_>  = if self.epochs%2==0  {
+                (0..x.rows).rev().collect()
+            }else{
+                (0..x.rows).collect()
+            };
+            //pcg.shuffle_usize(&mut index_table); //at least part of the problem... is it learning by row?
 
             let rows_x = x.data_rows().collect::<Vec<_>>();
             let rows_y = y.data_rows().collect::<Vec<_>>();
@@ -80,20 +85,31 @@ impl<T: Float + 'static> Network<T> {
                         .into_iter()
                         .flat_map(|&i| rows_y[i].into_iter().map(|r| r.clone()))
                         .collect::<Vec<_>>();
-                    let mut batch_y = Matrix::new(self.batch_size, batch_y_data);
+                    let batch_y = Matrix::new(self.batch_size, batch_y_data);
+                    let batch_y_cp = batch_y.explicit_copy();
+                    let mut batch_x_cp = batch_x.explicit_copy();
 
                     //transmute batch_x to pred_y, but batch_x isn't used again
                     self.forward(&mut batch_x);
-                    let loss = self.loss(&batch_y);
+                    
+                    //push the details backwards up the matrix
+                    self.backwards(&batch_y);
+
                     if epoch % 100 == 0 {
+                        let loss = self.loss(&mut batch_x_cp,&batch_y_cp);
                         println!("On Epoch {}", epoch);
                         dbg!(loss);
                     }
 
-                    //push the details backwards up the matrix
-                    self.backwards(&mut batch_y);
                 })
         });
+    }
+
+    pub fn predict(&mut self,input: &mut Matrix<T>){
+        self.forward(input);
+        let probabilities = SoftPredictor::predict(input);
+
+        dbg!(probabilities);
     }
 
     fn compile_layers(
@@ -123,24 +139,23 @@ impl<T: Float + 'static> Network<T> {
 
     fn forward(&mut self, input: &mut Matrix<T>) {
         //the copy operations here are not very well done
-        let mut i = 0;
         self.layers.iter_mut().for_each(|layer| {
             *input = layer.forward(input);
             self.memories.push(input.explicit_copy());
-            i+=1;
         });
     }
 
-    fn backwards(&mut self, output: &mut Matrix<T>) {
-        //hack while testing
-        *output = SoftPredictor::diff(&self.memories.last().unwrap(), output);
+    fn backwards(&mut self, output: &Matrix<T>) {
+        let mut backwards  = SoftPredictor::diff(&self.memories.last().unwrap(), output);
         for i in (1..self.layers.len()).rev(){
-            *output = self.layers[i].backward(output, &self.memories[i-1],self.lambda, self.epsilon);
+            backwards = self.layers[i].backward(&backwards, &self.memories[i-1],self.lambda, self.epsilon);
         }
     }
     
 
-    fn loss(&self, output: &Matrix<T>) -> T {
+    fn loss(&mut self, input: &mut Matrix<T>, output: &Matrix<T>) -> T {
+        self.memories.clear();
+        self.forward(input);
         SoftPredictor::<T>::loss(&self.memories.last().unwrap(), output)
     }
 }

@@ -12,5 +12,6 @@ pub mod random;
 pub mod playground;
 
 fn main() {
+    //playground::play_svd();
     playground::play_neural();
 }

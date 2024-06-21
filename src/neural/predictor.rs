@@ -12,7 +12,7 @@ pub trait Predictor<T: Float> {
 pub struct SoftPredictor<T: Float> {
     phantom_data: PhantomData<T>
 }
-
+//please go check the bad assumptions here, I think they are part of the problem
 impl<T: Float> Predictor<T> for SoftPredictor<T> {
 
     fn predict(x: &Matrix<T>) -> Matrix<T> {
