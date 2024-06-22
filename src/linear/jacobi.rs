@@ -14,7 +14,7 @@ impl<'a, T: Float + 'a> Jacobi<T> {
 
     pub fn make_jacobi(matrix: &mut Matrix<T>, p: usize, q: usize) -> Self {
         let x = matrix.coeff(p, p).real;
-        let y = matrix.coeff(q, p);
+        let y = matrix.coeff(p, q);
         let z = matrix.coeff(q, q).real;
         let denominator = T::usize(2) * y.norm();
         match denominator < T::small() {
@@ -56,7 +56,6 @@ impl<'a, T: Float + 'a> Jacobi<T> {
         
     }
 
-    //this method does n extra copy operations to be safe incase p == q or there is a bug in data_column
     pub fn apply_right(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
         //safety check could be removed to reduce branching if necessary 
         let j = self.transpose();

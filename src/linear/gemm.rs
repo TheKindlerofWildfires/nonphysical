@@ -306,7 +306,6 @@ mod gemm_test {
                 .map(|&r| Complex::<f32>::new(r, 0.0))
                 .collect(),
         );
-        dbg!(&r1, &k1);
         r1.data().zip(k1.data()).for_each(|(r, k)| {
             assert!((r.real - k.real).square_norm() < f32::epsilon());
         });

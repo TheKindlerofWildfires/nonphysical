@@ -5,7 +5,7 @@ use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vect
 use super::jacobi::Jacobi;
 
 pub trait SingularValueDecomposition<T: Float> {
-    //partially broken, gives right values but some swapping occurs (like u and vt and swapped and one of the matrixs is transposed)
+    //current u and v are slightly swapped.. this is a non problem for the square version but may come again
     fn jacobi_svd_full(matrix: &mut Matrix<T>) -> (Matrix<T>, Vec<T>, Matrix<T>) {
         let precision = T::epsilon() * T::float(2.0);
         let small = T::small();
@@ -27,14 +27,14 @@ pub trait SingularValueDecomposition<T: Float> {
         //step 2. with improvement options
         let mut finished = false;
 
-        while !finished{
+        while !finished {
             finished = true;
             //note: these norms involve sqrt, but so far as just comparisons...
             (1..diag_size).for_each(|p| {
                 (0..p).for_each(|q| {
                     let threshold = small.greater(precision * max_diag);
-                    if matrix.coeff(p, q).norm() > threshold
-                        || matrix.coeff(q, p).norm() > threshold
+                    if matrix.coeff(q, p).norm() > threshold
+                        || matrix.coeff(p, q).norm() > threshold
                     {
                         finished = false;
                         let (j_left, j_right) = Self::real_jacobi_2x2(matrix, p, q);
@@ -47,7 +47,7 @@ pub trait SingularValueDecomposition<T: Float> {
                     }
                 })
             });
-        };
+        }
         //step3 recover the singular values -> essentially get the positive real numbers
         let mut singular = Vec::with_capacity(diag_size);
         (0..diag_size).for_each(|i| {
@@ -55,7 +55,6 @@ pub trait SingularValueDecomposition<T: Float> {
                 let a = matrix.coeff(i, i).norm();
                 singular.push(a.norm());
 
-                
                 <Vec<&'_ Complex<T>> as Vector<T>>::mul(
                     u.data_column_ref(i),
                     matrix.coeff(i, i) / a,
@@ -63,22 +62,35 @@ pub trait SingularValueDecomposition<T: Float> {
             } else {
                 let a = matrix.coeff(i, i).real;
                 singular.push(a.norm());
-                
+
                 if a < T::zero() {
                     <Vec<&'_ Complex<T>> as Vector<T>>::scale(u.data_column_ref(i), -T::one());
                 }
             }
         });
-        
+
         singular.iter_mut().for_each(|s| *s *= scale);
-        let mut indices = (0..singular.len()) .collect::<Vec<_>>();
-        indices.sort_unstable_by(|&a, &b| singular[a].partial_cmp(&singular[b]).unwrap());
-        indices.iter().enumerate().for_each(|(new_idx, &old_idx)| {
-            let tmp = singular[new_idx];
-            singular[new_idx] = singular[old_idx];
-            singular[old_idx]= tmp;
-            u.col_swap(new_idx, old_idx);
-            v.col_swap(new_idx, old_idx);
+        let mut indices = (0..singular.len()).collect::<Vec<_>>();
+        indices.sort_unstable_by(|&a, &b| singular[b].partial_cmp(&singular[a]).unwrap());
+        //don't need to do last swap
+        (0..singular.len() - 1).for_each(|i| {
+            let new_idx = i;
+            let old_idx = indices[i];
+            if new_idx != old_idx {
+                let tmp = singular[new_idx];
+                singular[new_idx] = singular[old_idx];
+                singular[old_idx] = tmp;
+                u.row_swap(new_idx, old_idx);
+                v.row_swap(new_idx, old_idx);
+
+                for i in indices.iter_mut() {
+                    if *i == old_idx {
+                        *i = new_idx;
+                    } else if *i == new_idx {
+                        *i = old_idx;
+                    }
+                }
+            }
         });
         //step 4 sort the singular values
 
@@ -93,7 +105,6 @@ pub trait SingularValueDecomposition<T: Float> {
         if scale == T::zero() {
             scale = T::float(1.0);
         }
-
         //Poorly implemented step 1, doesn't handle miss sized matrices
         if matrix.rows != matrix.columns {
             panic!("not ready for these kind of matrices");
@@ -103,18 +114,14 @@ pub trait SingularValueDecomposition<T: Float> {
         let mut max_diag = <Vec<&'_ Complex<T>> as Vector<T>>::norm_max(matrix.data_diag());
         //step 2. with improvement options
         let mut finished = false;
-        let now: std::time::SystemTime = std::time::SystemTime::now();
-        let mut i = 0;
-        while !finished{
-            dbg!(i);
-            i+=1; //this used to converge in 4 iterations, now it takes 27...
+        while !finished {
             finished = true;
             //note: these norms involve sqrt, but so far as just comparisons...
             (1..diag_size).for_each(|p| {
                 (0..p).for_each(|q| {
                     let threshold = small.greater(precision * max_diag);
-                    if matrix.coeff(p, q).norm() > threshold
-                        || matrix.coeff(q, p).norm() > threshold
+                    if matrix.coeff(q, p).norm() > threshold
+                        || matrix.coeff(p, q).norm() > threshold
                     {
                         finished = false;
                         if true {
@@ -130,7 +137,7 @@ pub trait SingularValueDecomposition<T: Float> {
                     }
                 })
             });
-        };
+        }
         //step3 recover the singular values -> essentially get the positive real numbers
         let mut singular = Vec::with_capacity(diag_size);
         (0..diag_size).for_each(|i| {
@@ -145,7 +152,6 @@ pub trait SingularValueDecomposition<T: Float> {
         singular.iter_mut().for_each(|s| *s *= scale);
         //step 4 sort the singular values
         singular.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
-        dbg!(now.elapsed().unwrap());
         singular
     }
     /*sub problem related */
@@ -153,25 +159,22 @@ pub trait SingularValueDecomposition<T: Float> {
     fn real_jacobi_2x2(matrix: &Matrix<T>, p: usize, q: usize) -> (Jacobi<T>, Jacobi<T>) {
         let mut sub_data = vec![
             matrix.coeff(p, p),
-            matrix.coeff(q, p),
             matrix.coeff(p, q),
+            matrix.coeff(q, p),
             matrix.coeff(q, q),
         ];
-        sub_data.iter_mut().for_each(|c| c.imag=T::zero());
+        sub_data.iter_mut().for_each(|c| c.imag = T::zero());
         let mut sub_matrix = Matrix::new(2, sub_data);
         let t = (sub_matrix.coeff(0, 0) + sub_matrix.coeff(1, 1)).real;
-        let d = (sub_matrix.coeff(1, 0) - sub_matrix.coeff(0, 1)).real;
+        let d = (sub_matrix.coeff(0, 1) - sub_matrix.coeff(1, 0)).real;
 
         let rot1 = match d.norm() < T::small() {
-            true => Jacobi::<T>::new(
-                Complex::<T>::zero(),
-                Complex::<T>::one()
-            ),
+            true => Jacobi::<T>::new(Complex::<T>::zero(), Complex::<T>::one()),
             false => {
                 let u = t / d;
                 let tmp = (T::one() + u.square_norm()).sqrt();
                 Jacobi::<T>::new(
-                    Complex::<T>::new( tmp.recip(), T::zero()),
+                    Complex::<T>::new(tmp.recip(), T::zero()),
                     Complex::<T>::new(u / tmp, T::zero()),
                 )
             }
@@ -184,3 +187,86 @@ pub trait SingularValueDecomposition<T: Float> {
 }
 
 impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {}
+
+#[cfg(test)]
+pub mod svd_tests {
+    use super::*;
+
+    #[test]
+    fn test_jacobi_svd_square() {
+        let mut in_mat =
+            Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let s = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd(&mut in_mat);
+
+        s.iter()
+            .zip([14.2267, 1.26523, 7.16572e-8])
+            .for_each(|(si, ki)| {
+                assert!((si - ki).square_norm() < f32::epsilon());
+            });
+
+        let mut in_mat =
+            Matrix::<f32>::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let s = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd(&mut in_mat);
+        s.iter()
+            .zip([69.9086, 3.5761, 1.4977e-6, 1.0282e-6, 2.22847e-7])
+            .for_each(|(si, ki)| {
+                assert!((si - ki).square_norm() < f32::epsilon());
+            });
+    }
+
+    #[test]
+    fn test_jacobi_svd_full_square() {
+        let mut in_mat =
+            Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let (u, s, v) =
+            <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd_full(&mut in_mat);
+
+        s.iter()
+            .zip([14.2267, 1.26523, 7.16572e-8])
+            .for_each(|(si, ki)| {
+                assert!((si - ki).square_norm() < f32::epsilon());
+            });
+
+        let kv = vec![
+            -0.46632808,
+            0.5709908,
+            0.6756534,
+            -0.7847747,
+            0.085456595,
+            -0.6138613,
+            0.40824822,
+            0.8164965,
+            -0.40824825,
+
+        ];
+        u.data()
+            .zip(kv.iter())
+            .for_each(|(up, k)| assert!((up.real - k).square_norm() < f32::epsilon()));
+
+        let ku = vec![
+            0.13511896,
+            0.49633512,
+            0.85755134,
+            0.9028158,
+            0.29493162,
+            -0.31295204,
+            -0.40824804,
+            0.81649673,
+            -0.40824836,
+        ];
+        
+        v.data()
+            .zip(ku.iter())
+            .for_each(|(up, k)| assert!((up.real - k).square_norm() < f32::epsilon()));
+
+        let mut in_mat =
+            Matrix::<f32>::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let s = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd(&mut in_mat);
+        s.iter()
+            .zip([69.9086, 3.5761, 1.4977e-6, 1.0282e-6, 2.22847e-7])
+            .for_each(|(si, ki)| {
+                assert!((si - ki).square_norm() < f32::epsilon());
+            });
+
+    }
+}

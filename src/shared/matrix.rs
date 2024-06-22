@@ -1,6 +1,5 @@
 use std::{
     borrow::BorrowMut,
-    cmp::min,
     fmt::Debug,
     ops::{Add, Mul, MulAssign},
 };
@@ -138,7 +137,7 @@ impl<T: Float> Matrix<T> {
         Matrix::new(self.columns, transposed_data)
     }
 
-    pub fn row_swap(&mut self, a: usize, b: usize) {
+    pub fn col_swap(&mut self, a: usize, b: usize) {
         self.data.chunks_exact_mut(self.columns).for_each(|row| {
             let tmp = row[a];
             row[a] = row[b];
@@ -146,23 +145,21 @@ impl<T: Float> Matrix<T> {
         });
     }
 
-    pub fn col_swap(&mut self, a: usize, b: usize) {
+    pub fn row_swap(&mut self, a: usize, b: usize) {
         let mut rows = self.data_rows_ref();
-        let (row_a, row_b) = match b > a {
-            true => {
-                let ra = rows.nth(a).unwrap();
-                let rb = rows.nth(b - a - 1).unwrap();
-                (ra, rb)
+        
+        let (x,y) = match b>=a{
+            true =>{
+                (a,b)
             }
             false => {
-                let rb = rows.nth(b).unwrap();
-                let ra = rows.nth(a - b - 1).unwrap();
-
-                (ra, rb)
+                (b,a)
             }
         };
+        let row_x = rows.nth(x).unwrap();
+        let row_y = rows.nth(y-x-1).unwrap();
 
-        row_a.iter_mut().zip(row_b.iter_mut()).for_each(|(ap, bp)| {
+        row_x.iter_mut().zip(row_y.iter_mut()).for_each(|(ap, bp)| {
             let tmp = *ap;
             *ap = *bp;
             *bp = tmp;
@@ -220,7 +217,6 @@ impl<T: Float> Debug for Matrix<T> {
 
 #[cfg(test)]
 mod matrix_tests {
-    use crate::random::pcg::PermutedCongruentialGenerator;
 
     use super::*;
 
@@ -964,5 +960,56 @@ mod matrix_tests {
         r3.data().zip(k3.data()).for_each(|(r, k)| {
             assert!((r.real - k.real).square_norm() < f32::epsilon());
         });
+    }
+
+    #[test]
+    fn test_row_swap(){
+        let mut m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32,0.0)).collect());
+
+        m.row_swap(0, 1);
+        assert!((m.coeff(0, 0).real-3.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 1).real-4.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 2).real-5.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 0).real-0.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 1).real-1.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 2).real-2.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 0).real-6.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 1).real-7.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 2).real-8.0).square_norm() <f32::epsilon());
+
+
+        let mut m = Matrix::<f32>::new(3, (0..12).map(|i| Complex::new(i as f32,0.0)).collect());
+
+        m.row_swap(2, 1);
+        assert!((m.coeff(0, 0).real-0.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 1).real-1.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 2).real-2.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 3).real-3.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 0).real-8.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 1).real-9.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 2).real-10.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 3).real-11.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 0).real-4.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 1).real-5.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 2).real-6.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 3).real-7.0).square_norm() <f32::epsilon());
+
+        let mut m = Matrix::<f32>::new(4, (0..12).map(|i| Complex::new(i as f32,0.0)).collect());
+
+        m.row_swap(3, 1);
+        assert!((m.coeff(0, 0).real-0.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 1).real-1.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(0, 2).real-2.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 0).real-9.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 1).real-10.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(1, 2).real-11.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 0).real-6.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 1).real-7.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(2, 2).real-8.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(3, 0).real-3.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(3, 1).real-4.0).square_norm() <f32::epsilon());
+        assert!((m.coeff(3, 2).real-5.0).square_norm() <f32::epsilon());
+
+        
     }
 }

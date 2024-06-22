@@ -98,7 +98,7 @@ impl<T: Float> Layer<T> for AddLayer<T> {
         epsilon: T,
     ) -> Matrix<T> {
         let dx = x.explicit_copy();
-        let db = Matrix::single(1, x.rows, Complex::<T>::one()).dot(x); //could prealloc
+        //let db = Matrix::single(1, x.rows, Complex::<T>::one()).dot(x); //could pre-alloc
         self.biases = self.biases.acc(&(db * -epsilon));
 
         dx
