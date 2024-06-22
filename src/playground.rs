@@ -1,8 +1,11 @@
+use crate::linear::gemm::Gemm;
 use crate::linear::svd::SingularValueDecomposition;
+/* 
 use crate::neural::layer::{IdentityLayer, Layer, LayerType, PerceptronLayer};
-use crate::neural::network::{self, Network};
+use crate::neural::network::{self, Network};*/
+use crate::random::pcg::PermutedCongruentialGenerator;
 use crate::shared::complex::Complex;
-use crate::shared::matrix::Matrix;
+use crate::shared::matrix::{self, Matrix};
 use crate::signal::fourier::FastFourierTransform;
 use crate::signal::gabor::GaborTransform;
 
@@ -77,57 +80,61 @@ pub fn play_svd() {
     println!("SVD time {:?} ", now.elapsed().unwrap());
     dbg!(&s[0..10]);
 }
-
-pub fn play_neural(){
+/* 
+pub fn play_neural() {
     println!("Started neural network");
-    let layer_shape = vec![2,3,2];
-    let layer_map = vec![LayerType::Identity, LayerType::PerceptronLayer, LayerType::PerceptronLayer];
+    let layer_shape = vec![2, 3, 2];
+    let layer_map = vec![
+        LayerType::Identity,
+        LayerType::PerceptronLayer,
+        LayerType::PerceptronLayer,
+    ];
 
-    let direct_layers:Vec<Box<dyn Layer<f32>>> = vec![Box::new(IdentityLayer::new(10, 10)), Box::new(PerceptronLayer::layer_one()),  Box::new(PerceptronLayer::layer_two())];
+    let direct_layers: Vec<Box<dyn Layer<f32>>> = vec![
+        Box::new(IdentityLayer::new(10, 10)),
+        Box::new(PerceptronLayer::layer_one()),
+        Box::new(PerceptronLayer::layer_two()),
+    ];
     let mut network = Network::<f32>::new_direct(direct_layers, 0.01, 0.01, 200, 10000);
     //let mut network = Network::<f32>::new(layer_shape, layer_map, 0.01, 0.01, 10, 10000);
     println!("Network created");
     println!("Data created");
 
     let known_x = vec![
-        Complex::new(0.19001768,0.0),
-        Complex::new(0.96972856,0.0),
-        Complex::new(1.68646301,0.0),
-        Complex::new( -0.12498708,0.0),
-        Complex::new(-0.97119129,0.0),
-        Complex::new(0.2908547,0.0),
-        Complex::new(2.15220755,0.0),
-        Complex::new( 0.524335,0.0),
-        Complex::new(0.79587943,0.0),
-        Complex::new(0.77384165,0.0),
-        Complex::new(0.59170903,0.0),
-        Complex::new(-0.24813843,0.0),
-        Complex::new(1.06261354,0.0),
-        Complex::new(-0.67081915,0.0),
-        Complex::new(-1.21770474,0.0),
-        Complex::new(0.8378305,0.0),
-        Complex::new(1.17288724,0.0),
-        Complex::new(-0.148433,0.0),
-        Complex::new(0.45395092,0.0),
-        Complex::new(0.20912687,0.0),
+        Complex::new(0.19001768, 0.0),
+        Complex::new(0.96972856, 0.0),
+        Complex::new(1.68646301, 0.0),
+        Complex::new(-0.12498708, 0.0),
+        Complex::new(-0.97119129, 0.0),
+        Complex::new(0.2908547, 0.0),
+        Complex::new(2.15220755, 0.0),
+        Complex::new(0.524335, 0.0),
+        Complex::new(0.79587943, 0.0),
+        Complex::new(0.77384165, 0.0),
+        Complex::new(0.59170903, 0.0),
+        Complex::new(-0.24813843, 0.0),
+        Complex::new(1.06261354, 0.0),
+        Complex::new(-0.67081915, 0.0),
+        Complex::new(-1.21770474, 0.0),
+        Complex::new(0.8378305, 0.0),
+        Complex::new(1.17288724, 0.0),
+        Complex::new(-0.148433, 0.0),
+        Complex::new(0.45395092, 0.0),
+        Complex::new(0.20912687, 0.0),
     ];
 
     let known_y = vec![
-        Complex::new(0.0,0.0),
-        Complex::new(1.0,0.0),
-        Complex::new(0.0,0.0),
-        Complex::new(1.0,0.0),
-        Complex::new(0.0,0.0),
-        Complex::new(1.0,0.0),
-        Complex::new(1.0,0.0),
-        Complex::new(0.0,0.0),
-        Complex::new(0.0,0.0),
-        Complex::new(1.0,0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(1.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(1.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(1.0, 0.0),
+        Complex::new(1.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(1.0, 0.0),
     ];
-
-    
-
-
 
     let (x_mat, y_mat) = simulate_moons();
     //let mut x_mat = Matrix::new(10,known_x);
@@ -142,7 +149,7 @@ pub fn play_neural(){
     println!("Network fitted");
 }
 
-pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>){
+pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>) {
     let mut file = std::fs::File::open("x.np").unwrap();
     let mut buffer = Vec::new();
     std::io::Read::read_to_end(&mut file, &mut buffer).unwrap();
@@ -152,7 +159,7 @@ pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>){
         let value = f32::from_le_bytes(vb);
         x.push(Complex::<f32>::new(value as f32, 0.0));
     });
-    let x_matrix = Matrix::<f32>::new(200,x);
+    let x_matrix = Matrix::<f32>::new(200, x);
 
     let mut file = std::fs::File::open("y.np").unwrap();
     let mut buffer = Vec::new();
@@ -164,8 +171,20 @@ pub fn simulate_moons() -> (Matrix<f32>, Matrix<f32>){
         y.push(Complex::<f32>::new(value as f32, 0.0));
     });
 
-    let y_matrix = Matrix::<f32>::new(200,y);
+    let y_matrix = Matrix::<f32>::new(200, y);
 
-    (x_matrix,y_matrix)
+    (x_matrix, y_matrix)
+}
+*/
+pub fn play_matrix() {
+    let mut pcg = PermutedCongruentialGenerator::<f32>::new_timed();
+    for n in [2, 10, 20, 100, 200, 1000,2000] {
+        let data = (0..n * n).map(|_| Complex::<f32>::new(pcg.next_u32() as f32, 0.0));
+        let m1 = Matrix::new(n, data.collect());
+        let now = SystemTime::now();
+        <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1,&m1);
+        //m1.gemm(&m1);
 
+        println!("Time {:?} {}", now.elapsed().unwrap(), n);
+    }
 }

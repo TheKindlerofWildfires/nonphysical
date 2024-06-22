@@ -5,7 +5,7 @@
 pub mod linear;
 pub mod shared;
 pub mod signal;
-pub mod neural;
+//pub mod neural;
 pub mod random;
 
 
@@ -13,5 +13,6 @@ pub mod playground;
 
 fn main() {
     //playground::play_svd();
-    playground::play_neural();
+    //playground::play_neural();
+    playground::play_matrix();
 }
