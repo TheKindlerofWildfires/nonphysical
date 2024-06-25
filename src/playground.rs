@@ -1,3 +1,4 @@
+use crate::filter::gaussian::GaussianFilter;
 use crate::linear::gemm::Gemm;
 use crate::linear::svd::SingularValueDecomposition;
 /* 
@@ -5,6 +6,7 @@ use crate::neural::layer::{IdentityLayer, Layer, LayerType, PerceptronLayer};
 use crate::neural::network::{self, Network};*/
 use crate::random::pcg::PermutedCongruentialGenerator;
 use crate::shared::complex::Complex;
+use crate::shared::float::Float;
 use crate::shared::matrix::{self, Matrix};
 use crate::signal::fourier::FastFourierTransform;
 use crate::signal::gabor::GaborTransform;
@@ -44,7 +46,8 @@ pub fn play_gabor() {
     });
     let now: SystemTime = SystemTime::now();
 
-    let window: Vec<Complex<f32>> = GaborTransform::gaussian(256, 12.0);
+    let sigma: Vec<f32> = vec![f32::float(12.0)];
+    let window: Vec<Complex<f32>> =  <Vec<Complex<f32>> as GaussianFilter<f32>>::window(vec![256], sigma);
     println!("Window time {:?} ", now.elapsed().unwrap());
 
     let now: SystemTime = SystemTime::now();

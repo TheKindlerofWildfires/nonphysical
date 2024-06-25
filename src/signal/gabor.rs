@@ -17,16 +17,6 @@ impl<T: Float> GaborTransform<T> {
             fourier,
         }
     }
-    pub fn gaussian(nfft: usize, std: T) -> Vec<Complex<T>> {
-        let sigma2 = T::usize(2) * std * std;
-        let sub = T::usize(nfft >> 1) - T::float(0.5);
-        let mut window = vec![Complex::zero();nfft];
-        window.iter_mut().enumerate().for_each(|(i,w)| {
-            let value = ((T::usize(i) - sub) / sigma2).exp();
-            *w = Complex::new(value, T::usize(0));
-        });
-        window
-    }
 
     pub fn gabor(&self, x: &mut [Complex<T>]) -> Matrix<T> {
         let win_step = self.window.len() / self.over_sample;
