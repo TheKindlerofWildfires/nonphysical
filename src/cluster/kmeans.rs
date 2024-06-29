@@ -1,17 +1,17 @@
 use crate::{
     random::pcg::PermutedCongruentialGenerator,
+    cluster::Classification::Core,
     shared::{complex::Complex, float::Float},
 };
-
+use super::Classification;
 trait Kmeans<T: Float> {
-    type Index;
     fn new(input: &Self, count: usize) -> Vec<Vec<Complex<T>>>;
 
     fn cluster(
         input: &Self,
         centroids: &mut Vec<Vec<Complex<T>>>,
         iterations: usize,
-    ) -> Vec<usize>
+    ) -> Vec<Classification>
     where
         Self: Sized;
 
@@ -19,8 +19,6 @@ trait Kmeans<T: Float> {
 }
 
 impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
-    type Index = usize;
-
     fn new(input: &Self, count: usize) -> Vec<Vec<Complex<T>>> {
         let mut taken = vec![false; input.len()];
         let mut centroids = Vec::with_capacity(count);
@@ -62,38 +60,51 @@ impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
         input: &Self,
         centroids: &mut Vec<Vec<Complex<T>>>,
         iterations: usize,
-    ) -> Vec<usize>
+    ) -> Vec<Classification>
     where
         Self: Sized,
     {
         let mut counts = vec![0; centroids.len()];
 
-        let mut membership = vec![0; input.len()];
+        let mut membership = vec![Core(0); input.len()];
         (0..iterations).for_each(|_| {
             input.iter().enumerate().for_each(|(i, c)| {
                 let old = membership[i];
-                let mut cluster = old;
-                let mut dist = Self::square_distance(c, &centroids[old]);
-
-                centroids.iter().enumerate().for_each(|(j, centroid)| {
-                    let sdist = Self::square_distance(c, centroid);
-                    if sdist < dist {
-                        dist = sdist;
-                        cluster = j;
-                    }
-                });
-
-                membership[i] = cluster;
+                match old {
+                    Core(op) => {
+                        let mut cluster = old;
+                
+                        let mut dist = Self::square_distance(c, &centroids[op]);
+        
+                        centroids.iter().enumerate().for_each(|(j, centroid)| {
+                            let square_distance = Self::square_distance(c, centroid);
+                            if square_distance < dist {
+                                dist = square_distance;
+                                cluster = Core(j);
+                            }
+                        });
+                        membership[i] = cluster;
+                    },
+                    _ => {unreachable!()}
+                }
+                
             });
             counts.iter_mut().for_each(|x| *x = 0);
             centroids.iter_mut().for_each(|c| c.iter_mut().for_each(|d|*d = Complex::ZERO));
     
             input.iter().zip(membership.iter()).for_each(|(c,m)|{
-                counts[*m] +=1;
+                match m {
+                    Core(mp) => {
+                        counts[*mp] +=1;
     
-                centroids[*m].iter_mut().zip(c.iter()).for_each(|(centroid_p,cp)|{
-                    *centroid_p += *cp 
-                });
+                        centroids[*mp].iter_mut().zip(c.iter()).for_each(|(centroid_p,cp)|{
+                            *centroid_p += *cp 
+                        });
+                    },
+                    _ => {unreachable!()}
+
+                }
+
             });
 
             centroids.iter_mut().zip(counts.iter()).for_each(|(centroid, count)|{
@@ -147,13 +158,13 @@ mod kmeans_tests{
         ];
 
         let mut centroids = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::new(&data,2);
-        dbg!(centroids.len());
         let mask = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::cluster(&data, &mut centroids, 16);
 
-        let known_mask = vec![1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0];
+        let binding = vec![1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0];
+        let known_mask = binding.iter().map(|i| Core(*i));
 
-        mask.iter().zip(known_mask.iter()).for_each(|(m,k)|{
-            assert!(*m==*k);
+        mask.iter().zip(known_mask).for_each(|(m,k)|{
+            assert!(*m==k);
         });
         
         let known_centroids = vec![vec![Complex::new(-8.2813197,0.0), Complex::new(-3.3291236,0.0)],vec![Complex::new(9.2515742,0.0), Complex::new(3.38500524,0.0)],];
