@@ -10,39 +10,12 @@ pub struct Complex<T: Float> {
 }
 
 impl<T: Float> Complex<T> {
-    pub fn zero() -> Self {
-        Self {
-            real: T::zero(),
-            imag: T::zero(),
-        }
-    }
-    pub fn one() -> Self {
-        Self {
-            real: T::one(),
-            imag: T::zero(),
-        }
-    }
 
-    pub fn none() -> Self {
-        Self {
-            real: -T::one(),
-            imag: T::zero(),
-        }
-    }
-
-    pub fn i() -> Self {
-        Self {
-            real: T::zero(),
-            imag: T::one(),
-        }
-    }
-
-    pub fn ni() -> Self {
-        Self {
-            real: T::zero(),
-            imag: -T::one(),
-        }
-    }
+    pub const ZERO: Complex<T> = Self{real: T::ZERO, imag: T::ZERO};
+    pub const ONE: Complex<T> = Self{real: T::ONE, imag: T::ZERO};
+    pub const N_ONE: Complex<T> = Self{real: T::N_ONE, imag: T::ZERO};
+    pub const I: Complex<T> = Self{real: T::ZERO, imag: T::ONE};
+    pub const N_I: Complex<T> = Self{real: T::ZERO, imag: T::N_ONE};
 
     pub fn new(real: T, imag: T) -> Self {
         Self { real, imag }
@@ -104,7 +77,7 @@ impl<T: Float> Complex<T> {
     }
 
     pub fn tan(&self) -> Self{
-        Self::new(self.real.tan(), self.imag.tanh())/Self::new(T::one(),-self.real.tan()*self.imag.tan())
+        Self::new(self.real.tan(), self.imag.tanh())/Self::new(T::ONE,-self.real.tan()*self.imag.tan())
     }
 
     pub fn sinh(&self) -> Self{
@@ -116,8 +89,9 @@ impl<T: Float> Complex<T> {
     }
 
     pub fn tanh(&self) -> Self{
-        Self::new(-self.imag.tan(), self.real.tanh())/Self::new(self.real.tan()*self.imag.tan(),T::one())
+        Self::new(-self.imag.tan(), self.real.tanh())/Self::new(self.real.tan()*self.imag.tan(),T::ONE)
     }
+
 }
 
 impl<T: Float> Neg for Complex<T> {

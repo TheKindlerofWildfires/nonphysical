@@ -17,26 +17,26 @@ impl<'a, T: Float + 'a> Jacobi<T> {
         let y = matrix.coeff(p, q);
         let z = matrix.coeff(q, q).real;
         let denominator = T::usize(2) * y.norm();
-        match denominator < T::small() {
+        match denominator < T::SMALL {
             true => Self::new(
-                Complex::<T>::one(),
-                Complex::<T>::zero(),
+                Complex::<T>::ONE,
+                Complex::<T>::ZERO,
             ),
             false => {
                 let tau = (x - z) / denominator;
-                let w = (tau.square_norm() + T::one()).sqrt();
-                let t = match tau > T::zero() {
+                let w = (tau.square_norm() + T::ONE).sqrt();
+                let t = match tau > T::ZERO {
                     true => (tau + w).recip(),
                     false => (tau - w).recip(),
                 };
-                let sign = match t > T::zero() {
-                    true => T::one(),
-                    false => -T::one(),
+                let sign = match t > T::ZERO {
+                    true => T::ONE,
+                    false => -T::ONE,
                 };
-                let n = (t.square_norm() + T::one()).sqrt().recip();
+                let n = (t.square_norm() + T::ONE).sqrt().recip();
                 let s: Complex<T> = -(y.conj() / y.norm()) * sign * t.norm() * n;
 
-                Self::new(s, Complex::<T>::new(n, T::zero()))
+                Self::new(s, Complex::<T>::new(n, T::ZERO))
             }
         }
     }
@@ -45,7 +45,7 @@ impl<'a, T: Float + 'a> Jacobi<T> {
     pub fn apply_left(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
         //safety check could be removed to reduce branching if necessary 
         let j = self;
-        if j.c == Complex::<T>::new(T::one(), T::zero()) && j.s == Complex::<T>::zero() {
+        if j.c == Complex::<T>::new(T::ONE, T::ZERO) && j.s == Complex::<T>::ZERO {
             return;
         }
         matrix.data_rows_ref().for_each(|row| {
@@ -59,7 +59,7 @@ impl<'a, T: Float + 'a> Jacobi<T> {
     pub fn apply_right(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
         //safety check could be removed to reduce branching if necessary 
         let j = self.transpose();
-        if j.c == Complex::<T>::one() && j.s == Complex::<T>::zero() {
+        if j.c == Complex::<T>::ONE && j.s == Complex::<T>::ZERO {
             return;
         }
         let mut rows = matrix.data_rows_ref();

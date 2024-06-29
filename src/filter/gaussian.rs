@@ -12,10 +12,10 @@ impl<T: Float> GaussianFilter<T> for Vec<Complex<T>> {
         let sigma2 = *sigma.first().unwrap()*T::usize(2);
         let size = *size.first().unwrap();
         let sub = T::usize(size >> 1) - T::float(0.5);
-        let mut window = vec![Complex::zero();size];
+        let mut window = vec![Complex::ZERO;size];
         window.iter_mut().enumerate().for_each(|(i,w)| {
             let value = ((T::usize(i) - sub) / sigma2).exp();
-            *w = Complex::new(value, T::zero());
+            *w = Complex::new(value, T::ZERO);
         });
         window
     }
@@ -23,7 +23,7 @@ impl<T: Float> GaussianFilter<T> for Vec<Complex<T>> {
     //this currently downsamples because it didn't extend the iterator by filter length on the edges I think
     fn filter(&mut self, filter: &Self){
         *self = self.windows(filter.len()).map(|selection| {
-            selection.iter().zip(filter).map(|(s,f)| (*s*f.conj())).fold(Complex::zero(), |acc,c| acc+c)
+            selection.iter().zip(filter).map(|(s,f)| (*s*f.conj())).fold(Complex::ZERO, |acc,c| acc+c)
         }).collect();
     }
 }
@@ -43,7 +43,7 @@ impl<T:Float> GaussianFilter<T> for Matrix<T>{
             row.iter_mut().enumerate().for_each(|(j,w)|{
                 let y = (T::usize(j)-sub_c)/sigma_c2;
                 let value = (x+y).exp();
-                *w = Complex::new(value, T::zero())
+                *w = Complex::new(value, T::ZERO)
             });
         });
         window
@@ -56,7 +56,7 @@ impl<T:Float> GaussianFilter<T> for Matrix<T>{
             //get the row groups we need
             rows.windows(filter.columns).map(|selection|{
                 //get the column groups we need
-                selection.iter().zip(filter.data()).map(|(s,f) |s[0]*f.conj()).fold(Complex::zero(), |acc,c| acc+c)
+                selection.iter().zip(filter.data()).map(|(s,f) |s[0]*f.conj()).fold(Complex::ZERO, |acc,c| acc+c)
             }).collect::<Vec<_>>()
         }).collect::<Vec<_>>();
         self.data = new_data;

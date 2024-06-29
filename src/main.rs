@@ -8,6 +8,7 @@ pub mod signal;
 //pub mod neural;
 pub mod random;
 pub mod filter;
+pub mod cluster;
 
 
 pub mod playground;

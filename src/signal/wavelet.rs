@@ -32,8 +32,8 @@ trait DiscreteWavelet<T: Float> {
 trait DaubechiesFirstWavelet<T: Float>: DiscreteWavelet<T> {
     fn daubechies_first_coefficients() -> Vec<Complex<T>> {
         vec![
-            Complex::new(T::usize(2).sqrt().recip(), T::zero()),
-            Complex::new(T::usize(2).sqrt().recip(), T::zero()),
+            Complex::new(T::usize(2).sqrt().recip(), T::ZERO),
+            Complex::new(T::usize(2).sqrt().recip(), T::ZERO),
         ]
     }
 
@@ -140,7 +140,7 @@ impl<T: Float> DaubechiesFirstWavelet<T> for Vec<Complex<T>> {
 }
 
 #[cfg(test)]
-mod matrix_tests {
+mod wavelet_tests {
 
     use super::*;
 
@@ -160,7 +160,7 @@ mod matrix_tests {
         );
         deconstruction.iter().zip(knowns.iter()).for_each(|(c, k)| {
             c.iter().zip(k.iter()).for_each(|(cc, kk)| {
-                assert!((*cc - *kk).square_norm() < f32::epsilon());
+                assert!((*cc - *kk).square_norm() < f32::EPSILON);
             });
         });
 
@@ -169,7 +169,7 @@ mod matrix_tests {
             &coefficients,
         );
         reconstruction.iter().zip(signal.iter()).for_each(|(r, k)| {
-            assert!((*r - *k).square_norm() < f32::epsilon());
+            assert!((*r - *k).square_norm() < f32::EPSILON);
         });
     }
 
@@ -200,7 +200,7 @@ mod matrix_tests {
         );
         deconstruction.iter().zip(knowns.iter()).for_each(|(c, k)| {
             c.iter().zip(k.iter()).for_each(|(cc, kk)| {
-                assert!((*cc - *kk).square_norm() < f32::epsilon());
+                assert!((*cc - *kk).square_norm() < f32::EPSILON);
             });
         });
 
@@ -209,7 +209,7 @@ mod matrix_tests {
             &coefficients,
         );
         reconstruction.iter().zip(signal.iter()).for_each(|(r, k)| {
-            assert!((*r - *k).square_norm() < f32::epsilon());
+            assert!((*r - *k).square_norm() < f32::EPSILON);
         });
     }
 
@@ -229,8 +229,8 @@ mod matrix_tests {
             vec![
                 Complex::new(2.0.sqrt(), 0.0),
                 Complex::new(-7.0 * 2.0.sqrt() / 4.0, 0.0),
-                Complex::zero(),
-                Complex::zero(),
+                Complex::ZERO,
+                Complex::ZERO,
             ],
             vec![
                 Complex::new(-2.0.sqrt() / 2.0, 0.0),
@@ -248,7 +248,7 @@ mod matrix_tests {
         );
         deconstruction.iter().zip(knowns.iter()).for_each(|(c, k)| {
             c.iter().zip(k.iter()).for_each(|(cc, kk)| {
-                assert!((*cc - *kk).square_norm() < f32::epsilon());
+                assert!((*cc - *kk).square_norm() < f32::EPSILON);
             });
         });
 
@@ -257,7 +257,7 @@ mod matrix_tests {
             &coefficients,
         );
         reconstruction.iter().zip(signal.iter()).for_each(|(r, k)| {
-            assert!((*r - *k).square_norm() < f32::epsilon());
+            assert!((*r - *k).square_norm() < f32::EPSILON);
         });
     }
 

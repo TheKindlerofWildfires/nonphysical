@@ -8,10 +8,10 @@ pub trait Gemm<'a, T: Float + 'a> {
 
     fn naive(x: &Matrix<T>, y: &Matrix<T>) -> Matrix<T> {
         debug_assert!(x.columns == y.rows);
-        let mut z = Matrix::new(x.rows, vec![Complex::zero(); x.rows * y.columns]);
+        let mut z = Matrix::new(x.rows, vec![Complex::ZERO; x.rows * y.columns]);
         (0..y.columns).for_each(|c| {
             (0..x.rows).for_each(|r| {
-                let mut tmp = Complex::<T>::zero();
+                let mut tmp = Complex::<T>::ZERO;
                 (0..x.columns).for_each(|a| tmp += x.coeff(r, a) * y.coeff(a, c));
                 *z.coeff_ref(r, c) = tmp;
             });
@@ -130,9 +130,9 @@ pub trait Gemm<'a, T: Float + 'a> {
         y: &Matrix<T>,
         z: &mut Matrix<T>,
     ) {
-        let mut local_z = [Complex::<T>::zero(); 16];
-        let mut local_x = [Complex::<T>::zero(); 4];
-        let mut local_y = [Complex::<T>::zero(); 4];
+        let mut local_z = [Complex::<T>::ZERO; 16];
+        let mut local_x = [Complex::<T>::ZERO; 4];
+        let mut local_y = [Complex::<T>::ZERO; 4];
 
         let mut y_index = y.index(p_index, col);
         let mut x_index = row * k;
@@ -223,7 +223,7 @@ mod gemm_test {
                 .collect(),
         );
         r1.data().zip(k1.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
 
         let k2 = Matrix::<f32>::new(
@@ -236,7 +236,7 @@ mod gemm_test {
             .collect(),
         );
         r2.data().zip(k2.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
         let k3 = Matrix::<f32>::new(
             4,
@@ -248,7 +248,7 @@ mod gemm_test {
             .collect(),
         );
         r3.data().zip(k3.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
         let k4 = Matrix::<f32>::new(
             3,
@@ -258,7 +258,7 @@ mod gemm_test {
                 .collect(),
         );
         r4.data().zip(k4.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
         let k5 = Matrix::<f32>::new(
             4,
@@ -271,7 +271,7 @@ mod gemm_test {
             .collect(),
         );
         r5.data().zip(k5.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
     }
 
@@ -307,7 +307,7 @@ mod gemm_test {
                 .collect(),
         );
         r1.data().zip(k1.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
 
         let k2 = Matrix::<f32>::new(
@@ -320,7 +320,7 @@ mod gemm_test {
             .collect(),
         );
         r2.data().zip(k2.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
         let k3 = Matrix::<f32>::new(
             4,
@@ -332,7 +332,7 @@ mod gemm_test {
             .collect(),
         );
         r3.data().zip(k3.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
         let k4 = Matrix::<f32>::new(
             3,
@@ -342,7 +342,7 @@ mod gemm_test {
                 .collect(),
         );
         r4.data().zip(k4.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
         let k5 = Matrix::<f32>::new(
             4,
@@ -355,7 +355,7 @@ mod gemm_test {
             .collect(),
         );
         r5.data().zip(k5.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::epsilon());
+            assert!((r.real - k.real).square_norm() < f32::EPSILON);
         });
     }
 
@@ -379,11 +379,11 @@ mod gemm_test {
         let k2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
 
         g1.data().zip(k1.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::epsilon());
+            assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
 
         g2.data().zip(k2.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::epsilon());
+            assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
     }
     #[test]
@@ -406,11 +406,11 @@ mod gemm_test {
         let k2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
 
         g1.data().zip(k1.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::epsilon());
+            assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
 
         g2.data().zip(k2.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::epsilon());
+            assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
     }
 
@@ -433,11 +433,11 @@ mod gemm_test {
         let k2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
 
         g1.data().zip(k1.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::epsilon());
+            assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
 
         g2.data().zip(k2.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::epsilon());
+            assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
     }
 }

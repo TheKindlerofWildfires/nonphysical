@@ -35,13 +35,13 @@ impl<T: Float> FastFourierTransform<T> {
     fn ifft(&self, x: &mut [Complex<T>]) {
         x.iter_mut().for_each(|c| *c = c.conj());
         self.fft(x);
-        let sf = T::one() / T::usize(x.len());
+        let sf = T::ONE / T::usize(x.len());
         x.iter_mut().for_each(|c| *c = c.conj()*sf);
     }
 
     #[inline]
     fn generate_twiddles(dist: usize) -> Vec<Complex<T>> {
-        let angle = -T::pi() / T::usize(dist);
+        let angle = -T::PI / T::usize(dist);
         let mut twiddles = Vec::with_capacity(dist);
         (0..dist).for_each(|i| {
             let phase = angle * T::usize(i);
@@ -57,7 +57,7 @@ impl<T: Float> FastFourierTransform<T> {
         (0..len).for_each(|i| {
             twiddles[i] = twiddles[i << 1];
         });
-        twiddles.resize(len, Complex::new(T::zero(), T::zero()));
+        twiddles.resize(len, Complex::new(T::ZERO, T::ZERO));
     }
 
     #[inline]
@@ -148,19 +148,19 @@ mod fourier_tests {
 
         fft.fft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.fft(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.fft(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
     }
 
@@ -192,19 +192,19 @@ mod fourier_tests {
 
         fft.fft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.fft(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.fft(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
     }
 
@@ -238,7 +238,7 @@ mod fourier_tests {
 
         fft.fft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.fft(&mut x);
@@ -276,7 +276,7 @@ mod fourier_tests {
 
         fft.fft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
     }
 
@@ -300,19 +300,19 @@ mod fourier_tests {
 
         fft.ifft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.ifft(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.ifft(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
     }
 
@@ -345,19 +345,19 @@ mod fourier_tests {
 
         fft.ifft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.ifft(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.ifft(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
     }
 
@@ -391,7 +391,7 @@ mod fourier_tests {
 
         fft.ifft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
 
         fft.ifft(&mut x);
@@ -429,7 +429,7 @@ mod fourier_tests {
 
         fft.ifft(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
-            assert!((*xp - yp).square_norm() < f32::epsilon());
+            assert!((*xp - yp).square_norm() < f32::EPSILON);
         });
     }
 

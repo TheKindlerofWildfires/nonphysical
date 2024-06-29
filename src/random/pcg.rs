@@ -40,12 +40,12 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
         let mut samples = Vec::with_capacity(size);
         (0..size).for_each(|_| {
             let mut u1 = T::usize(self.next_u32() as usize)/T::usize(u32::MAX as usize);
-            while u1==T::zero(){
+            while u1==T::ZERO{
                 u1 = T::usize(self.next_u32()as usize)/T::usize(u32::MAX as usize);
             }
             let u2 = T::usize(self.next_u32()as usize)/T::usize(u32::MAX as usize);
-            let z0 = (-T::usize(2)*u1.ln()).sqrt() * (T::usize(2)*T::pi()*u2).cos();
-            samples.push(mean+Complex::new(z0*scale,T::zero()));
+            let z0 = (-T::usize(2)*u1.ln()).sqrt() * (T::usize(2)*T::PI*u2).cos();
+            samples.push(mean+Complex::new(z0*scale,T::ZERO));
         });
         samples
     }

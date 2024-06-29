@@ -10,7 +10,7 @@ impl<T: Float> MedianFilter<T> for Vec<Complex<T>> {
     fn window(size: Vec<usize>, sigma: Vec<T>) -> Self {
         debug_assert!(size.len() == 1);
         debug_assert!(sigma.len() == 1);
-        vec![Complex::zero(); *size.first().unwrap()]
+        vec![Complex::ZERO; *size.first().unwrap()]
     }
 
     fn filter(&mut self, filter: &Self) {

@@ -16,14 +16,15 @@ pub trait Float:
     + Send
     + Debug
 {
-    //constants
-    fn pi() -> Self;
-    fn zero() -> Self;
-    fn one() -> Self;
-    fn maximum() -> Self;
-    fn minimum() -> Self;
-    fn small() -> Self;
-    fn epsilon() -> Self;
+
+    const PI: Self;
+    const ZERO: Self;
+    const ONE: Self;
+    const N_ONE: Self;
+    const MAX: Self;
+    const MIN: Self;
+    const SMALL: Self;
+    const EPSILON: Self;
     //conversion functions
     fn usize(u: usize) -> Self;
     fn isize(i: isize) -> Self;
@@ -69,40 +70,15 @@ pub trait Float:
 }
 
 impl Float for f32 {
-    #[inline(always)]
-    fn pi() -> Self {
-        std::f32::consts::PI
-    }
 
-    #[inline(always)]
-    fn zero() -> Self {
-        0.0
-    }
-
-    #[inline(always)]
-    fn one() -> Self {
-        1.0
-    }
-
-    #[inline(always)]
-    fn maximum() -> Self {
-        f32::MAX
-    }
-
-    #[inline(always)]
-    fn minimum() -> Self {
-        f32::MIN
-    }
-
-    #[inline(always)]
-    fn small() -> Self {
-        f32::MIN_POSITIVE
-    }
-
-    #[inline(always)]
-    fn epsilon() -> Self {
-        f32::EPSILON
-    }
+    const PI: Self =  std::f32::consts::PI;
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
+    const N_ONE: Self = -1.0;
+    const MAX: Self = f32::MAX;
+    const MIN: Self = f32::MIN;
+    const SMALL: Self = f32::MIN_POSITIVE;
+    const EPSILON: Self = f32::EPSILON;
 
     #[inline(always)]
     fn sin_cos(&self) -> (Self, Self) {
@@ -193,40 +169,14 @@ impl Float for f32 {
     }
 }
 impl Float for f64 {
-    #[inline(always)]
-    fn pi() -> Self {
-        std::f64::consts::PI
-    }
-
-    #[inline(always)]
-    fn zero() -> Self {
-        0.0
-    }
-
-    #[inline(always)]
-    fn one() -> Self {
-        1.0
-    }
-
-    #[inline(always)]
-    fn maximum() -> Self {
-        f64::MAX
-    }
-
-    #[inline(always)]
-    fn minimum() -> Self {
-        f64::MIN
-    }
-
-    #[inline(always)]
-    fn small() -> Self {
-        f64::MIN_POSITIVE
-    }
-
-    #[inline(always)]
-    fn epsilon() -> Self {
-        f64::EPSILON
-    }
+    const PI: Self =  std::f64::consts::PI;
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
+    const N_ONE: Self = -1.0;
+    const MAX: Self = f64::MAX;
+    const MIN: Self = f64::MIN;
+    const SMALL: Self = f64::MIN_POSITIVE;
+    const EPSILON: Self = f64::EPSILON;
 
     #[inline(always)]
     fn usize(u: usize) -> Self {

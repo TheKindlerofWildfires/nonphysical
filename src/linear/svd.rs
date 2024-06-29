@@ -7,11 +7,11 @@ use super::jacobi::Jacobi;
 pub trait SingularValueDecomposition<T: Float> {
     //current u and v are slightly swapped.. this is a non problem for the square version but may come again
     fn jacobi_svd_full(matrix: &mut Matrix<T>) -> (Matrix<T>, Vec<T>, Matrix<T>) {
-        let precision = T::epsilon() * T::float(2.0);
-        let small = T::small();
+        let precision = T::EPSILON * T::float(2.0);
+        let small = T::SMALL;
         let diag_size = min(matrix.columns, matrix.rows);
         let mut scale = <Vec<&'_ Complex<T>> as Vector<T>>::norm_max(matrix.data());
-        if scale == T::zero() {
+        if scale == T::ZERO {
             scale = T::float(1.0);
         }
 
@@ -63,8 +63,8 @@ pub trait SingularValueDecomposition<T: Float> {
                 let a = matrix.coeff(i, i).real;
                 singular.push(a.norm());
 
-                if a < T::zero() {
-                    <Vec<&'_ Complex<T>> as Vector<T>>::scale(u.data_column_ref(i), -T::one());
+                if a < T::ZERO {
+                    <Vec<&'_ Complex<T>> as Vector<T>>::scale(u.data_column_ref(i), -T::ONE);
                 }
             }
         });
@@ -98,11 +98,11 @@ pub trait SingularValueDecomposition<T: Float> {
     }
 
     fn jacobi_svd(matrix: &mut Matrix<T>) -> Vec<T> {
-        let precision = T::epsilon() * T::float(2.0);
-        let small = T::small();
+        let precision = T::EPSILON * T::float(2.0);
+        let small = T::SMALL;
         let diag_size = min(matrix.columns, matrix.rows);
         let mut scale = <Vec<&'_ Complex<T>> as Vector<T>>::norm_max(matrix.data());
-        if scale == T::zero() {
+        if scale == T::ZERO {
             scale = T::float(1.0);
         }
         //Poorly implemented step 1, doesn't handle miss sized matrices
@@ -163,19 +163,19 @@ pub trait SingularValueDecomposition<T: Float> {
             matrix.coeff(q, p),
             matrix.coeff(q, q),
         ];
-        sub_data.iter_mut().for_each(|c| c.imag = T::zero());
+        sub_data.iter_mut().for_each(|c| c.imag = T::ZERO);
         let mut sub_matrix = Matrix::new(2, sub_data);
         let t = (sub_matrix.coeff(0, 0) + sub_matrix.coeff(1, 1)).real;
         let d = (sub_matrix.coeff(0, 1) - sub_matrix.coeff(1, 0)).real;
 
-        let rot1 = match d.norm() < T::small() {
-            true => Jacobi::<T>::new(Complex::<T>::zero(), Complex::<T>::one()),
+        let rot1 = match d.norm() < T::SMALL {
+            true => Jacobi::<T>::new(Complex::<T>::ZERO, Complex::<T>::ONE),
             false => {
                 let u = t / d;
-                let tmp = (T::one() + u.square_norm()).sqrt();
+                let tmp = (T::ONE + u.square_norm()).sqrt();
                 Jacobi::<T>::new(
-                    Complex::<T>::new(tmp.recip(), T::zero()),
-                    Complex::<T>::new(u / tmp, T::zero()),
+                    Complex::<T>::new(tmp.recip(), T::ZERO),
+                    Complex::<T>::new(u / tmp, T::ZERO),
                 )
             }
         };
@@ -201,7 +201,7 @@ pub mod svd_tests {
         s.iter()
             .zip([14.2267, 1.26523, 7.16572e-8])
             .for_each(|(si, ki)| {
-                assert!((si - ki).square_norm() < f32::epsilon());
+                assert!((si - ki).square_norm() < f32::EPSILON);
             });
 
         let mut in_mat =
@@ -210,7 +210,7 @@ pub mod svd_tests {
         s.iter()
             .zip([69.9086, 3.5761, 1.4977e-6, 1.0282e-6, 2.22847e-7])
             .for_each(|(si, ki)| {
-                assert!((si - ki).square_norm() < f32::epsilon());
+                assert!((si - ki).square_norm() < f32::EPSILON);
             });
     }
 
@@ -224,7 +224,7 @@ pub mod svd_tests {
         s.iter()
             .zip([14.2267, 1.26523, 7.16572e-8])
             .for_each(|(si, ki)| {
-                assert!((si - ki).square_norm() < f32::epsilon());
+                assert!((si - ki).square_norm() < f32::EPSILON);
             });
 
         let kv = vec![
@@ -241,7 +241,7 @@ pub mod svd_tests {
         ];
         u.data()
             .zip(kv.iter())
-            .for_each(|(up, k)| assert!((up.real - k).square_norm() < f32::epsilon()));
+            .for_each(|(up, k)| assert!((up.real - k).square_norm() < f32::EPSILON));
 
         let ku = vec![
             0.13511896,
@@ -257,7 +257,7 @@ pub mod svd_tests {
         
         v.data()
             .zip(ku.iter())
-            .for_each(|(up, k)| assert!((up.real - k).square_norm() < f32::epsilon()));
+            .for_each(|(up, k)| assert!((up.real - k).square_norm() < f32::EPSILON));
 
         let mut in_mat =
             Matrix::<f32>::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
@@ -265,7 +265,7 @@ pub mod svd_tests {
         s.iter()
             .zip([69.9086, 3.5761, 1.4977e-6, 1.0282e-6, 2.22847e-7])
             .for_each(|(si, ki)| {
-                assert!((si - ki).square_norm() < f32::epsilon());
+                assert!((si - ki).square_norm() < f32::EPSILON);
             });
 
     }
