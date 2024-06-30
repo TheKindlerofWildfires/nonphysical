@@ -1,4 +1,4 @@
-use std::cmp::min;
+use core::cmp::min;
 
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
 
@@ -193,7 +193,7 @@ pub mod svd_tests {
     use super::*;
 
     #[test]
-    fn test_jacobi_svd_square() {
+    fn jacobi_svd_square() {
         let mut in_mat =
             Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
         let s = <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd(&mut in_mat);
@@ -215,7 +215,7 @@ pub mod svd_tests {
     }
 
     #[test]
-    fn test_jacobi_svd_full_square() {
+    fn jacobi_svd_full_square() {
         let mut in_mat =
             Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
         let (u, s, v) =

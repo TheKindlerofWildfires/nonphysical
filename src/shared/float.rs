@@ -1,4 +1,4 @@
-use std::{fmt::Debug, ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub}};
+use core::{fmt::Debug, ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub}};
 
 pub trait Float:
     Neg<Output = Self>
@@ -71,7 +71,7 @@ pub trait Float:
 
 impl Float for f32 {
 
-    const PI: Self =  std::f32::consts::PI;
+    const PI: Self =  core::f32::consts::PI;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const N_ONE: Self = -1.0;
@@ -169,7 +169,7 @@ impl Float for f32 {
     }
 }
 impl Float for f64 {
-    const PI: Self =  std::f64::consts::PI;
+    const PI: Self =  core::f64::consts::PI;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const N_ONE: Self = -1.0;

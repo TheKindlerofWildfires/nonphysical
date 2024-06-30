@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
 

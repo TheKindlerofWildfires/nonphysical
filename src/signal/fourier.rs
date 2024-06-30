@@ -130,7 +130,7 @@ mod fourier_tests {
     use super::*;
 
     #[test]
-    fn test_forward_2() {
+    fn forward_2_static() {
         let mut x = (0..2)
             .map(|i| Complex::<f32>::new(i as f32, (i + 1) as f32))
             .collect::<Vec<_>>();
@@ -165,7 +165,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_forward_4() {
+    fn forward_4_static() {
         let mut x = (0..4)
             .map(|i| Complex::<f32>::new(i as f32, (i + 1) as f32))
             .collect::<Vec<_>>();
@@ -209,7 +209,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_forward_8() {
+    fn forward_8_static() {
         let mut x = (0..8)
             .map(|i| Complex::<f32>::new(i as f32, (i + 1) as f32))
             .collect::<Vec<_>>();
@@ -249,7 +249,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_forward_16() {
+    fn forward_16_static() {
         let mut x = (0..16)
             .map(|i| Complex::<f32>::new(i as f32, (i + 1) as f32))
             .collect::<Vec<_>>();
@@ -281,7 +281,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_inverse_2() {
+    fn inverse_2_static() {
         let mut x = [
             Complex::<f32>::new(2.0, 6.0),
             Complex::<f32>::new(-2.0, -2.0),
@@ -317,7 +317,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_inverse_4() {
+    fn inverse_4_static() {
         let mut x = [
             Complex::<f32>::new(24.0, 40.0),
             Complex::<f32>::new(0.0, -16.0),
@@ -362,7 +362,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_inverse_8() {
+    fn inverse_8_static() {
         let mut x = [
             Complex::<f32>::new(0.0, 8.0),
             Complex::<f32>::new(56.0, 64.0),
@@ -402,7 +402,7 @@ mod fourier_tests {
     }
 
     #[test]
-    fn test_inverse_16() {
+    fn inverse_16_static() {
         let mut x = [
             Complex::<f32>::new(120.0, 136.0),
             Complex::<f32>::new(-48.21871594, 32.21871594),

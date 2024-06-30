@@ -1,4 +1,4 @@
-use std::process::exit;
+use core::process::exit;
 
 use crate::{
     random::pcg::PermutedCongruentialGenerator,

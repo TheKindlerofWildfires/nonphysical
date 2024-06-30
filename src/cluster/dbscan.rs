@@ -7,8 +7,6 @@ use super::Classification;
 
 
 trait DBSCAN<T: Float> {
-    fn new();
-
     fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<Classification>
     where
         Self: Sized;
@@ -17,10 +15,6 @@ trait DBSCAN<T: Float> {
 }
 
 impl<T: Float> DBSCAN<T> for Vec<Vec<Complex<T>>> {
-    fn new() {
-        todo!()
-    }
-
     fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<Classification>
     where
         Self: Sized,
@@ -77,7 +71,7 @@ mod dbscan_tests{
     use super::*;
 
     #[test]
-    fn test_dbscan() {
+    fn dbscan_simple() {
         let data = vec![
             vec![Complex::new(9.308548692822459,0.0),Complex::new(2.1673586347139224,0.0)],
             vec![Complex::new(-5.6424039931897765,0.0),Complex::new(-1.9620561766472002,0.0)],

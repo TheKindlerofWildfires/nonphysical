@@ -145,7 +145,7 @@ mod wavelet_tests {
     use super::*;
 
     #[test]
-    fn test_daubechies_first_2() {
+    fn daubechies_first_2_static() {
         let signal = vec![Complex::<f32>::new(0.5, 0.0), Complex::<f32>::new(1.5, 0.0)];
         let knowns = vec![
             vec![Complex::new(2.0.sqrt(), 0.0)],
@@ -174,7 +174,7 @@ mod wavelet_tests {
     }
 
     #[test]
-    fn test_daubechies_first_4() {
+    fn daubechies_first_4_static() {
         let signal = vec![
             Complex::<f32>::new(0.5, 0.0),
             Complex::<f32>::new(1.5, 0.0),
@@ -214,7 +214,7 @@ mod wavelet_tests {
     }
 
     #[test]
-    fn test_daubechies_first_8() {
+    fn daubechies_first_8_static() {
         let signal = vec![
             Complex::<f32>::new(0.5, 0.0),
             Complex::<f32>::new(1.5, 0.0),

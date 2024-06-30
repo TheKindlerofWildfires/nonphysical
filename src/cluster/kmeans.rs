@@ -5,7 +5,7 @@ use crate::{
 };
 use super::Classification;
 trait Kmeans<T: Float> {
-    fn new(input: &Self, count: usize) -> Vec<Vec<Complex<T>>>;
+    fn new(input: &Self, count: usize,seed:usize) -> Vec<Vec<Complex<T>>>;
 
     fn cluster(
         input: &Self,
@@ -19,10 +19,10 @@ trait Kmeans<T: Float> {
 }
 
 impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
-    fn new(input: &Self, count: usize) -> Vec<Vec<Complex<T>>> {
+    fn new(input: &Self, count: usize,seed:usize) -> Vec<Vec<Complex<T>>> {
         let mut taken = vec![false; input.len()];
         let mut centroids = Vec::with_capacity(count);
-        let mut pcg = PermutedCongruentialGenerator::<T>::new_timed();
+        let mut pcg = PermutedCongruentialGenerator::<T>::new(seed as u32, seed as u32+1);
         let first = pcg.next_u32() as usize % input.len();
         taken[first] = true; 
         centroids.push(input[first].iter().map(|in_val| in_val.clone()).collect());
@@ -133,7 +133,7 @@ mod kmeans_tests{
     use super::*;
 
     #[test]
-    fn test_kmeans() {
+    fn kmeans_simple() {
         let data = vec![
             vec![Complex::new(9.308548692822459,0.0),Complex::new(2.1673586347139224,0.0)],
             vec![Complex::new(-5.6424039931897765,0.0),Complex::new(-1.9620561766472002,0.0)],
@@ -157,13 +157,14 @@ mod kmeans_tests{
             vec![Complex::new(-9.465804800021168,0.0),Complex::new(-2.2222090878656884,0.0)],
         ];
 
-        let mut centroids = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::new(&data,2);
-        let mask = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::cluster(&data, &mut centroids, 16);
+        let mut centroids = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::new(&data,2,0);
+        let mask = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::cluster(&data, &mut centroids, 32);
 
         let binding = vec![1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0];
         let known_mask = binding.iter().map(|i| Core(*i));
 
         mask.iter().zip(known_mask).for_each(|(m,k)|{
+            dbg!(*m,k);
             assert!(*m==k);
         });
         

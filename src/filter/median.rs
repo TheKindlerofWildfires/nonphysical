@@ -35,7 +35,7 @@ impl<T: Float> MedianFilter<T> for Matrix<T> {
         Matrix::<T>::zero(size[0], size[1])
     }
 
-    fn filter(&mut self, filter: &Self) {
+    fn filter(&mut self, _filter: &Self) {
         todo!()
     }
 }

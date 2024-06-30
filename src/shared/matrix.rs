@@ -1,4 +1,4 @@
-use std::{
+use core::{
     borrow::BorrowMut,
     fmt::Debug,
     ops::{Add, Mul, MulAssign},
@@ -203,7 +203,7 @@ impl<T: Float> MulAssign<T> for Matrix<T> {
 }
 
 impl<T: Float> Debug for Matrix<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Matrix")
             .field("rows", &self.rows)
             .field("columns", &self.columns);
@@ -221,7 +221,7 @@ mod matrix_tests {
     use super::*;
 
     #[test]
-    fn test_coeff() {
+    fn coeff_static() {
         //square case
         let m = Matrix::new(
             3,
@@ -266,7 +266,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_coeff_ref() {
+    fn coeff_ref_static() {
         //square case
         let mut m = Matrix::new(
             3,
@@ -353,7 +353,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data() {
+    fn data_static() {
         let m = Matrix::new(
             3,
             (0..9)
@@ -388,7 +388,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_ref() {
+    fn data_ref_static() {
         let mut m = Matrix::new(
             3,
             (0..9)
@@ -439,7 +439,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_diag() {
+    fn data_diag_static() {
         let m = Matrix::new(
             3,
             (0..9)
@@ -474,7 +474,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_diag_ref() {
+    fn data_diag_ref_static() {
         let mut m = Matrix::new(
             3,
             (0..9)
@@ -527,7 +527,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_row() {
+    fn data_row_static() {
         let m = Matrix::new(
             3,
             (0..9)
@@ -563,7 +563,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_row_ref() {
+    fn data_row_ref_static() {
         let mut m = Matrix::new(
             3,
             (0..9)
@@ -615,7 +615,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_column() {
+    fn data_column_static() {
         let m = Matrix::new(
             3,
             (0..9)
@@ -651,7 +651,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_column_ref() {
+    fn data_column_ref_static() {
         let mut m = Matrix::new(
             3,
             (0..9)
@@ -703,7 +703,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_rows() {
+    fn data_rows_static() {
         let m = Matrix::new(
             3,
             (0..9)
@@ -756,7 +756,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_data_rows_ref() {
+    fn data_rows_ref_static() {
         let mut m = Matrix::new(
             3,
             (0..9)
@@ -849,7 +849,7 @@ mod matrix_tests {
         });
     }
     #[test]
-    fn test_transposed() {
+    fn transposed_static() {
         let m = Matrix::new(
             3,
             (0..9)
@@ -904,7 +904,7 @@ mod matrix_tests {
 
 
     #[test]
-    fn test_acc() {
+    fn acc_static() {
         let m33 = Matrix::new(
             3,
             (0..9).map(|c| Complex::<f32>::new(c as f32, 0.0)).collect(),
@@ -963,7 +963,7 @@ mod matrix_tests {
     }
 
     #[test]
-    fn test_row_swap(){
+    fn row_swap_static(){
         let mut m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32,0.0)).collect());
 
         m.row_swap(0, 1);

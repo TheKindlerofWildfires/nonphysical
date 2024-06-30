@@ -1,6 +1,4 @@
-use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
-use std::fmt::Debug;
-
+use core::{fmt::Debug,ops::{Add, AddAssign, Div, Mul, Neg, Sub}};
 use super::float::Float;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -159,7 +157,7 @@ impl <T:Float> AddAssign for Complex<T>{
 }
 
 impl <T:Float> Debug for Complex<T>{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?} + {:?}i",self.real, self.imag)
     }
 }

@@ -1,4 +1,4 @@
-use std::cmp::min;
+use core::cmp::min;
 
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix};
 
@@ -191,7 +191,7 @@ mod gemm_test {
     use super::*;
 
     #[test]
-    fn test_naive() {
+    fn naive_static() {
         let m33 = Matrix::new(
             3,
             (0..9).map(|c| Complex::<f32>::new(c as f32, 0.0)).collect(),
@@ -276,7 +276,7 @@ mod gemm_test {
     }
 
     #[test]
-    fn test_gemm() {
+    fn gemm_static() {
         let m33 = Matrix::new(
             3,
             (0..9).map(|c| Complex::<f32>::new(c as f32, 0.0)).collect(),
@@ -360,7 +360,7 @@ mod gemm_test {
     }
 
     #[test]
-    fn test_gemm_lesser() {
+    fn gemm_lesser() {
         let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
 
         let n1 = (pcg.next_u32() as usize % (Matrix::<f32>::KC - 1) + 4) as usize;
@@ -387,7 +387,7 @@ mod gemm_test {
         });
     }
     #[test]
-    fn test_gemm_middle() {
+    fn gemm_middle() {
         let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
 
         let n1 = (pcg.next_u32() as usize % Matrix::<f32>::KC + Matrix::<f32>::KC) as usize;
@@ -415,7 +415,7 @@ mod gemm_test {
     }
 
     #[test]
-    fn test_gemm_greater() {
+    fn gemm_greater() {
         let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
         let n1 = (pcg.next_u32() as usize % Matrix::<f32>::MC + Matrix::<f32>::MC) as usize;
         let n2 = (pcg.next_u32() as usize % Matrix::<f32>::MC + Matrix::<f32>::MC) as usize;
