@@ -1,25 +1,25 @@
 use crate::{
     random::pcg::PermutedCongruentialGenerator,
     cluster::Classification::Core,
-    shared::{complex::Complex, float::Float},
+    shared::float::Float,
 };
 use super::Classification;
 trait Kmeans<T: Float> {
-    fn new(input: &Self, count: usize,seed:usize) -> Vec<Vec<Complex<T>>>;
+    fn new(input: &Self, count: usize,seed:usize) -> Vec<Vec<T>>;
 
     fn cluster(
         input: &Self,
-        centroids: &mut Vec<Vec<Complex<T>>>,
+        centroids: &mut Vec<Vec<T>>,
         iterations: usize,
     ) -> Vec<Classification>
     where
         Self: Sized;
 
-    fn square_distance(a: &Vec<Complex<T>>, b: &Vec<Complex<T>>) -> T;
+    fn square_distance(a: &Vec<T>, b: &Vec<T>) -> T;
 }
 
-impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
-    fn new(input: &Self, count: usize,seed:usize) -> Vec<Vec<Complex<T>>> {
+impl<T: Float> Kmeans<T> for Vec<Vec<T>> {
+    fn new(input: &Self, count: usize,seed:usize) -> Vec<Vec<T>> {
         let mut taken = vec![false; input.len()];
         let mut centroids = Vec::with_capacity(count);
         let mut pcg = PermutedCongruentialGenerator::<T>::new(seed as u32, seed as u32+1);
@@ -58,7 +58,7 @@ impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
     //doesn't have the early exit
     fn cluster(
         input: &Self,
-        centroids: &mut Vec<Vec<Complex<T>>>,
+        centroids: &mut Vec<Vec<T>>,
         iterations: usize,
     ) -> Vec<Classification>
     where
@@ -90,7 +90,7 @@ impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
                 
             });
             counts.iter_mut().for_each(|x| *x = 0);
-            centroids.iter_mut().for_each(|c| c.iter_mut().for_each(|d|*d = Complex::ZERO));
+            centroids.iter_mut().for_each(|c| c.iter_mut().for_each(|d|*d = T::ZERO));
     
             input.iter().zip(membership.iter()).for_each(|(c,m)|{
                 match m {
@@ -110,7 +110,7 @@ impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
             centroids.iter_mut().zip(counts.iter()).for_each(|(centroid, count)|{
                 match count {
                     0 => {
-                        centroid.iter_mut().for_each(|cp| *cp = Complex::ZERO);
+                        centroid.iter_mut().for_each(|cp| *cp = T::ZERO);
                     },
                     size => {
                         centroid.iter_mut().for_each(|cp| *cp = *cp/T::usize(*size))
@@ -121,7 +121,7 @@ impl<T: Float> Kmeans<T> for Vec<Vec<Complex<T>>> {
         membership
     }
 
-    fn square_distance(a: &Vec<Complex<T>>, b: &Vec<Complex<T>>) -> T {
+    fn square_distance(a: &Vec<T>, b: &Vec<T>) -> T {
         a.iter()
             .zip(b.iter())
             .fold(T::ZERO, |s, (ap, bp)| s + (*ap - *bp).square_norm())
@@ -135,30 +135,30 @@ mod kmeans_tests{
     #[test]
     fn kmeans_simple() {
         let data = vec![
-            vec![Complex::new(9.308548692822459,0.0),Complex::new(2.1673586347139224,0.0)],
-            vec![Complex::new(-5.6424039931897765,0.0),Complex::new(-1.9620561766472002,0.0)],
-            vec![Complex::new(-9.821995596375428,0.0),Complex::new(-3.1921112766174997,0.0)],
-            vec![Complex::new(-4.992109362834896,0.0),Complex::new(-2.0745015313494455,0.0)],
-            vec![Complex::new(10.107315875917662,0.0),Complex::new(2.4489015959094216,0.0)],
-            vec![Complex::new(-7.962477597931141,0.0),Complex::new(-5.494741864480315,0.0)],
-            vec![Complex::new(10.047917462523671,0.0),Complex::new(5.1631966716389766,0.0)],
-            vec![Complex::new(-5.243921934674187,0.0),Complex::new(-2.963359100733349,0.0)],
-            vec![Complex::new(-9.940544426622527,0.0),Complex::new(-3.2655473073528816,0.0)],
-            vec![Complex::new(8.30445373000034,0.0),Complex::new(2.129694332932624,0.0)],
-            vec![Complex::new(-9.196460281784482,0.0),Complex::new(-3.987773678358418,0.0)],
-            vec![Complex::new(-10.513583123594056,0.0),Complex::new(-2.5364233580562887,0.0)],
-            vec![Complex::new(9.072668506714033,0.0),Complex::new(3.405664632524281,0.0)],
-            vec![Complex::new(-7.031861004012987,0.0),Complex::new(-2.2616818331210844,0.0)],
-            vec![Complex::new(9.627963795272553,0.0),Complex::new(4.502533177849574,0.0)],
-            vec![Complex::new(-10.442760023564471,0.0),Complex::new(-5.0830680881481065,0.0)],
-            vec![Complex::new(8.292151321984209,0.0),Complex::new(3.8776876670218834,0.0)],
-            vec![Complex::new(-6.51560033683665,0.0),Complex::new(-3.8185628318207585,0.0)],
-            vec![Complex::new(-10.887633624071544,0.0),Complex::new(-4.416570704487158,0.0)],
-            vec![Complex::new(-9.465804800021168,0.0),Complex::new(-2.2222090878656884,0.0)],
+            vec![9.308548692822459,2.1673586347139224],
+            vec![-5.6424039931897765,-1.9620561766472002],
+            vec![-9.821995596375428,-3.1921112766174997],
+            vec![-4.992109362834896,-2.0745015313494455],
+            vec![10.107315875917662,2.4489015959094216],
+            vec![-7.962477597931141,-5.494741864480315],
+            vec![10.047917462523671,5.1631966716389766],
+            vec![-5.243921934674187,-2.963359100733349],
+            vec![-9.940544426622527,-3.2655473073528816],
+            vec![8.30445373000034,2.129694332932624],
+            vec![-9.196460281784482,-3.987773678358418],
+            vec![-10.513583123594056,-2.5364233580562887],
+            vec![9.072668506714033,3.405664632524281],
+            vec![-7.031861004012987,-2.2616818331210844],
+            vec![9.627963795272553,4.502533177849574],
+            vec![-10.442760023564471,-5.0830680881481065],
+            vec![8.292151321984209,3.8776876670218834],
+            vec![-6.51560033683665,-3.8185628318207585],
+            vec![-10.887633624071544,-4.416570704487158],
+            vec![-9.465804800021168,-2.2222090878656884],
         ];
 
-        let mut centroids = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::new(&data,2,0);
-        let mask = <Vec<Vec<Complex<f32>>> as Kmeans<f32>>::cluster(&data, &mut centroids, 32);
+        let mut centroids = <Vec<Vec<f32>> as Kmeans<f32>>::new(&data,2,0);
+        let mask = <Vec<Vec<f32>> as Kmeans<f32>>::cluster(&data, &mut centroids, 32);
 
         let binding = vec![1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0];
         let known_mask = binding.iter().map(|i| Core(*i));
@@ -168,7 +168,7 @@ mod kmeans_tests{
             assert!(*m==k);
         });
         
-        let known_centroids = vec![vec![Complex::new(-8.2813197,0.0), Complex::new(-3.3291236,0.0)],vec![Complex::new(9.2515742,0.0), Complex::new(3.38500524,0.0)],];
+        let known_centroids = vec![vec![-8.2813197, -3.3291236],vec![9.2515742, 3.38500524],];
 
         centroids.iter().zip(known_centroids.iter()).for_each(|(c,k)|{
             c.iter().zip(k.iter()).for_each(|(cp, kp)|{

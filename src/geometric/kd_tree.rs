@@ -22,14 +22,14 @@ pub struct KdShared<T: Float> {
     max_bounds: Vec<T>,
 }
 
-pub enum KdOffshoot<T: Float> {
+pub enum KdNode<T: Float> {
     Leaf(KdLeaf<T>),
     Branch(KdBranch<T>),
 }
 
 pub struct KdTree<T: Float> {
     shared: KdShared<T>,
-    offshoot: KdOffshoot<T>,
+    node: KdNode<T>,
 }
 
 impl<T: Float> KdLeaf<T> {
@@ -133,9 +133,9 @@ impl<T: Float> KdShared<T> {
 impl<T: Float> KdTree<T> {
     pub fn new(dimensions: usize, capacity: usize) -> Self {
         let leaf = KdLeaf::new(capacity);
-        let offshoot = KdOffshoot::Leaf(leaf);
+        let node = KdNode::Leaf(leaf);
         let shared = KdShared::new(dimensions);
-        Self { shared, offshoot }
+        Self { shared, node }
     }
 
     pub fn len(&self) -> usize {
@@ -145,15 +145,15 @@ impl<T: Float> KdTree<T> {
     pub fn add(&mut self, point: Vec<T>, data: usize) {
         self.extend(&point);
         self.shared.size += 1;
-        match &mut self.offshoot {
-            KdOffshoot::Leaf(leaf) => {
+        match &mut self.node {
+            KdNode::Leaf(leaf) => {
                 let may_branch = leaf.add_to_bucket(&self.shared, point, data);
                 match may_branch {
-                    Some(branch) => self.offshoot = KdOffshoot::Branch(branch),
+                    Some(branch) => self.node = KdNode::Branch(branch),
                     None => {}
                 }
             }
-            KdOffshoot::Branch(branch) => {
+            KdNode::Branch(branch) => {
                 let next = match branch.branch_left(&self.shared, &point) {
                     true => branch.left.as_mut(),
                     false => branch.right.as_mut(),
@@ -223,8 +223,8 @@ impl<T: Float> KdTree<T> {
         };
 
         loop {
-            match &current.offshoot {
-                KdOffshoot::Branch(branch) => {
+            match &current.node {
+                KdNode::Branch(branch) => {
                     let candidate = match branch.branch_left(&self.shared, &point) {
                         true => {
                             let temp = branch.right.as_ref();
@@ -250,13 +250,13 @@ impl<T: Float> KdTree<T> {
                         })
                     }
                 }
-                KdOffshoot::Leaf(leaf) => {
+                KdNode::Leaf(leaf) => {
                     let points = leaf.points.iter();
                     let bucket = leaf.bucket.iter();
                     points
                         .zip(bucket)
                         .map(|(p, d)| HeapElement {
-                            distance: self.distance(&point, p),
+                            distance: Self::distance(&point, p),
                             element: d,
                         })
                         .for_each(|element| {
@@ -286,10 +286,10 @@ impl<T: Float> KdTree<T> {
                 p2[i] = p1[i];
             }
         });
-        self.distance(p1, &p2)
+        Self::distance(p1, &p2)
     }
 
-    fn distance(&self, a: &Vec<T>, b: &Vec<T>) -> T {
+    fn distance(a: &Vec<T>, b: &Vec<T>) -> T {
         let out = a
             .iter()
             .zip(b.iter())
@@ -338,8 +338,8 @@ mod kd_tree_tests {
 
         let known_points = vec![vec![1.0, 2.0]];
 
-        match kd_tree.offshoot {
-            KdOffshoot::Leaf(leaf) => {
+        match kd_tree.node {
+            KdNode::Leaf(leaf) => {
                 leaf.bucket
                     .iter()
                     .zip(known_buckets.iter())
@@ -355,7 +355,7 @@ mod kd_tree_tests {
                         });
                     });
             }
-            KdOffshoot::Branch(_) => assert!(false),
+            KdNode::Branch(_) => assert!(false),
         }
 
         kd_tree
@@ -388,8 +388,8 @@ mod kd_tree_tests {
         let known_min_bounds = vec![-1.0, 2.0];
 
         let known_points = vec![vec![1.0, 2.0], vec![-1.0, 3.0]];
-        match kd_tree.offshoot {
-            KdOffshoot::Leaf(leaf) => {
+        match kd_tree.node {
+            KdNode::Leaf(leaf) => {
                 leaf.bucket
                     .iter()
                     .zip(known_buckets.iter())
@@ -405,7 +405,7 @@ mod kd_tree_tests {
                         });
                     });
             }
-            KdOffshoot::Branch(_) => assert!(false),
+            KdNode::Branch(_) => assert!(false),
         }
 
         kd_tree
@@ -434,9 +434,9 @@ mod kd_tree_tests {
         kd_tree.add(vec![-1.0, 3.0], 1);
         kd_tree.add(vec![-2.0, 3.0], 2);
 
-        match kd_tree.offshoot {
-            KdOffshoot::Leaf(_) => assert!(false),
-            KdOffshoot::Branch(branch) => {
+        match kd_tree.node {
+            KdNode::Leaf(_) => assert!(false),
+            KdNode::Branch(branch) => {
                 let known_max_bounds = vec![1.0, 3.0];
                 let known_min_bounds = vec![-2.0, 2.0];
 
@@ -460,8 +460,8 @@ mod kd_tree_tests {
                 assert!(branch.split_dimension == 0);
                 assert!(branch.split_value == -0.5);
 
-                match branch.left.offshoot {
-                    KdOffshoot::Leaf(leaf) => {
+                match branch.left.node {
+                    KdNode::Leaf(leaf) => {
                         let known_buckets = vec![2, 1];
                         let known_max_bounds = vec![-1.0, 3.0];
                         let known_min_bounds = vec![-2.0, 3.0];
@@ -504,10 +504,10 @@ mod kd_tree_tests {
                                 });
                             });
                     }
-                    KdOffshoot::Branch(_) => assert!(false),
+                    KdNode::Branch(_) => assert!(false),
                 }
-                match branch.right.offshoot {
-                    KdOffshoot::Leaf(leaf) => {
+                match branch.right.node {
+                    KdNode::Leaf(leaf) => {
                         let known_buckets = vec![0];
                         let known_max_bounds = vec![1.0, 2.0];
                         let known_min_bounds = vec![1.0, 2.0];
@@ -550,7 +550,7 @@ mod kd_tree_tests {
                                 });
                             });
                     }
-                    KdOffshoot::Branch(_) => assert!(false),
+                    KdNode::Branch(_) => assert!(false),
                 }
             }
         }
@@ -564,9 +564,9 @@ mod kd_tree_tests {
         kd_tree.add(vec![-2.0,3.0], 2);
         kd_tree.add(vec![2.0,4.0], 4);
 
-        match kd_tree.offshoot {
-            KdOffshoot::Leaf(_) => assert!(false),
-            KdOffshoot::Branch(branch) => {
+        match kd_tree.node {
+            KdNode::Leaf(_) => assert!(false),
+            KdNode::Branch(branch) => {
                 let known_max_bounds = vec![2.0, 4.0];
                 let known_min_bounds = vec![-2.0, 2.0];
                 kd_tree
@@ -589,8 +589,8 @@ mod kd_tree_tests {
                 assert!(branch.split_dimension == 0);
                 assert!(branch.split_value == -0.5);
 
-                match branch.left.offshoot {
-                    KdOffshoot::Leaf(leaf) => {
+                match branch.left.node {
+                    KdNode::Leaf(leaf) => {
                         let known_buckets = vec![2, 1];
                         let known_max_bounds = vec![-1.0, 3.0];
                         let known_min_bounds = vec![-2.0, 3.0];
@@ -633,10 +633,10 @@ mod kd_tree_tests {
                                 });
                             });
                     }
-                    KdOffshoot::Branch(_) => assert!(false),
+                    KdNode::Branch(_) => assert!(false),
                 }
-                match branch.right.offshoot {
-                    KdOffshoot::Leaf(leaf) => {
+                match branch.right.node {
+                    KdNode::Leaf(leaf) => {
                         let known_buckets = vec![0];
                         let known_max_bounds = vec![2.0, 4.0];
                         let known_min_bounds = vec![1.0, 2.0];
@@ -679,7 +679,7 @@ mod kd_tree_tests {
                                 });
                             });
                     }
-                    KdOffshoot::Branch(_) => assert!(false),
+                    KdNode::Branch(_) => assert!(false),
                 }
             }
         }

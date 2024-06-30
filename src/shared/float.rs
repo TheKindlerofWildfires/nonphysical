@@ -25,6 +25,7 @@ pub trait Float:
     const MIN: Self;
     const SMALL: Self;
     const EPSILON: Self;
+    const GAMMA: Self;
     //conversion functions
     fn usize(u: usize) -> Self;
     fn isize(i: isize) -> Self;
@@ -46,9 +47,10 @@ pub trait Float:
     fn cosh(&self) -> Self;
     fn norm(&self) -> Self;
     fn square_norm(&self) -> Self;
+    fn powt(&self, other: &Self) -> Self;
+    fn powi(&self, other: i32) ->Self;
 
     fn tan(&self) -> Self;
-
     fn tanh(&self) -> Self;
 
     //shared
@@ -79,6 +81,7 @@ impl Float for f32 {
     const MIN: Self = f32::MIN;
     const SMALL: Self = f32::MIN_POSITIVE;
     const EPSILON: Self = f32::EPSILON;
+    const GAMMA: Self = 0.57721566490153286060651209008240243104215933593992;
 
     #[inline(always)]
     fn sin_cos(&self) -> (Self, Self) {
@@ -130,6 +133,14 @@ impl Float for f32 {
         (*self as f32).powi(2)
     }
     #[inline(always)]
+    fn powt(&self, other: &Self) -> Self{
+        (*self as f32).powf(*other as f32)
+    }
+    #[inline(always)]
+    fn powi(&self, other: i32) ->Self{
+        (*self as f32).powi(other)
+    }
+    #[inline(always)]
     fn atan2(&self, other: Self) -> Self{
         (*self as f32).atan2(other as f32)
     }
@@ -177,6 +188,7 @@ impl Float for f64 {
     const MIN: Self = f64::MIN;
     const SMALL: Self = f64::MIN_POSITIVE;
     const EPSILON: Self = f64::EPSILON;
+    const GAMMA: Self = 0.57721566490153286060651209008240243104215933593992;
 
     #[inline(always)]
     fn usize(u: usize) -> Self {
@@ -222,6 +234,15 @@ impl Float for f64 {
     #[inline(always)]
     fn square_norm(&self) -> Self {
         (*self as f64).powi(2)
+    }    
+    
+    #[inline(always)]
+    fn powt(&self, other: &Self) -> Self{
+        (*self as f64).powf(*other as f64)
+    }
+    #[inline(always)]
+    fn powi(&self, other: i32) ->Self{
+        (*self as f64).powi(other)
     }
 
     #[inline(always)]

@@ -109,3 +109,18 @@ impl<T: Float> Mul for Jacobi<T> {
         Self { c, s }
     }
 }
+
+
+#[cfg(test)]
+mod jacobi_tests {
+    use super::*;
+
+    #[test]
+    fn make_jacobi_static() {todo!()}
+
+    #[test]
+    fn apply_left_static() {todo!()}
+
+    #[test]
+    fn apply_right_static() {todo!()}
+}
