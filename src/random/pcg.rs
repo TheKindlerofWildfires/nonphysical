@@ -11,6 +11,7 @@ pub struct PermutedCongruentialGenerator<T> {
 //this is probably not cryptographically secure
 impl<T:Float> PermutedCongruentialGenerator<T> {
     pub fn new(state: u32, inc: u32) -> Self {
+        debug_assert!(state!=0 || inc!=0);
         Self { state, inc, phantom: PhantomData::default() }
     }
 
@@ -36,7 +37,7 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
         ((word>>22) ^word).0
     }
 
-    pub fn normal(&mut self, mean: Complex<T>, scale: T, size: usize) -> Vec<Complex<T>>{
+    pub fn normal(&mut self, mean: Complex<T>, scale: T, size: usize) -> Vec<Complex<T>>{        
         let mut samples = Vec::with_capacity(size);
         (0..size).for_each(|_| {
             let mut u1 = T::usize(self.next_u32() as usize)/T::usize(u32::MAX as usize);

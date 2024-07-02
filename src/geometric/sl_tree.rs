@@ -84,7 +84,11 @@ mod sl_tree_tests {
     use super::*;
 
     #[test]
-    fn create_tree_static() {todo!()}
+    fn create_tree_static() {
+
+
+
+    }
 
     #[test]
     fn create_tree_dynamic() {todo!()}

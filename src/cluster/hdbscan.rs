@@ -1,5 +1,15 @@
-/* 
-use std::{char::MAX, collections::VecDeque};
+//I don't like this version very much, it needs to go back in the oven for a bit
+/*
+    issues: 
+        seems really complicated
+        doesn't divide to core/edge/noise
+        couple of repeated work locations
+        couple of uncommon practices (refcell)
+        variables didn't track through very well
+        the kdtree vs balltree issue 
+
+*/
+use std::{cell::RefCell, collections::{BTreeMap, HashMap, VecDeque}};
 
 use crate::{
     cluster::Classification::{Core, Edge, Noise},
@@ -10,7 +20,7 @@ use crate::{
 use super::Classification;
 
 trait HDBSCAN<T: Float> {
-    fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<Classification>
+    fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<isize>
     where
         Self: Sized;
 
@@ -29,6 +39,25 @@ trait HDBSCAN<T: Float> {
         lambda: T,
         size: usize,
     );
+
+    fn calc_stability(cluster_idx:usize, condensed_tree: &Vec<CondensedNode<T>>, size: usize) -> T;
+
+    fn winning_clusters(condensed_tree: &Vec<CondensedNode<T>>, size: usize)-> Vec<usize> ;
+
+    fn intermediate_child_clusters(cluster_idx:usize, condensed_tree: &Vec<CondensedNode<T>>,size:usize) -> Vec<&CondensedNode<T>>;
+
+    fn find_child_clusters(root_node_idx: &usize,condensed_tree: &Vec<CondensedNode<T>>,size:usize) -> Vec<usize>;
+
+    fn label_data(wining_clusters: &Vec<usize>, condensed_tree: &Vec<CondensedNode<T>>,size:usize) -> Vec<isize>;
+
+    fn get_cluster_size(cluster_idx:usize, condensed_tree: &Vec<CondensedNode<T>>) -> usize;
+
+    fn find_child_samples(
+        root_node_idx: usize,
+        node_size: usize,
+        condensed_tree: &Vec<CondensedNode<T>>,
+        size:usize
+    ) -> Vec<usize>;
 }
 
 struct CondensedNode<T: Float> {
@@ -50,7 +79,7 @@ impl<T: Float> CondensedNode<T> {
 }
 
 impl<T: Float> HDBSCAN<T> for Vec<Vec<T>> {
-    fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<Classification>
+    fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<isize>
     where
         Self: Sized,
     {
@@ -60,7 +89,7 @@ impl<T: Float> HDBSCAN<T> for Vec<Vec<T>> {
         let condensed_tree = Self::condense_tree(&sl_tree, input.len(), min_points);
         let winning_clusters = Self::winning_clusters(&condensed_tree,input.len());
 
-        Vec::new()
+        Self::label_data(&winning_clusters, &condensed_tree, input.len())
     }
 
     fn kd_core_distances(input: &Self, k: usize) -> Vec<T> {
@@ -212,16 +241,121 @@ impl<T: Float> HDBSCAN<T> for Vec<Vec<T>> {
                 }
                 visited[child_id] = true;
             });
+
+
     }
 
-    fn winning_clusters(condensed_tree: &Vec<CondensedNode<T>>, size: usize){
+    fn winning_clusters(condensed_tree: &Vec<CondensedNode<T>>, size: usize)-> Vec<usize> {
         let n_clusters = condensed_tree.len() - size +1;
         let stabilities =         (0..size)
-        .map(|n| self.n_samples + n)
+        .map(|n| size + n)
         .map(|cluster_id| (
-            cluster_id, RefCell::new(self.calc_stability(cluster_id, &condensed_tree))
+            cluster_id, RefCell::new(Self::calc_stability(cluster_id, &condensed_tree,n_clusters ))
         ))
-        .collect()
+        .collect::<BTreeMap<usize, RefCell<T>>>();
+    let mut selected_clusters = stabilities.keys().map(|id| (id.clone(),false)).collect::<HashMap<usize, bool>>();
+    for(cluster_idx, stability) in stabilities.iter().rev(){
+        let combined_child_stability = Self::intermediate_child_clusters(*cluster_idx,condensed_tree,size).iter()
+        .map(|node| {
+            stabilities.get(&node.node_idx)
+                .unwrap_or(&RefCell::new(T::ZERO)).borrow().clone()
+        })
+        .fold(T::ZERO, |acc,n| acc+n);
+        if *stability.borrow() > combined_child_stability{
+            //wjhy set it to true then check...
+            *selected_clusters.get_mut(&cluster_idx).unwrap() = true;
+
+            Self::find_child_clusters(&cluster_idx, &condensed_tree,size).iter().for_each(|node_idx|{
+                let is_selected = selected_clusters.get(node_idx);
+                if let Some(true) = is_selected {
+                    *selected_clusters.get_mut(node_idx).unwrap() = false;
+                }
+            });
+        }else{
+            stabilities.get(&cluster_idx).unwrap().replace(combined_child_stability);
+        }
+    }
+    selected_clusters.into_iter().filter(|(_x,keep)|*keep).map(|(id,_)| id).collect()
+    }
+
+    fn calc_stability(cluster_idx:usize, condensed_tree: &Vec<CondensedNode<T>>,size: usize) -> T{
+        let lambda = if cluster_idx==size{
+            T::ZERO
+        }else{
+            condensed_tree.iter().find(|node| node.node_idx == cluster_idx).map(|node| node.lambda).unwrap_or(T::ZERO)
+        };
+
+        condensed_tree.iter().filter(|node| node.parent_node_idx == cluster_idx).map(|node| (node.lambda-lambda)*T::usize(node.size)).fold(T::ZERO, |acc, n| acc+n)
+    }
+
+    fn intermediate_child_clusters(cluster_idx:usize, condensed_tree: &Vec<CondensedNode<T>>,size:usize) -> Vec<&CondensedNode<T>>{
+        condensed_tree.iter().filter(|node| node.parent_node_idx == cluster_idx).filter(|node| node.node_idx >= size).collect()
+    }
+
+    fn find_child_clusters(root_node_idx: &usize,condensed_tree: &Vec<CondensedNode<T>>,size:usize) -> Vec<usize>{
+        let mut process_queue = VecDeque::from([root_node_idx]);
+        let mut child_clusters= Vec::new();
+
+        while !process_queue.is_empty() {
+            let current_node_id = match process_queue.pop_front() {
+                Some(node_id) => node_id,
+                None => break,
+            };
+
+            for node in condensed_tree {
+                if node.node_idx<size {
+                    continue;
+                }
+                if node.parent_node_idx == *current_node_id {
+                    child_clusters.push(node.node_idx);
+                    process_queue.push_back(&node.node_idx);
+                }
+            }
+        }
+        child_clusters
+    }
+
+    fn label_data(wining_clusters: &Vec<usize>, condensed_tree: &Vec<CondensedNode<T>>,size:usize) -> Vec<isize>{
+        let mut current_cluster_idx = 0;
+        let mut labels = vec![-1; size];
+        for cluster_idx in wining_clusters{
+            let node_size = Self::get_cluster_size(*cluster_idx, condensed_tree);
+            Self::find_child_samples(*cluster_idx, node_size,&condensed_tree,size).into_iter().for_each(|id| labels[id] = current_cluster_idx);
+            current_cluster_idx+=1;
+        }
+        labels
+    }
+
+    fn get_cluster_size(cluster_idx:usize, condensed_tree: &Vec<CondensedNode<T>>) -> usize{
+        condensed_tree.iter().find(|node| node.node_idx ==cluster_idx).map(|node| node.size).unwrap_or(1)
+    }
+
+    fn find_child_samples(
+        root_node_idx: usize,
+        node_size: usize,
+        condensed_tree:  &Vec<CondensedNode<T>>,
+        size:usize
+    ) -> Vec<usize> {
+
+        let mut process_queue = VecDeque::from([root_node_idx]);
+        let mut child_nodes = Vec::with_capacity(node_size);
+
+        while !process_queue.is_empty() {
+            let current_node_idx = match process_queue.pop_front() {
+                Some(node_idx) => node_idx,
+                None => break,
+            };
+            for node in condensed_tree {
+                if node.parent_node_idx == current_node_idx {
+                    if node.node_idx<size {
+                        child_nodes.push(node.node_idx);
+
+                    } else {
+                        process_queue.push_back(node.node_idx);
+                    }
+                }
+            }
+        }
+        child_nodes
     }
 }
-*/
