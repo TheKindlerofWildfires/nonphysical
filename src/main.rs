@@ -9,7 +9,7 @@ pub mod signal;
 pub mod random;
 pub mod filter;
 pub mod cluster;
-pub mod geometric;
+pub mod graph;
 
 
 pub mod playground;

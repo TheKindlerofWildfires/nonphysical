@@ -9,11 +9,13 @@
         the kdtree vs balltree issue 
 
 */
+
+/*
 use std::{cell::RefCell, collections::{BTreeMap, HashMap, VecDeque}};
 
 use crate::{
     cluster::Classification::{Core, Edge, Noise},
-    geometric::{kd_tree::KdTree, ms_tree::MSTree, sl_tree::SLTree},
+    graph::{kd_tree::KdTree, ms_tree::MSTree, sl_tree::SLTree},
     shared::float::Float,
 };
 
@@ -359,3 +361,4 @@ impl<T: Float> HDBSCAN<T> for Vec<Vec<T>> {
         child_nodes
     }
 }
+*/
