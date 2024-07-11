@@ -26,30 +26,28 @@ impl<T: Float> SLTreeNode<T> {
 
 impl<T: Float> SLTree<T> {
     pub fn new(input: &MSTree<T>) -> Self {
-        let length = input.ms_tree_vec.len();
-        let mut sl_tree_vec = Vec::with_capacity(length - 1);
-
-        let double_length = 2 * length - 1;
+        let samples = input.ms_tree_vec.len()+1;
+        let mut sl_tree_vec = Vec::with_capacity(samples-1);
+        let double_length = 2 * samples-1;
         let mut parent = vec![double_length; double_length];
-        let mut next_label = length;
-        let mut size_vec = ((0..length).map(|_| 1))
-            .chain((length..double_length).map(|_| 0))
+        let mut next_label = samples;
+        let mut size_vec = ((0..samples).map(|_| 1))
+            .chain((samples..double_length).map(|_| 0))
             .collect::<Vec<_>>();
-        input.ms_tree_vec.iter().for_each(|ms_tree_node| {
-            let left_child = Self::find(ms_tree_node.left_node_idx, &mut parent);
-            let right_child = Self::find(ms_tree_node.right_node_idx, &mut parent);
-            let distance = ms_tree_node.distance;
+        for i in 0..(samples-1){
+            let ms_tree_edge = &input.ms_tree_vec[i];
+            let left_child = Self::find(ms_tree_edge.left_node_idx, &mut parent);
+            let right_child = Self::find(ms_tree_edge.right_node_idx, &mut parent);
+            let distance = ms_tree_edge.distance;
 
             let size = size_vec[left_child] + size_vec[right_child];
-
             sl_tree_vec.push(SLTreeNode::new(left_child, right_child, distance, size));
 
             parent[left_child] = next_label;
             parent[right_child] = next_label;
             size_vec[next_label] = size;
             next_label += 1;
-        });
-
+        };
         Self { sl_tree_vec }
     }
 

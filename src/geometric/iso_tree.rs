@@ -221,7 +221,7 @@ mod iso_tree_tests {
                         }
                         match branch.right.borrow() {
                             IsoNode::Leaf(leaf) => {
-                                dbg!(leaf.count);
+                                unreachable!();
                             }
                             IsoNode::Branch(branch) => {
                                 match branch.left.borrow(){

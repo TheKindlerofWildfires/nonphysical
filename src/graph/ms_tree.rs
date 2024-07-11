@@ -1,4 +1,4 @@
-use crate::shared::float::Float;
+use crate::shared::{float::Float, point::Point};
 
 pub struct MSTreeNode<T: Float> {
     pub left_node_idx: usize,
@@ -22,20 +22,21 @@ impl<T: Float> MSTreeNode<T> {
 
 //prim's algorithm
 impl<T: Float> MSTree<T> {
-    pub fn new(input: &Vec<Vec<T>>,distance_overrides: &Vec<T>) -> Self{
-        let mut in_tree = vec![false; input.len()];
-        let mut distances = vec![T::MAX; input.len()];
+    pub fn new<const N: usize>(input: &Vec<Point<T,N>>,distance_overrides: &Vec<T>) -> Self{
+        let samples = input.len();
+        let mut in_tree = vec![false; samples];
+        let mut distances = vec![T::MAX; samples];
 
         distances[0] = T::ZERO;
 
-        let mut ms_tree_vec = Vec::with_capacity(input.len());
+        let mut ms_tree_vec = Vec::with_capacity(samples);
         let mut left_node_idx = 0;
         let mut right_node_idx = 0;
 
-        (1..input.len()).for_each(|_| {
+        (1..samples).for_each(|_| {
             in_tree[left_node_idx] = true;
             let mut current_min_dist = T::MAX;
-            (0..input.len()).for_each(|i| {
+            (0..samples).for_each(|i| {
                 if !in_tree[i] {
                     let mutual_reach = Self::mutual_reach(left_node_idx, i, input,&distance_overrides);
                     if mutual_reach < distances[i] {
@@ -55,23 +56,18 @@ impl<T: Float> MSTree<T> {
             left_node_idx = right_node_idx;
         });
 
-        MSTree { ms_tree_vec }
+        let mut output = MSTree { ms_tree_vec };
+        output.sort();
+        output
     }
 
-    fn mutual_reach(node_a_idx: usize, node_b_idx: usize, input: &Vec<Vec<T>>,distances: &Vec<T>) -> T{
+    fn mutual_reach<const N: usize>(node_a_idx: usize, node_b_idx: usize, input: &Vec<Point<T,N>>,distances: &Vec<T>) -> T{
         let dist_a = distances[node_a_idx];
         let dist_b = distances[node_b_idx];
 
-        let dist = Self::distance(&input[node_a_idx], &input[node_b_idx]);
+        let dist = input[node_a_idx].distance(&input[node_b_idx]);
 
         dist.greater(dist_a).greater(dist_b)
-    }
-    fn distance(a: &Vec<T>, b: &Vec<T>) -> T {
-        let out = a
-            .iter()
-            .zip(b.iter())
-            .fold(T::ZERO, |dist, (ap, bp)| dist + (*ap - *bp).norm());
-        out
     }
 
     fn sort(&mut self){
