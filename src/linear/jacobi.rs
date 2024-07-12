@@ -113,7 +113,6 @@ impl<T: Float> Mul for Jacobi<T> {
 
 #[cfg(test)]
 mod jacobi_tests {
-    use super::*;
 
     #[test]
     fn make_jacobi_static() {todo!()}

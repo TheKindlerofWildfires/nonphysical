@@ -93,7 +93,6 @@ impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
 
 #[cfg(test)]
 mod iso_forest_tests {
-    use crate::cluster;
 
     use super::*;
 
@@ -247,7 +246,7 @@ mod iso_forest_tests {
         let scores = <Vec<Point<f32,2>> as IsoForest<f32,2>>::score(&data, &trees, average_path, 0.45, 0.50);
 
         dbg!(scores);
-        let known_scores = vec![
+        let _known_scores = vec![
             Edge(0),
             Core(0),
             Core(0),

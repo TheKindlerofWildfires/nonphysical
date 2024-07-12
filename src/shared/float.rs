@@ -36,7 +36,7 @@ pub trait Float:
 
     //utility
     fn sin_cos(&self) -> (Self, Self);
-    fn atan2(&self, other: Self) -> Self;
+    fn atan2(&self, other: &Self) -> Self;
     fn exp(&self) -> Self;
     fn recip(&self) -> Self;
     fn sqrt(&self) -> Self;
@@ -100,7 +100,7 @@ impl Float for f32 {
 
     #[inline(always)]
     fn exp(&self) -> Self {
-        (*self as f32).exp()
+        (*self).exp()
     }
 
     #[inline(always)]
@@ -115,68 +115,68 @@ impl Float for f32 {
 
     #[inline(always)]
     fn recip(&self) -> Self {
-        (*self as f32).recip()
+        (*self).recip()
     }
 
     #[inline(always)]
     fn sqrt(&self) -> Self {
-        (*self as f32).sqrt()
+        (*self).sqrt()
     }
 
     #[inline(always)]
     fn norm(&self) -> Self {
-        (*self as f32).abs()
+        (*self).abs()
     }
 
     #[inline(always)]
     fn square_norm(&self) -> Self {
-        (*self as f32).powi(2)
+        (*self).powi(2)
     }
     #[inline(always)]
     fn powt(&self, other: &Self) -> Self{
-        (*self as f32).powf(*other as f32)
+        (*self).powf(*other)
     }
     #[inline(always)]
     fn powi(&self, other: i32) ->Self{
-        (*self as f32).powi(other)
+        (*self).powi(other)
     }
     #[inline(always)]
-    fn atan2(&self, other: Self) -> Self{
-        (*self as f32).atan2(other as f32)
+    fn atan2(&self, other: &Self) -> Self{
+        (*self).atan2(*other)
     }
 
     #[inline(always)]
     fn ln(&self) -> Self {
-        (*self as f32).ln()
+        (*self).ln()
     }
 
     #[inline(always)]
     fn sin(&self) -> Self {
-        (*self as f32).sin()
+        (*self).sin()
     }
     #[inline(always)]
     fn cos(&self) -> Self {
-        (*self as f32).cos()
+        (*self).cos()
     }
     fn tan(&self) -> Self{
-        (*self as f32).tan()
+        (*self).tan()
     }
 
     fn to_usize(&self) -> usize{
         *self as usize 
     }
     fn is_nan(&self) -> bool{
-        (*self as f32).is_nan()
+        (*self).is_nan()
     }
 
     fn sinh(&self) -> Self{
-        (*self as f32).sinh()
+        (*self).sinh()
     }
     fn cosh(&self) -> Self{
-        (*self as f32).cosh()
+        (*self).cosh()
     }
     fn tanh(&self) -> Self{
-        (*self as f32).tanh()
+        (*self).tanh()
     }
 }
 impl Float for f64 {
@@ -211,77 +211,77 @@ impl Float for f64 {
 
     #[inline(always)]
     fn sin_cos(&self) -> (Self, Self) {
-        (*self as f64).sin_cos()
+        (*self).sin_cos()
     }
     #[inline(always)]
     fn exp(&self) -> Self {
-        (*self as f64).exp()
+        (*self).exp()
     }
     #[inline(always)]
     fn recip(&self) -> Self {
-        (*self as f64).recip()
+        (*self).recip()
     }
     #[inline(always)]
     fn sqrt(&self) -> Self {
-        (*self as f64).sqrt()
+        (*self).sqrt()
     }
 
     #[inline(always)]
     fn norm(&self) -> Self {
-        (*self as f64).abs()
+        (*self).abs()
     }
 
     #[inline(always)]
     fn square_norm(&self) -> Self {
-        (*self as f64).powi(2)
+        (*self).powi(2)
     }    
     
     #[inline(always)]
     fn powt(&self, other: &Self) -> Self{
-        (*self as f64).powf(*other as f64)
+        (*self).powf(*other)
     }
     #[inline(always)]
     fn powi(&self, other: i32) ->Self{
-        (*self as f64).powi(other)
+        (*self).powi(other)
     }
 
     #[inline(always)]
-    fn atan2(&self, other: Self) -> Self{
-        (*self as f64).atan2(other as f64)
+    fn atan2(&self, other: &Self) -> Self{
+        (*self).atan2(*other)
     }
     #[inline(always)]
     fn ln(&self) -> Self {
-        (*self as f64).ln()
+        (*self).ln()
     }
 
     #[inline(always)]
     fn sin(&self) -> Self {
-        (*self as f64).sin()
+        (*self).sin()
     }
     #[inline(always)]
     fn cos(&self) -> Self {
-        (*self as f64).cos()
+        (*self).cos()
     }
 
     fn tan(&self) -> Self{
-        (*self as f64).tan()
+        (*self).tan()
     }
 
     fn to_usize(&self) -> usize{
         *self as usize 
     }
     fn is_nan(&self) -> bool{
-        (*self as f64).is_nan()
+        (*self).is_nan()
     }
 
     fn sinh(&self) -> Self{
-        (*self as f64).sinh()
+        (*self).sinh()
     }
     fn cosh(&self) -> Self{
-        (*self as f64).cosh()
+        (*self).cosh()
     }
 
     fn tanh(&self) -> Self{
-        (*self as f64).tanh()
+        (*self).tanh()
     }
 }
