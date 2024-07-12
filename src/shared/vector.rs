@@ -46,7 +46,7 @@ pub trait Vector<'a, T: Float + 'a> {
     where
         I: Iterator<Item = &'a mut Complex<T>>,
     {
-        iter.for_each(|c| *c = *c + rhs)
+        iter.for_each(|c| *c += rhs)
     }
 
     fn acc<I,J>(iter: I, rhs:J)
@@ -54,7 +54,7 @@ pub trait Vector<'a, T: Float + 'a> {
         I: Iterator<Item = &'a mut Complex<T>>,
         J: Iterator<Item = &'a Complex<T>>,
     {
-        iter.zip(rhs).for_each(|(i,j)| *i = *i + *j)
+        iter.zip(rhs).for_each(|(i,j)| *i += *j)
     }
 
     fn prod<I,J>(iter: I, rhs:J)

@@ -81,11 +81,11 @@ impl Float for f32 {
     const MIN: Self = f32::MIN;
     const SMALL: Self = f32::MIN_POSITIVE;
     const EPSILON: Self = f32::EPSILON;
-    const GAMMA: Self = 0.57721566490153286060651209008240243104215933593992;
+    const GAMMA: Self = 0.577_215_7;
 
     #[inline(always)]
     fn sin_cos(&self) -> (Self, Self) {
-        (*self as f32).sin_cos()
+        (*self).sin_cos()
     }
 
     #[inline(always)]
@@ -188,7 +188,7 @@ impl Float for f64 {
     const MIN: Self = f64::MIN;
     const SMALL: Self = f64::MIN_POSITIVE;
     const EPSILON: Self = f64::EPSILON;
-    const GAMMA: Self = 0.57721566490153286060651209008240243104215933593992;
+    const GAMMA: Self = 0.577_215_664_901_532_9;
 
     #[inline(always)]
     fn usize(u: usize) -> Self {

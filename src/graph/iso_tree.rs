@@ -94,7 +94,6 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
             };
             //zeros a split vector
             let mut split_vector = Point::ZERO;
-            rng.normal(Complex::ZERO, T::ONE, 1)[0].real;
 
             //sets the vars to normal randoms
             split_vector
@@ -112,7 +111,7 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
             let mut points_right = Vec::new();
 
             points.iter().for_each(|point| {
-                match Self::branch_left(&point, &split_point, &split_vector) {
+                match Self::branch_left(point, &split_point, &split_vector) {
                     true => points_left.push(point.clone()),
                     false => points_right.push(point.clone()),
                 }
@@ -153,7 +152,7 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
     }
 
     pub fn path_length(node: &IsoNode<T, N>, point: &Point<T, N>) -> T {
-        let length = match node {
+        match node {
             IsoNode::Leaf(leaf) => {
                 if leaf.count <= 1 {
                     T::ZERO
@@ -163,14 +162,13 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
             }
             IsoNode::Branch(branch) => {
                 let child =
-                    match Self::branch_left(&point, &branch.split_point, &branch.split_vector) {
+                    match Self::branch_left(point, &branch.split_point, &branch.split_vector) {
                         true => &branch.left,
                         false => &branch.right,
                     };
                 T::ONE + Self::path_length(child, point)
             }
-        };
-        length
+        }
     }
 
     pub fn c_factor(n: usize) -> T {

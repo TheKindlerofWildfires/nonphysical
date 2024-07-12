@@ -17,11 +17,11 @@ trait DiscreteWavelet<T: Float> {
 
     fn coefficients() -> Vec<Complex<T>>;
 
-    fn forward(input: &Self, coefficients: &Vec<Complex<T>>) -> Vec<Self>
+    fn forward(input: &Self, coefficients: &[Complex<T>]) -> Vec<Self>
     where
         Self: Sized;
 
-    fn backward(input: Vec<Self>, coefficients: &Vec<Complex<T>>) -> Self
+    fn backward(input: Vec<Self>, coefficients:&[Complex<T>]) -> Self
     where
         Self: Sized;
 
@@ -37,11 +37,11 @@ trait DaubechiesFirstWavelet<T: Float>: DiscreteWavelet<T> {
         ]
     }
 
-    fn daubechies_first_forward(input: &Self, coefficients: &Vec<Complex<T>>) -> Vec<Self>
+    fn daubechies_first_forward(input: &Self, coefficients: &[Complex<T>]) -> Vec<Self>
     where
         Self: Sized;
 
-    fn daubechies_first_backward(input: Vec<Self>, coefficients: &Vec<Complex<T>>) -> Self
+    fn daubechies_first_backward(input: Vec<Self>, coefficients: &[Complex<T>]) -> Self
     where
         Self: Sized;
 }
@@ -59,14 +59,14 @@ impl<T: Float, F: DaubechiesFirstWavelet<T>> DiscreteWavelet<T> for F {
         Self::daubechies_first_coefficients()
     }
 
-    fn forward(input: &Self, coefficients: &Vec<Complex<T>>) -> Vec<Self>
+    fn forward(input: &Self, coefficients: &[Complex<T>]) -> Vec<Self>
     where
         Self: Sized,
     {
         Self::daubechies_first_forward(input, coefficients)
     }
 
-    fn backward(input: Vec<Self>, coefficients: &Vec<Complex<T>>) -> Self
+    fn backward(input: Vec<Self>, coefficients: &[Complex<T>]) -> Self
     where
         Self: Sized,
     {
@@ -75,7 +75,7 @@ impl<T: Float, F: DaubechiesFirstWavelet<T>> DiscreteWavelet<T> for F {
 }
 
 impl<T: Float> DaubechiesFirstWavelet<T> for Vec<Complex<T>> {
-    fn daubechies_first_forward(input: &Self, coefficients: &Vec<Complex<T>>) -> Vec<Vec<Complex<T>>> {
+    fn daubechies_first_forward(input: &Self, coefficients: &[Complex<T>]) -> Vec<Vec<Complex<T>>> {
         let n = input.len();
         debug_assert!(n % 2 == 0);
         let half_n = n/2;
@@ -109,7 +109,7 @@ impl<T: Float> DaubechiesFirstWavelet<T> for Vec<Complex<T>> {
         dwt_result
     }*/
 
-    fn daubechies_first_backward(input: Vec<Self>, coefficients: &Vec<Complex<T>>) -> Vec<Complex<T>> {
+    fn daubechies_first_backward(input: Vec<Self>, coefficients:&[Complex<T>]) -> Vec<Complex<T>> {
         debug_assert!(input.len() == 2);
         let low_pass = &input[0];
         let high_pass = &input[1];

@@ -84,8 +84,7 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
             let old_idx = indices[i];
             if new_idx != old_idx {
                 let tmp = singular[new_idx];
-                singular[new_idx] = singular[old_idx];
-                singular[old_idx] = tmp;
+                singular.swap(new_idx, old_idx);
                 u.row_swap(new_idx, old_idx);
                 v.row_swap(new_idx, old_idx);
 

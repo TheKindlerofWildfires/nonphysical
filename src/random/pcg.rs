@@ -12,7 +12,7 @@ pub struct PermutedCongruentialGenerator<T> {
 impl<T:Float> PermutedCongruentialGenerator<T> {
     pub fn new(state: u32, inc: u32) -> Self {
         debug_assert!(state!=0 || inc!=0);
-        Self { state, inc, phantom: PhantomData::default() }
+        Self { state, inc, phantom: PhantomData }
     }
 
     //not safe at all, reasonably easy to extract time
@@ -27,7 +27,7 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
 
         let inc = state<<1 |1;
 
-        Self { state, inc,phantom: PhantomData::default() }
+        Self { state, inc,phantom: PhantomData }
     }
 
     pub fn next_u32(&mut self) -> u32 {

@@ -143,11 +143,9 @@ impl<T: Float, const N: usize> KdTree<T, N> {
         self.shared.size += 1;
         match &mut self.node {
             KdNode::Leaf(leaf) => {
-                let may_branch = leaf.add_to_bucket(&self.shared, point, data);
-                match may_branch {
-                    Some(branch) => self.node = KdNode::Branch(branch),
-                    None => {}
-                }
+                if let Some(branch) = leaf.add_to_bucket(&self.shared, point, data) {
+                    self.node = KdNode::Branch(branch);
+                };
             }
             KdNode::Branch(branch) => {
                 let next = match branch.branch_left(&self.shared, &point) {
@@ -222,7 +220,7 @@ impl<T: Float, const N: usize> KdTree<T, N> {
         loop {
             match &current.node {
                 KdNode::Branch(branch) => {
-                    let candidate = match branch.branch_left(&self.shared, &point) {
+                    let candidate = match branch.branch_left(&self.shared, point) {
                         true => {
                             let temp = branch.right.as_ref();
                             current = branch.left.as_ref();
@@ -236,14 +234,14 @@ impl<T: Float, const N: usize> KdTree<T, N> {
                     };
 
                     let candidate_to_space = self.distance_to_space(
-                        &point,
+                        point,
                         &candidate.shared.min_bounds,
                         &candidate.shared.max_bounds,
                     );
                     if candidate_to_space <= eval_dist {
                         pending.push(HeapElement {
                             distance: -candidate_to_space,
-                            element: &candidate,
+                            element: candidate,
                         })
                     }
                 }
@@ -253,7 +251,7 @@ impl<T: Float, const N: usize> KdTree<T, N> {
                     points
                         .zip(bucket)
                         .map(|(p, d)| HeapElement {
-                            distance: point.distance(&p),
+                            distance: point.distance(p),
                             element: d,
                         })
                         .for_each(|element| {
@@ -305,7 +303,7 @@ impl<T: Float, O> Ord for HeapElement<T, O> {
 
 impl<T: Float, O> PartialOrd for HeapElement<T, O> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.distance.partial_cmp(&other.distance)
+        Some(self.cmp(other))
     }
 }
 

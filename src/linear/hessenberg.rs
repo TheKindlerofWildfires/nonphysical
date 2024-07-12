@@ -1,4 +1,4 @@
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
+use crate::shared::{float::Float, matrix::Matrix};
 
 
 pub trait Hessenberg<T: Float> {

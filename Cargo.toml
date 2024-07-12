@@ -5,12 +5,15 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build]
-rustflags = ["-C", "target-cpu=native"]
-
 [profile.release]
 codegen-units = 1
 panic = "abort"
 strip = "symbols"
+#rustflags = ["-C", "target-cpu=native"]
+
+[profile.lto]
+inherits = "release"
+lto="fat"
+
 
 [dependencies]

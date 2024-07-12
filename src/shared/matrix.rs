@@ -139,9 +139,7 @@ impl<T: Float> Matrix<T> {
 
     pub fn col_swap(&mut self, a: usize, b: usize) {
         self.data.chunks_exact_mut(self.columns).for_each(|row| {
-            let tmp = row[a];
-            row[a] = row[b];
-            row[b] = tmp;
+            row.swap(a,b);
         });
     }
 
@@ -160,9 +158,7 @@ impl<T: Float> Matrix<T> {
         let row_y = rows.nth(y-x-1).unwrap();
 
         row_x.iter_mut().zip(row_y.iter_mut()).for_each(|(ap, bp)| {
-            let tmp = *ap;
-            *ap = *bp;
-            *bp = tmp;
+            std::mem::swap(&mut(*ap), &mut (*bp));
         });
     }
 

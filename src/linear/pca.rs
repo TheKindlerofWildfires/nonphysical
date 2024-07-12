@@ -16,13 +16,13 @@ impl<T: Float> PrincipleComponentAnalysis<T> for Matrix<T> {
     {
         self.normalize();
         let mut covariance = self.covariance();
-        let (eigen_values,eigen_vectors) = <Matrix<T> as Eigen<T>>::symmetric_eigen(&mut covariance);
+        let (_,eigen_vectors) = <Matrix<T> as Eigen<T>>::symmetric_eigen(&mut covariance);
         let partial_principles = Matrix::new(
             components,
             eigen_vectors
                 .data_rows()
                 .take(components)
-                .flat_map(|row| row.iter().map(|c| c.clone()))
+                .flat_map(|row| row.iter().copied())
                 .collect::<Vec<_>>(),
         );
         self.transform(&partial_principles)

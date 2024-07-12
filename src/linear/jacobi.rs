@@ -79,8 +79,8 @@ impl<'a, T: Float + 'a> Jacobi<T> {
         
         row_p.iter_mut().zip(row_q.iter_mut()).for_each(|(pp,qp)|{
             let tmp = *pp;
-            *pp = j.c* *pp +j.s.conj()**qp; 
-            *qp = -j.s*tmp +j.c.conj() ** qp;
+            *pp = j.c* *pp +j.s.conj() * *qp; 
+            *qp = -j.s*tmp +j.c.conj() * *qp;
         });
         
     }

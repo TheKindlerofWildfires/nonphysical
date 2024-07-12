@@ -24,8 +24,8 @@ pub trait Gemm<'a, T: Float + 'a> {
         let y_cols = y.columns;
 
         //pad out to size 4
-        let x = Self::pad(&x);
-        let y = Self::pad(&y);
+        let x = Self::pad(x);
+        let y = Self::pad(y);
 
         let mut z = Matrix::zero(x.rows, y.columns); //this is now oversize
 
@@ -47,8 +47,7 @@ pub trait Gemm<'a, T: Float + 'a> {
                 );
             }
         }
-        let z = Self::cut(x_rows, y_cols, &z);
-        z
+        Self::cut(x_rows, y_cols, &z)
     }
 
     #[inline(always)]

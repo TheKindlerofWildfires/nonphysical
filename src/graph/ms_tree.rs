@@ -22,7 +22,7 @@ impl<T: Float> MSTreeNode<T> {
 
 //prim's algorithm
 impl<T: Float> MSTree<T> {
-    pub fn new<const N: usize>(input: &Vec<Point<T,N>>,distance_overrides: &Vec<T>) -> Self{
+    pub fn new<const N: usize>(input: &Vec<Point<T,N>>,distance_overrides: &[T]) -> Self{
         let samples = input.len();
         let mut in_tree = vec![false; samples];
         let mut distances = vec![T::MAX; samples];
@@ -38,7 +38,7 @@ impl<T: Float> MSTree<T> {
             let mut current_min_dist = T::MAX;
             (0..samples).for_each(|i| {
                 if !in_tree[i] {
-                    let mutual_reach = Self::mutual_reach(left_node_idx, i, input,&distance_overrides);
+                    let mutual_reach = Self::mutual_reach(left_node_idx, i, input,distance_overrides);
                     if mutual_reach < distances[i] {
                         distances[i] = mutual_reach;
                     }
@@ -61,7 +61,7 @@ impl<T: Float> MSTree<T> {
         output
     }
 
-    fn mutual_reach<const N: usize>(node_a_idx: usize, node_b_idx: usize, input: &Vec<Point<T,N>>,distances: &Vec<T>) -> T{
+    fn mutual_reach<const N: usize>(node_a_idx: usize, node_b_idx: usize, input: &[Point<T,N>],distances: &[T]) -> T{
         let dist_a = distances[node_a_idx];
         let dist_b = distances[node_b_idx];
 

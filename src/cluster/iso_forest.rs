@@ -18,7 +18,7 @@ trait IsoForest<T: Float,const N:usize> {
 
     fn score(
         input: &Self,
-        trees: &Vec<IsoTree<T,N>>,
+        trees: &[IsoTree<T,N>],
         average_path: T,
         core_threshold: T,
         edge_threshold: T,
@@ -63,7 +63,7 @@ impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
 
     fn score(
         input: &Self,
-        trees: &Vec<IsoTree<T,N>>,
+        trees: &[IsoTree<T,N>],
         average_path: T,
         core_threshold: T,
         edge_threshold: T,
@@ -79,7 +79,6 @@ impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
                     / T::usize(trees.len());
 
                 let anomaly_score = T::usize(2).powt(&(-path_length / average_path));
-                dbg!(anomaly_score);
                 if anomaly_score < core_threshold {
                     Core(0)
                 } else if anomaly_score < edge_threshold {
@@ -175,27 +174,30 @@ mod iso_forest_tests {
             Edge(0),
             Core(0),
             Core(0),
+            Core(0),
+            Core(0),
+            Edge(0),
+            Edge(0),
+            Core(0),
+            Edge(0),
             Edge(0),
             Core(0),
             Core(0),
             Edge(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Core(0),
             Core(0),
             Noise,
             Noise,
             Noise,
             Noise,
         ];
-
         scores
             .iter()
             .zip(known_scores.iter())
-            .for_each(|(s, ks)| assert!(*s == *ks));
+            .for_each(|(s, ks)|{
+                dbg!(s,ks);
+                assert!(*s == *ks)
+            }
+           );
     }
 
     #[test]
@@ -240,7 +242,6 @@ mod iso_forest_tests {
             .iter()
             .zip(known_scores.iter())
             .for_each(|(s, ks)| {
-                dbg!(s,ks);
                 assert!(*s == *ks);});
 
         let scores = <Vec<Point<f32,2>> as IsoForest<f32,2>>::score(&data, &trees, average_path, 0.45, 0.50);

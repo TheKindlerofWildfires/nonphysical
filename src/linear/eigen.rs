@@ -1,4 +1,4 @@
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
+use crate::shared::{complex::Complex, float::Float, matrix::Matrix};
 
 
 pub trait Eigen<T: Float> {

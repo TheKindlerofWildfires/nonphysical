@@ -71,7 +71,7 @@ impl<T: Float> FastFourierTransform<T> {
                 .zip(twiddles)
                 .for_each(|((c_s0, c_s1), w)| {
                     let temp = *c_s0 - *c_s1;
-                    *c_s0 = *c_s0 + *c_s1;
+                    *c_s0 += *c_s1;
                     *c_s1 = temp * *w;
                 });
         });
@@ -83,11 +83,11 @@ impl<T: Float> FastFourierTransform<T> {
             let (complex_s0, complex_s1) = chunk.split_at_mut(2);
 
             let temp = complex_s0[0];
-            complex_s0[0] = complex_s0[0] + complex_s1[0];
+            complex_s0[0] += complex_s1[0];
             complex_s1[0] = temp - complex_s1[0];
 
             let temp = complex_s0[1];
-            complex_s0[1] = complex_s0[1] + complex_s1[1];
+            complex_s0[1] += complex_s1[1];
             complex_s1[1] = (temp - complex_s1[1]).mul_ni();
         });
     }
@@ -96,7 +96,7 @@ impl<T: Float> FastFourierTransform<T> {
     fn fft_chunk_2(x: &mut [Complex<T>]) {
         x.chunks_exact_mut(2).for_each(|chunk| {
             let temp = chunk[0];
-            chunk[0] = chunk[0] + chunk[1];
+            chunk[0] += chunk[1];
             chunk[1] = temp - chunk[1];
         });
     }
@@ -109,8 +109,8 @@ impl<T: Float> FastFourierTransform<T> {
 
         let mut forward = half_n;
         let mut rev = 1;
-        (0..quart_n).rev().for_each(|i| {
-            let zeros = (i as usize).trailing_ones();
+        (0..quart_n).rev().for_each(|i:usize| {
+            let zeros = i.trailing_ones();
 
             forward ^= 2 << zeros;
             rev ^= quart_n >> zeros;
