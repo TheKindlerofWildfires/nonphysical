@@ -38,17 +38,17 @@ impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
         let max_depth = T::usize(samples).ln().to_usize();
         let mut pcg = PermutedCongruentialGenerator::<T>::new(seed as u32, seed as u32);
 
-        let sub_tree_count = input.len() / samples;
+        let sub_tree_count = input.len() / samples + if input.len() % samples != 0 { 1 } else { 0 };
         //modification to algorithm: always checks every tree from permutation mod samples,makes it more fair
         let trees = (0..tree_count)
             .flat_map(|_| {
-                let mut indices = (0..input.len()).collect();
+                let mut indices = (0..input.len()).collect::<Vec<_>>();
                 pcg.shuffle_usize(&mut indices);
                 let sub_trees = indices
                     .chunks(samples)
                     .take(sub_tree_count)
                     .map(|index_chunk| {
-                        let tree_data = index_chunk.iter().map(|i| input[*i].clone()).collect();
+                        let tree_data = index_chunk.iter().map(|i| input[*i].clone()).collect::<Vec<_>>();
 
                         IsoTree::new(&tree_data, max_depth, extension_level, &mut pcg)
                     })
@@ -193,7 +193,6 @@ mod iso_forest_tests {
             .iter()
             .zip(known_scores.iter())
             .for_each(|(s, ks)|{
-                dbg!(s,ks);
                 assert!(*s == *ks)
             }
            );

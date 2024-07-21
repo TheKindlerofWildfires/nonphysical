@@ -46,7 +46,7 @@ impl<T: Float, const N: usize> IsoBranch<T, N> {
 
 impl<T: Float, const N: usize> IsoTree<T, N> {
     pub fn new(
-        points: &Vec<Point<T, N>>,
+        points: &[Point<T, N>],
         max_depth: usize,
         extension_level: usize,
         rng: &mut PermutedCongruentialGenerator<T>,
@@ -56,7 +56,7 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
     }
 
     fn make_node(
-        points: &Vec<Point<T, N>>,
+        points: &[Point<T, N>],
         current_depth: usize,
         max_depth: usize,
         extension_level: usize,
@@ -101,7 +101,7 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
                 .iter_mut()
                 .for_each(|n| *n = rng.normal(Complex::ZERO, T::ONE, 1)[0].real);
             //rezeros unextended values (this feels backwards)
-            let mut unextended = (0..N).collect();
+            let mut unextended = (0..N).collect::<Vec<_>>();
             rng.shuffle_usize(&mut unextended);
             unextended[0..N - extension_level - 1]
                 .iter_mut()
@@ -263,15 +263,5 @@ mod iso_tree_tests {
                 };
             }
         }
-    }
-
-    #[test]
-    fn create_tree_dynamic() {
-        todo!()
-    }
-
-    #[test]
-    fn path_length() {
-        todo!()
     }
 }

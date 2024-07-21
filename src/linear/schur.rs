@@ -17,7 +17,7 @@ pub trait Schur<T: Float> {
 impl<T: Float> Schur<T> for Matrix<T> {
     fn schur(&mut self) -> Self {
         let h_coefficients = <Matrix<T> as Hessenberg<T>>::hessenberg(self);
-        let mut u = <Matrix<T> as Hessenberg<T>>::sequence(&self, &h_coefficients);
+        let mut u = <Matrix<T> as Hessenberg<T>>::sequence(self, &h_coefficients);
         Self::reduce_triangular(self, &mut u);
         todo!()
     }

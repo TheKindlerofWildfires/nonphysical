@@ -22,7 +22,7 @@ impl<T: Float> MSTreeNode<T> {
 
 //prim's algorithm
 impl<T: Float> MSTree<T> {
-    pub fn new<const N: usize>(input: &Vec<Point<T,N>>,distance_overrides: &[T]) -> Self{
+    pub fn new<const N: usize>(input: &[Point<T,N>],distance_overrides: &[T]) -> Self{
         let samples = input.len();
         let mut in_tree = vec![false; samples];
         let mut distances = vec![T::MAX; samples];

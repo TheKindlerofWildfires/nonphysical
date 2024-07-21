@@ -6,13 +6,13 @@ use crate::{
 use super::Classification;
 
 
-trait DBSCAN<T: Float,const N: usize> {
+trait Dbscan<T: Float,const N: usize> {
     fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<Classification>
     where
         Self: Sized;
 }
 
-impl<T: Float,const N: usize> DBSCAN<T,N> for Vec<Point<T,N>> {
+impl<T: Float,const N: usize> Dbscan<T,N> for Vec<Point<T,N>> {
     fn cluster(input: &Self, epsilon: &T, min_points: usize) -> Vec<Classification>
     where
         Self: Sized,
@@ -88,7 +88,7 @@ mod dbscan_tests{
             Point::new([-9.465804800021168, -2.2222090878656884]),
         ];
 
-        let mask = <Vec<Point<f32,2>> as DBSCAN<f32,2>>::cluster(&data,&9.0, 5);
+        let mask = <Vec<Point<f32,2>> as Dbscan<f32,2>>::cluster(&data,&9.0, 5);
         let known_mask = vec![Core(0), Core(1), Core(1), Core(1), Core(0), Core(1), Core(0), Core(1), Core(1), Core(0), Core(1), Core(1), Core(0), Core(1), Core(0), Core(1), Core(0), Core(1), Core(1), Core(1)];
         mask.iter().zip(known_mask.iter()).for_each(|(m,k)|{
             assert!(*m==*k);

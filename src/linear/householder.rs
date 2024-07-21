@@ -55,7 +55,7 @@ impl<'a, T: Float + 'a> Householder<T> {
     pub fn apply_left_local_vec(
         &self,
         matrix: &mut Matrix<T>,
-        vec: &Vec<Complex<T>>,
+        vec: &[Complex<T>],
         row_range: [usize; 2],
         col_range: [usize; 2],
     ) {
@@ -88,7 +88,7 @@ impl<'a, T: Float + 'a> Householder<T> {
     pub fn apply_right_local_vec(
         &self,
         matrix: &mut Matrix<T>,
-        vec: &Vec<Complex<T>>,
+        vec: &[Complex<T>],
         row_range: [usize; 2],
         col_range: [usize; 2],
     ) {

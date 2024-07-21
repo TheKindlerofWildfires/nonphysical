@@ -51,7 +51,7 @@ impl<T: Float> SLTree<T> {
         Self { sl_tree_vec }
     }
 
-    fn find(node_idx: usize, parent: &mut Vec<usize>) -> usize {
+    fn find(node_idx: usize, parent: &mut [usize]) -> usize {
         let mut n = node_idx;
         let mut p = node_idx;
 

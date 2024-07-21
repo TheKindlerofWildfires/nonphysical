@@ -251,14 +251,4 @@ mod iso_tree_tests {
             }
         }
     }
-
-    #[test]
-    fn create_tree_dynamic() {
-        todo!()
-    }
-
-    #[test]
-    fn path_length() {
-        todo!()
-    }
 }

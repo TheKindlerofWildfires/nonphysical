@@ -6,7 +6,7 @@ use crate::{
 pub trait Hessenberg<T: Float> {
     fn hessenberg(&mut self) -> Vec<Complex<T>>;
 
-    fn sequence(&self, coefficients: &Vec<Complex<T>>) -> Self;
+    fn sequence(&self, coefficients: &[Complex<T>]) -> Self;
 }
 
 impl<T: Float> Hessenberg<T> for Matrix<T> {
@@ -23,7 +23,7 @@ impl<T: Float> Hessenberg<T> for Matrix<T> {
         }
         h_coefficients
     }
-    fn sequence(&self, coefficients: &Vec<Complex<T>>) -> Self {
+    fn sequence(&self, coefficients: &[Complex<T>]) -> Self {
         let mut output = Matrix::identity(self.rows, self.rows);
         for i in (0..self.rows - 1).rev() {
             let householder = Householder {

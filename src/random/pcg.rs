@@ -51,7 +51,7 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
         samples
     }
 
-    pub fn shuffle_usize(&mut self, x: &mut Vec<usize>) {
+    pub fn shuffle_usize(&mut self, x: &mut [usize]) {
         (1..x.len()).rev().for_each(|i|{
             let j = (self.next_u32() as usize) % i; //this introduces bias when x.len() approaches usize, I find this to be a non problem
             x.swap(i, j);

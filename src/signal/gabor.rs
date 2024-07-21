@@ -46,6 +46,6 @@ impl<T: Float> GaborTransform<T> {
     fn convolve(x: &mut [Complex<T>], y: &[Complex<T>]) {
         x.iter_mut()
             .zip(y)
-            .for_each(|(xi, yi)| *xi = *xi * yi.conj());
+            .for_each(|(xi, yi)| *xi *= yi.conj());
     }
 }

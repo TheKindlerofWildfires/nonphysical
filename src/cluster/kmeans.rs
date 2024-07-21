@@ -109,7 +109,7 @@ impl<T: Float,const N: usize> Kmeans<T,N> for Vec<Point<T,N>> {
                         centroid.data.iter_mut().for_each(|cp| *cp = T::ZERO);
                     },
                     size => {
-                        centroid.data.iter_mut().for_each(|cp| *cp = *cp/T::usize(*size))
+                        centroid.data.iter_mut().for_each(|cp| *cp /=T::usize(*size))
                     }
                 }
             });

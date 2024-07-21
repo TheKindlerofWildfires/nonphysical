@@ -105,6 +105,7 @@ impl<T: Float, const N: usize> KdBranch<T, N> {
     }
 
     fn branch_left(&self, shared: &KdShared<T, N>, point: &Point<T, N>) -> bool {
+        //reduce the
         if point.data[self.split_dimension] == self.split_value{
             SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()
             .as_nanos()%2==0
@@ -140,6 +141,9 @@ impl<T: Float, const N: usize> KdTree<T, N> {
 
     pub fn len(&self) -> usize {
         self.shared.size
+    }
+    pub fn is_empty(&self) -> bool{
+        self.shared.size==0
     }
 
     pub fn add(&mut self, point: Point<T, N>, data: usize) {
@@ -728,7 +732,5 @@ mod kd_tree_tests {
         (0..500).for_each(|i| kd_tree.add(Point::new([f32::usize(i), f32::usize(i + 1)]), i));
 
         let _ = dbg!(now.elapsed());
-
-        assert!(1 == 2);
     }
 }
