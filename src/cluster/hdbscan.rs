@@ -485,7 +485,7 @@ mod hdbscan_tests {
         (0..2000).for_each(|i| data.push(Point::new([f32::usize(i), f32::usize(i + 1)])));
         let now = SystemTime::now();
         <Vec<Point<f32,2>> as HDBSCAN<f32,2>>::cluster(&data, 32);
-        dbg!(now.elapsed()); //about twice as fast as python.. but could it be better?
+        let _ = dbg!(now.elapsed()); //about twice as fast as python.. but could it be better?
         assert!(1==2);
     }
 }

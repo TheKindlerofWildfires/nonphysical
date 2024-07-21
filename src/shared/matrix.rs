@@ -101,6 +101,68 @@ impl<T: Float> Matrix<T> {
         self.data[column * self.columns..(column + 1) * self.columns].iter()
     }
 
+    pub(crate) fn data_north(&self, north: usize) -> impl Iterator<Item = &Complex<T>> {
+        self.data().take(north * self.columns)
+    }
+
+    pub(crate) fn data_south(&self, south: usize) -> impl Iterator<Item = &Complex<T>> {
+        self.data().skip((self.rows - south) * self.columns)
+    }
+    pub(crate) fn data_west(&self, west: usize) -> impl Iterator<Item = &Complex<T>> {
+        self.data()
+            .enumerate()
+            .filter(move |(i, _)| i % self.columns < west)
+            .map(|(_, c)| c)
+    }
+    pub(crate) fn data_east(&self, east: usize) -> impl Iterator<Item = &Complex<T>> {
+        self.data()
+            .enumerate()
+            .filter(move |(i, _)| i % self.columns >= self.columns-east)
+            .map(|(_, c)| c)
+    }
+
+    pub(crate) fn data_north_west(
+        &self,
+        north: usize,
+        west: usize,
+    ) -> impl Iterator<Item = &Complex<T>> {
+        self.data_north(north)
+            .enumerate()
+            .filter(move |(i, _)| i % self.columns < west)
+            .map(|(_, c)| c)
+    }
+    pub(crate) fn data_north_east(
+        &self,
+        north: usize,
+        east: usize,
+    ) -> impl Iterator<Item = &Complex<T>> {
+        self.data_north(north)
+            .enumerate()
+            .filter(move |(i, _)| i % self.columns >= self.columns-east)
+            .map(|(_, c)| c)
+    }
+
+    pub(crate) fn data_south_west(
+        &self,
+        south: usize,
+        west: usize,
+    ) -> impl Iterator<Item = &Complex<T>> {
+        self.data_south(south)
+            .enumerate()
+            .filter(move |(i, _)| i % self.columns < west)
+            .map(|(_, c)| c)
+    }
+    pub(crate) fn data_south_east(
+        &self,
+        south: usize,
+        east: usize,
+    ) -> impl Iterator<Item = &Complex<T>> {
+        self.data_south(south)
+            .enumerate()
+            .filter(move |(i, _)| i % self.columns >= self.columns-east)
+            .map(|(_, c)| c)
+    }
+
     #[inline(always)]
     pub fn data_ref(&mut self) -> impl Iterator<Item = &mut Complex<T>> {
         self.data.iter_mut()
@@ -126,6 +188,77 @@ impl<T: Float> Matrix<T> {
         self.data[column * self.columns..(column + 1) * self.columns].iter_mut()
     }
 
+    pub(crate) fn data_north_ref(&mut self, north: usize) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_ref().take(north * columns)
+    }
+
+    pub(crate) fn data_south_ref(&mut self, south: usize) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        let rows = self.rows;
+        self.data_ref().skip((rows - south) * columns)
+    }
+    pub(crate) fn data_west_ref(&mut self, west: usize) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_ref()
+            .enumerate()
+            .filter(move |(i, _)| i % columns < west)
+            .map(|(_, c)| c)
+    }
+    pub(crate) fn data_east_ref(&mut self, east: usize) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_ref()
+            .enumerate()
+            .filter(move |(i, _)| i % columns >= columns-east)
+            .map(|(_, c)| c)
+    }
+
+    pub(crate) fn data_north_west_ref(
+        &mut self,
+        north: usize,
+        west: usize,
+    ) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_north_ref(north)
+            .enumerate()
+            .filter(move |(i, _)| i % columns < west)
+            .map(|(_, c)| c)
+    }
+    pub(crate) fn data_north_east_ref(
+        &mut self,
+        north: usize,
+        east: usize,
+    ) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_north_ref(north)
+            .enumerate()
+            .filter(move |(i, _)| i % columns >= columns-east)
+            .map(|(_, c)| c)
+    }
+
+    pub(crate) fn data_south_west_ref(
+        &mut self,
+        south: usize,
+        west: usize,
+    ) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_south_ref(south)
+            .enumerate()
+            .filter(move |(i, _)| i % columns < west)
+            .map(|(_, c)| c)
+    }
+    pub(crate) fn data_south_east_ref(
+        &mut self,
+        south: usize,
+        east: usize,
+    ) -> impl Iterator<Item = &mut Complex<T>> {
+        let columns = self.columns;
+        self.data_south_ref(south)
+            .enumerate()
+            .filter(move |(i, _)| i % columns >= columns-east)
+            .map(|(_, c)| c)
+    }
+
     pub fn transposed(&self) -> Self {
         let mut transposed_data = vec![Complex::ZERO; self.data.len()];
 
@@ -139,29 +272,24 @@ impl<T: Float> Matrix<T> {
 
     pub fn col_swap(&mut self, a: usize, b: usize) {
         self.data.chunks_exact_mut(self.columns).for_each(|row| {
-            row.swap(a,b);
+            row.swap(a, b);
         });
     }
 
     pub fn row_swap(&mut self, a: usize, b: usize) {
         let mut rows = self.data_rows_ref();
-        
-        let (x,y) = match b>=a{
-            true =>{
-                (a,b)
-            }
-            false => {
-                (b,a)
-            }
+
+        let (x, y) = match b >= a {
+            true => (a, b),
+            false => (b, a),
         };
         let row_x = rows.nth(x).unwrap();
-        let row_y = rows.nth(y-x-1).unwrap();
+        let row_y = rows.nth(y - x - 1).unwrap();
 
         row_x.iter_mut().zip(row_y.iter_mut()).for_each(|(ap, bp)| {
-            std::mem::swap(&mut(*ap), &mut (*bp));
+            std::mem::swap(&mut (*ap), &mut (*bp));
         });
     }
-
 
     pub fn acc(&self, other: &Matrix<T>) -> Matrix<T> {
         debug_assert!(self.columns == other.columns);
@@ -171,10 +299,10 @@ impl<T: Float> Matrix<T> {
         out_matrix
     }
 
-    pub fn covariance(&self) -> Self{
-        let mut data = Vec::with_capacity(self.rows*self.rows);
+    pub fn covariance(&self) -> Self {
+        let mut data = Vec::with_capacity(self.rows * self.rows);
 
-        (0..self.rows).for_each(|i|{
+        (0..self.rows).for_each(|i| {
             (0..self.rows).for_each(|j| {
                 let x = self.data_row(i);
                 let y = self.data_row(j);
@@ -182,17 +310,15 @@ impl<T: Float> Matrix<T> {
                 let my = <Vec<&'_ Complex<T>> as Vector<T>>::mean(y);
                 let x = self.data_row(i);
                 let y = self.data_row(j);
-                let covariance = x.zip(y).fold(Complex::ZERO,|acc, (x,y)|{
-                    acc + (*x-Complex::new(mx,T::ZERO))*(*y--Complex::new(my,T::ZERO))
+                let covariance = x.zip(y).fold(Complex::ZERO, |acc, (x, y)| {
+                    acc + (*x - Complex::new(mx, T::ZERO)) * (*y - -Complex::new(my, T::ZERO))
                 });
-                data.push(covariance/T::usize(self.rows));
+                data.push(covariance / T::usize(self.rows));
             });
         });
 
-        Matrix::new(self.rows,data)
+        Matrix::new(self.rows, data)
     }
-
-    
 }
 
 impl<T: Float> Add<Complex<T>> for Matrix<T> {
@@ -919,7 +1045,6 @@ mod matrix_tests {
         });
     }
 
-
     #[test]
     fn acc_static() {
         let m33 = Matrix::new(
@@ -980,53 +1105,256 @@ mod matrix_tests {
     }
 
     #[test]
-    fn row_swap_static(){
-        let mut m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32,0.0)).collect());
+    fn row_swap_static() {
+        let mut m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
 
         m.row_swap(0, 1);
-        assert!((m.coeff(0, 0).real-3.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 1).real-4.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 2).real-5.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 0).real-0.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 1).real-1.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 2).real-2.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 0).real-6.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 1).real-7.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 2).real-8.0).square_norm() <f32::EPSILON);
+        assert!((m.coeff(0, 0).real - 3.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 1).real - 4.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 2).real - 5.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 0).real - 0.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 1).real - 1.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 2).real - 2.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 0).real - 6.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 1).real - 7.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 2).real - 8.0).square_norm() < f32::EPSILON);
 
-
-        let mut m = Matrix::<f32>::new(3, (0..12).map(|i| Complex::new(i as f32,0.0)).collect());
+        let mut m = Matrix::<f32>::new(3, (0..12).map(|i| Complex::new(i as f32, 0.0)).collect());
 
         m.row_swap(2, 1);
-        assert!((m.coeff(0, 0).real-0.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 1).real-1.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 2).real-2.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 3).real-3.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 0).real-8.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 1).real-9.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 2).real-10.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 3).real-11.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 0).real-4.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 1).real-5.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 2).real-6.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 3).real-7.0).square_norm() <f32::EPSILON);
+        assert!((m.coeff(0, 0).real - 0.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 1).real - 1.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 2).real - 2.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 3).real - 3.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 0).real - 8.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 1).real - 9.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 2).real - 10.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 3).real - 11.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 0).real - 4.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 1).real - 5.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 2).real - 6.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 3).real - 7.0).square_norm() < f32::EPSILON);
 
-        let mut m = Matrix::<f32>::new(4, (0..12).map(|i| Complex::new(i as f32,0.0)).collect());
+        let mut m = Matrix::<f32>::new(4, (0..12).map(|i| Complex::new(i as f32, 0.0)).collect());
 
         m.row_swap(3, 1);
-        assert!((m.coeff(0, 0).real-0.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 1).real-1.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(0, 2).real-2.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 0).real-9.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 1).real-10.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(1, 2).real-11.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 0).real-6.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 1).real-7.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(2, 2).real-8.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(3, 0).real-3.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(3, 1).real-4.0).square_norm() <f32::EPSILON);
-        assert!((m.coeff(3, 2).real-5.0).square_norm() <f32::EPSILON);
+        assert!((m.coeff(0, 0).real - 0.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 1).real - 1.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(0, 2).real - 2.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 0).real - 9.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 1).real - 10.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(1, 2).real - 11.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 0).real - 6.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 1).real - 7.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(2, 2).real - 8.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(3, 0).real - 3.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(3, 1).real - 4.0).square_norm() < f32::EPSILON);
+        assert!((m.coeff(3, 2).real - 5.0).square_norm() < f32::EPSILON);
+    }
 
-        
+    #[test]
+    fn test_north() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_north(1);
+        let kn = (0..3).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north(2);
+        let kn = (0..6).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north(3);
+        let kn = (0..9).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+
+    #[test]
+    fn test_south() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_south(1);
+        let kn = (6..9).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south(2);
+        let kn = (3..9).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south(3);
+        let kn = (0..9).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+
+    #[test]
+    fn test_west() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_west(1);
+        let kn = [0, 3, 6].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_west(2);
+        let kn = [0, 1, 3, 4, 6, 7].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_west(3);
+        let kn = (0..9).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+    #[test]
+    fn test_east() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_east(1);
+        let kn = [2, 5, 8].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_east(2);
+        let kn = [1, 2, 4, 5, 7, 8].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_east(3);
+        let kn = (0..9).map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+
+    #[test]
+    fn test_north_east() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_north_east(1,1);
+        let kn = [2].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north_east(2,1);
+        let kn = [2,5].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north_east(1,2);
+        let kn = [1,2].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north_east(2,2);
+        let kn = [1,2,4,5].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+
+    #[test]
+    fn test_north_west() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_north_west(1,1);
+        let kn = [0].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north_west(2,1);
+        let kn = [0,3].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north_west(1,2);
+        let kn = [0,1].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_north_west(2,2);
+        let kn = [0,1,3,4].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+
+    #[test]
+    fn test_south_east() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_south_east(1,1);
+        let kn = [8].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south_east(2,1);
+        let kn = [5,8].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south_east(1,2);
+        let kn = [7,8].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south_east(2,2);
+        let kn = [4,5,7,8].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+    }
+    #[test]
+    fn test_south_west() {
+        let m = Matrix::<f32>::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
+
+        let n = m.data_south_west(1,1);
+        let kn = [6].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south_west(2,1);
+        let kn = [3,6].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south_west(1,2);
+        let kn = [6,7].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
+
+        let n = m.data_south_west(2,2);
+        let kn = [3,4,6,7].map(|i| Complex::new(i as f32, 0.0));
+        n.zip(kn).for_each(|(n, k)| {
+            assert!(*n == k);
+        });
     }
 }

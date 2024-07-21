@@ -1,13 +1,15 @@
-use core::{fmt::Debug, ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub}};
+use core::{fmt::Debug, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
 pub trait Float:
     Neg<Output = Self>
     + Add<Output = Self>
     + Sub<Output = Self>
     + Mul<Output = Self>
+    + Div<Output = Self>
     + MulAssign
     + AddAssign
-    + Div<Output = Self>
+    + DivAssign
+    + SubAssign
     + Clone
     + Copy
     + PartialOrd
@@ -52,6 +54,8 @@ pub trait Float:
 
     fn tan(&self) -> Self;
     fn tanh(&self) -> Self;
+
+    fn fma(&self, mul: Self, add: Self) -> Self;
 
     //shared
     fn greater(&self, other: Self) -> Self {
@@ -158,25 +162,33 @@ impl Float for f32 {
     fn cos(&self) -> Self {
         (*self).cos()
     }
+    #[inline(always)]
     fn tan(&self) -> Self{
         (*self).tan()
     }
-
+    #[inline(always)]
     fn to_usize(&self) -> usize{
         *self as usize 
     }
+    #[inline(always)]
     fn is_nan(&self) -> bool{
         (*self).is_nan()
     }
-
+    #[inline(always)]
     fn sinh(&self) -> Self{
         (*self).sinh()
     }
+    #[inline(always)]
     fn cosh(&self) -> Self{
         (*self).cosh()
     }
+    #[inline(always)]
     fn tanh(&self) -> Self{
         (*self).tanh()
+    }
+    #[inline(always)]
+    fn fma(&self, mul: Self, add: Self) -> Self{
+        (*self).mul_add(mul,add)
     }
 }
 impl Float for f64 {
@@ -262,26 +274,57 @@ impl Float for f64 {
     fn cos(&self) -> Self {
         (*self).cos()
     }
-
+    #[inline(always)]
     fn tan(&self) -> Self{
         (*self).tan()
     }
-
+    #[inline(always)]
     fn to_usize(&self) -> usize{
         *self as usize 
     }
+    #[inline(always)]
     fn is_nan(&self) -> bool{
         (*self).is_nan()
     }
-
+    #[inline(always)]
     fn sinh(&self) -> Self{
         (*self).sinh()
     }
     fn cosh(&self) -> Self{
         (*self).cosh()
     }
-
+    #[inline(always)]
     fn tanh(&self) -> Self{
         (*self).tanh()
     }
+    #[inline(always)]
+    fn fma(&self, mul: Self, add: Self) -> Self{
+        (*self).mul_add(mul,add)
+    }
 }
+
+
+#[cfg(test)]
+mod float_tests {
+
+    use std::time::SystemTime;
+
+    use super::*;
+    #[test]
+    pub fn speed_fma(){
+        let now = SystemTime::now();
+        let mut a = 0.0;
+        (0..100000000).for_each(|i|{
+            a =(i as f32)*((i+1) as f32)+(-a);
+        });
+        let _ = dbg!(now.elapsed());
+
+        let mut b = 0.0;
+        let now = SystemTime::now();
+        (0..100000000).for_each(|i|{
+            b = (i as f32).fma((i+1) as f32, -b);
+        });
+        let _ = dbg!(now.elapsed());
+    }
+}
+

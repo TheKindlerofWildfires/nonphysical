@@ -44,10 +44,10 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
                     {
                         finished = false;
                         let (j_left, j_right) = Self::real_jacobi_2x2(self, p, q);
-                        j_left.apply_left(self, p, q);
-                        j_left.transpose().apply_right(&mut u, p, q);
-                        j_right.apply_right(self, p, q);
-                        j_right.apply_right(&mut v, p, q);
+                        j_left.apply_left(self, p, q,0..self.rows);
+                        j_left.apply_right(&mut u, p, q,0..self.rows);
+                        j_right.transpose().apply_right(self, p, q,0..self.rows);
+                        j_right.transpose().apply_right(&mut v, p, q,0..self.rows);
                         max_diag = max_diag
                             .greater(self.coeff(p, p).norm().greater(self.coeff(q, q).norm()));
                     }
@@ -132,8 +132,8 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
                             //Self::real_precondition_2x2(self, p, q, &mut max_diag) {
                             let (j_left, j_right) = Self::real_jacobi_2x2(self, p, q);
                             //this loaded in the right vectors (or close, x and y may be swapped)
-                            j_left.apply_left(self, p, q); //failed here, was it the jacobi or the apply?
-                            j_right.apply_right(self, p, q);
+                            j_left.apply_left(self, p, q,0..self.rows); //failed here, was it the jacobi or the apply?
+                            j_right.transpose().apply_right(self, p, q,0..self.rows);
                             max_diag = max_diag.greater(
                                 self.coeff(p, p).norm().greater(self.coeff(q, q).norm()),
                             );
@@ -172,7 +172,7 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
         let t = (sub_matrix.coeff(0, 0) + sub_matrix.coeff(1, 1)).real;
         let d = (sub_matrix.coeff(0, 1) - sub_matrix.coeff(1, 0)).real;
 
-        let rot1 = match d.norm() < T::SMALL {
+        let rot1 = match d.norm() < T::EPSILON {
             true => Jacobi::<T>::new(Complex::<T>::ZERO, Complex::<T>::ONE),
             false => {
                 let u = t / d;
@@ -183,7 +183,7 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
                 )
             }
         };
-        rot1.apply_left(&mut sub_matrix, 0, 1);
+        rot1.apply_left(&mut sub_matrix, 0, 1,0..self.rows);
         let j_right = Jacobi::<T>::make_jacobi(&mut sub_matrix, 0, 1);
         let j_left = rot1 * j_right.transpose();
         (j_left, j_right)

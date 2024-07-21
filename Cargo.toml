@@ -9,7 +9,7 @@ edition = "2021"
 codegen-units = 1
 panic = "abort"
 strip = "symbols"
-#rustflags = ["-C", "target-cpu=native"]
+target-cpu = "native"
 
 [profile.lto]
 inherits = "release"

@@ -1,5 +1,5 @@
 use core::cmp::{min, Ordering};
-use std::collections::BinaryHeap;
+use std::{collections::BinaryHeap, time::SystemTime};
 
 use crate::shared::{float::Float, point::Point};
 
@@ -105,7 +105,11 @@ impl<T: Float, const N: usize> KdBranch<T, N> {
     }
 
     fn branch_left(&self, shared: &KdShared<T, N>, point: &Point<T, N>) -> bool {
-        if shared.min_bounds.data[self.split_dimension] == self.split_value {
+        if point.data[self.split_dimension] == self.split_value{
+            SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()
+            .as_nanos()%2==0
+        }
+        else if shared.min_bounds.data[self.split_dimension] == self.split_value {
             point.data[self.split_dimension] <= self.split_value
         } else {
             point.data[self.split_dimension] < self.split_value
@@ -719,14 +723,11 @@ mod kd_tree_tests {
 
     #[test]
     fn kd_speed() {
-        //500 to 44.88/38.9/33.349
-        //With better slices: Closer  to 30
-        //Without the Vec layer: Closer to 25
         let now = SystemTime::now();
         let mut kd_tree = KdTree::<f32, 2>::new(2);
         (0..500).for_each(|i| kd_tree.add(Point::new([f32::usize(i), f32::usize(i + 1)]), i));
 
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
 
         assert!(1 == 2);
     }

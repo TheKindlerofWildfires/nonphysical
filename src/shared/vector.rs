@@ -22,6 +22,27 @@ pub trait Vector<'a, T: Float + 'a> {
         iter.fold(T::ZERO, |acc, x| acc+ x.norm())
     }
 
+    fn square_norm_max<I>(iter: I) -> T
+    where
+        I: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.fold(T::MIN, |acc, x| acc.greater(x.square_norm()))
+    }
+
+    fn square_norm_min<I>(iter: I) -> T
+    where
+        I: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.fold(T::MAX, |acc, x| acc.lesser(x.square_norm()))
+    }
+
+    fn square_norm_sum<I>(iter: I) -> T
+    where
+        I: Iterator<Item = &'a Complex<T>>,
+    {
+        iter.fold(T::ZERO, |acc, x| acc+ x.square_norm())
+    }
+
     fn sum<I>(iter: I) -> Complex<T>
     where
         I: Iterator<Item = &'a Complex<T>>,

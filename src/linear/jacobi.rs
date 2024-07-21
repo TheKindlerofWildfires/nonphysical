@@ -1,4 +1,5 @@
 use core::ops::Mul;
+use std::ops::Range;
 
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix};
 
@@ -17,11 +18,8 @@ impl<'a, T: Float + 'a> Jacobi<T> {
         let y = matrix.coeff(p, q);
         let z = matrix.coeff(q, q).real;
         let denominator = T::usize(2) * y.norm();
-        match denominator < T::SMALL {
-            true => Self::new(
-                Complex::<T>::ONE,
-                Complex::<T>::ZERO,
-            ),
+        match denominator < T::EPSILON {
+            true => Self::new(Complex::<T>::ONE, Complex::<T>::ZERO),
             false => {
                 let tau = (x - z) / denominator;
                 let w = (tau.square_norm() + T::ONE).sqrt();
@@ -40,49 +38,77 @@ impl<'a, T: Float + 'a> Jacobi<T> {
             }
         }
     }
+    pub fn make_givens(p: Complex<T>, q: Complex<T>, r: &mut Complex<T>) -> Self {
+        let (c, s) = if q == Complex::ZERO {
+            let c = -p / p.norm();
+            let s = Complex::ZERO;
+            *r = c * p;
+            (c, s)
+        } else if p == Complex::ZERO {
+            let s = -q / q.norm();
+            let c = Complex::ZERO;
+            *r = s * q;
+            (c, s)
+        } else {
+            let p1 = p.norm();
+            let q1 = q.norm();
+            let (c, s) = if p1 > q1 {
+                let ps = p / p1;
+                let p2 = ps.square_norm();
+                let qs = q / p1;
+                let q2 = qs.square_norm();
 
-    //this method does n extra copy operations to be safe incase p == q or there is a bug in data_row
-    pub fn apply_left(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
-        //safety check could be removed to reduce branching if necessary 
-        let j = self;
-        if j.c == Complex::<T>::new(T::ONE, T::ZERO) && j.s == Complex::<T>::ZERO {
-            return;
-        }
-        matrix.data_rows_ref().for_each(|row| {
-            let tmp = row[p];
-            row[p] = self.c * row[p] + self.s.conj() * row[q];
-            row[q] = -self.s * tmp + self.c.conj() * row[q];
-        });
-        
+                let mut u = (T::ONE + q2 / p2).sqrt();
+                if p.real < T::ZERO {
+                    u = -u;
+                }
+                let c = Complex::new(u.recip(), T::ZERO);
+                let s = -qs * ps.conj() * (c / p2);
+                *r = p * u;
+                (c, s)
+            } else {
+                let ps = p / q1;
+                let p2 = ps.square_norm();
+                let qs = q / q1;
+                let q2 = qs.square_norm();
+
+                let mut u = q1 * (p2 + q2).sqrt();
+                if p.real < T::ZERO {
+                    u = -u;
+                }
+                let p1 = p.norm();
+                let ps = p / p1;
+                let c = Complex::new(p1 / u, T::ZERO);
+                let s = -ps.conj() * (q / u);
+                *r = ps * u;
+                (c, s)
+            };
+            (c, s)
+        };
+        Self { s, c }
     }
 
-    pub fn apply_right(&self, matrix: &mut Matrix<T>, p: usize, q: usize) {
-        //safety check could be removed to reduce branching if necessary 
-        let j = self.transpose();
-        if j.c == Complex::<T>::ONE && j.s == Complex::<T>::ZERO {
+    pub fn apply_left(&self, matrix: &mut Matrix<T>, p: usize, q: usize, range: Range<usize>) {
+        if self.c == Complex::<T>::ONE && self.s == Complex::<T>::ZERO {
             return;
         }
-        let mut rows = matrix.data_rows_ref();
-        let (row_p, row_q) = match q>p{
-            true => {
-                let rp = rows.nth(p).unwrap();
-                let rq = rows.nth(q-p-1).unwrap();
-                (rp, rq)
-            },
-            false => {
-                let rq = rows.nth(q).unwrap();
-                let rp = rows.nth(p-q-1).unwrap();
- 
-                (rp, rq)
-            }
-        };
-        
-        row_p.iter_mut().zip(row_q.iter_mut()).for_each(|(pp,qp)|{
-            let tmp = *pp;
-            *pp = j.c* *pp +j.s.conj() * *qp; 
-            *qp = -j.s*tmp +j.c.conj() * *qp;
+        range.for_each(|i| {
+            let tmp = matrix.coeff(i, p);
+            *matrix.coeff_ref(i, p) = self.c.fma(tmp,self.s.conj() * matrix.coeff(i, q));
+            *matrix.coeff_ref(i, q) = (-self.s).fma(tmp,self.c.conj() * matrix.coeff(i, q));
         });
-        
+    }
+
+    pub fn apply_right(&self, matrix: &mut Matrix<T>, p: usize, q: usize, range: Range<usize>) {
+        if self.c == Complex::<T>::ONE && self.s == Complex::<T>::ZERO {
+            return;
+        }
+        range.for_each(|i| {
+            let tmp = matrix.coeff(p, i);
+            *matrix.coeff_ref(p, i) = self.c.fma(tmp, self.s.conj() * matrix.coeff(q, i));
+            *matrix.coeff_ref(q, i) =  (-self.s).fma(tmp, self.c.conj() * matrix.coeff(q, i));
+
+        });
     }
 
     pub fn transpose(&self) -> Self {
@@ -110,16 +136,109 @@ impl<T: Float> Mul for Jacobi<T> {
     }
 }
 
-
 #[cfg(test)]
 mod jacobi_tests {
+    use super::*;
 
     #[test]
-    fn make_jacobi_static() {todo!()}
+    fn test_left_1() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-7, 0.0),
+            Complex::new(-2.8054e-7, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-7, 0.0),
+            Complex::new(1.96297e-7, 0.0),
+            Complex::new(3.40572e-7, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
+
+        let jacobi = Jacobi {
+            c: Complex::new(-7.964988e-8, 0.0),
+            s: Complex::new(1.0, 0.0),
+        };
+        jacobi.apply_left(&mut m, 1, 0,0..4);
+        let known_data = vec![
+            Complex::new(3.74166, 0.0),
+            Complex::new(2.9802277e-7, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-29.999999, 0.0),
+            Complex::new(-14.966603, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.44949, 0.0),
+            Complex::new(1.9510159e-7, 0.0),
+            Complex::new(-9.96223e-7, 0.0),
+            Complex::new(-2.8054e-7, 0.0),
+            Complex::new(-4.76837e-7, 0.0),
+            Complex::new(-3.7980009829560004e-14, 0.0),
+            Complex::new(1.96297e-7, 0.0),
+            Complex::new(3.40572e-7, 0.0),
+        ];
+        known_data
+            .iter()
+            .zip(m.data())
+            .for_each(|(k, c)| assert!((*k - *c).square_norm() < f32::EPSILON));
+    }
 
     #[test]
-    fn apply_left_static() {todo!()}
+    fn test_right_1() {
+        let data = vec![
+            Complex::new(3.74166, 0.0),
+            Complex::new(2.9802277e-7, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-29.999998, 0.0),
+            Complex::new(-14.966603, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.44949, 0.0),
+            Complex::new(1.9510159e-7, 0.0),
+            Complex::new(-9.96223e-7, 0.0),
+            Complex::new(-2.8054e-7, 0.0),
+            Complex::new(-4.76837e-7, 0.0),
+            Complex::new(-3.798001e-14, 0.0),
+            Complex::new(1.96297e-7, 0.0),
+            Complex::new(3.40572e-7, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
 
-    #[test]
-    fn apply_right_static() {todo!()}
+        let jacobi = Jacobi {
+            c: Complex::new(-7.964988e-8, 0.0),
+            s: Complex::new(1.0, 0.0),
+        };
+        jacobi.apply_right(&mut m, 1, 0,0..4);
+        let known_data = vec![
+            Complex::new(29.999998, 0.0),
+            Complex::new(14.966603, 0.0),
+            Complex::new(9.79796, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(3.7416625, 0.0),
+            Complex::new(1.4901109e-6, 0.0),
+            Complex::new(7.8040637e-7, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.44949, 0.0),
+            Complex::new(1.9510159e-7, 0.0),
+            Complex::new(-9.96223e-7, 0.0),
+            Complex::new(-2.8054e-7, 0.0),
+            Complex::new(-4.76837e-7, 0.0),
+            Complex::new(-3.798001e-14, 0.0),
+            Complex::new(1.96297e-7, 0.0),
+            Complex::new(3.40572e-7, 0.0),
+        ];
+        known_data
+            .iter()
+            .zip(m.data())
+            .for_each(|(k, c)| assert!((*k - *c).square_norm() < f32::EPSILON));
+    }
 }

@@ -12,7 +12,10 @@ pub trait Gemm<'a, T: Float + 'a> {
         (0..y.columns).for_each(|c| {
             (0..x.rows).for_each(|r| {
                 let mut tmp = Complex::<T>::ZERO;
-                (0..x.columns).for_each(|a| tmp += x.coeff(r, a) * y.coeff(a, c));
+                (0..x.columns).for_each(|a| {
+                    //tmp = x.coeff(r, a).fma(y.coeff(a, c),tmp)
+                    tmp += x.coeff(r, a) * y.coeff(a, c);
+                });
                 *z.coeff_ref(r, c) = tmp;
             });
         });
@@ -146,25 +149,25 @@ pub trait Gemm<'a, T: Float + 'a> {
             local_y[2] = y.data[y_index + 2];
             local_y[3] = y.data[y_index + 3];
 
-            local_z[0] += local_x[0] * local_y[0];
-            local_z[4] += local_x[1] * local_y[0];
-            local_z[1] += local_x[0] * local_y[1];
-            local_z[5] += local_x[1] * local_y[1];
+            local_z[0] = local_x[0].fma(local_y[0], local_z[0]);
+            local_z[4] = local_x[1].fma(local_y[0], local_z[4]);
+            local_z[1] = local_x[0].fma(local_y[1], local_z[1]);
+            local_z[5] = local_x[1].fma(local_y[1], local_z[5]);
 
-            local_z[2] += local_x[0] * local_y[2];
-            local_z[6] += local_x[1] * local_y[2];
-            local_z[3] += local_x[0] * local_y[3];
-            local_z[7] += local_x[1] * local_y[3];
+            local_z[2] = local_x[0].fma(local_y[2], local_z[2]);
+            local_z[6] = local_x[1].fma(local_y[2], local_z[6]);
+            local_z[3] = local_x[0].fma(local_y[3], local_z[3]);
+            local_z[7] = local_x[1].fma(local_y[3], local_z[7]);
 
-            local_z[8] += local_x[2] * local_y[0];
-            local_z[12] += local_x[3] * local_y[0];
-            local_z[9] += local_x[2] * local_y[1];
-            local_z[13] += local_x[3] * local_y[1];
+            local_z[8] = local_x[2].fma(local_y[0], local_z[8]);
+            local_z[12] = local_x[3].fma(local_y[0], local_z[12]);
+            local_z[9] = local_x[2].fma(local_y[1], local_z[9]);
+            local_z[13] = local_x[3].fma(local_y[1], local_z[13]);
 
-            local_z[10] += local_x[2] * local_y[2];
-            local_z[14] += local_x[3] * local_y[2];
-            local_z[11] += local_x[2] * local_y[3];
-            local_z[15] += local_x[3] * local_y[3];
+            local_z[10] = local_x[2].fma(local_y[2], local_z[10]);
+            local_z[14] = local_x[3].fma(local_y[2], local_z[14]);
+            local_z[11] = local_x[2].fma(local_y[3], local_z[11]);
+            local_z[15] = local_x[3].fma(local_y[3], local_z[15]);
 
             y_index += y.columns;
             x_index += 4;
@@ -185,6 +188,8 @@ impl<'a, T: Float + 'a> Gemm<'a, T> for Matrix<T> {}
 
 #[cfg(test)]
 mod gemm_test {
+    use std::time::SystemTime;
+
     use crate::{random::pcg::PermutedCongruentialGenerator, shared::matrix};
 
     use super::*;
@@ -438,5 +443,27 @@ mod gemm_test {
         g2.data().zip(k2.data()).for_each(|(g, k)| {
             assert!((g.real - k.real).square_norm() < f32::EPSILON);
         });
+    }
+
+    #[test]
+    fn gemm_speed() {
+        let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
+        let n1 = 1000;
+        let n2 = 1000;
+        let data =
+            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+        let m1 = Matrix::new(n1, data.collect());
+        let data =
+            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+        let m2 = Matrix::new(n2, data.collect());
+
+        let now = SystemTime::now();
+        let _ = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1, &m2);
+        let _ = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m2, &m1);
+        let _ = dbg!(now.elapsed());
+        let now = SystemTime::now();
+        let _ = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m1, &m2);
+        let _ = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
+        let _ = dbg!(now.elapsed());
     }
 }
