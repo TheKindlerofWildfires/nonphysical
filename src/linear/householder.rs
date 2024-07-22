@@ -1,6 +1,4 @@
-
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix};
-
+use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
 
 #[derive(Debug)]
 pub struct Householder<T: Float> {
@@ -12,26 +10,26 @@ impl<'a, T: Float + 'a> Householder<T> {
     //modifies vector to become householder
 
     pub fn make_householder_local(matrix: &mut Matrix<T>, row: usize, column: usize) -> Self {
-        let squared_norm_sum = (row + 1..matrix.rows).fold(T::ZERO, |acc, i| {
-            acc + matrix.coeff(column, i).square_norm()
-        });
+        let squared_norm_sum =
+            <Vec<&Complex<T>> as Vector<T>>::square_norm_sum(matrix.data_row(column).skip(row + 1));
         let first = matrix.coeff(column, row);
 
         let (beta, tau) = if squared_norm_sum < T::EPSILON && first.imag.norm() < T::EPSILON {
-            (row..matrix.rows).for_each(|i| *matrix.coeff_ref(i, column) = Complex::ZERO);
+            matrix
+                .data_column_ref(column)
+                .skip(row)
+                .for_each(|c| *c = Complex::ZERO);
             (Complex::ZERO, first)
         } else {
-            let beta = if first.real > T::ZERO {
-                -Complex::new((first.square_norm() + squared_norm_sum).sqrt(), T::ZERO)
-            } else {
-                Complex::new((first.square_norm() + squared_norm_sum).sqrt(), T::ZERO)
-            };
+            let beta = Complex::new((first.square_norm() + squared_norm_sum).sqrt(), T::ZERO)
+                * -first.real.sign();
             let bmc = beta - first;
-            let inv_bmc = bmc.recip();
+            let inv_bmc = -bmc.recip();
 
-            (row..matrix.rows).for_each(|i| {
-                *matrix.coeff_ref(column, i) *= -inv_bmc;
-            });
+            matrix
+                .data_column_ref(column)
+                .skip(row)
+                .for_each(|c| *c *= inv_bmc);
 
             let tau = (bmc / beta).conj();
             (beta, tau)
@@ -39,6 +37,8 @@ impl<'a, T: Float + 'a> Householder<T> {
 
         Self { tau, beta }
     }
+
+    //I want to redo this with range vectors (and vec as an iterator), I just don't know how to yet
     //This is a cache optimized version written originally for cuda and may not be optimal here (not tested for real complex numbers)
     pub fn apply_left_local(
         &self,
@@ -47,9 +47,12 @@ impl<'a, T: Float + 'a> Householder<T> {
         row_range: [usize; 2],
         col_range: [usize; 2],
     ) {
-        let mut vec = matrix.data_row(offset).map(|c| c.conj()).collect::<Vec<_>>();
-        vec[row_range[0]] = Complex::new(T::ONE, T::ZERO);
-        self.apply_left_local_vec(matrix,&vec,row_range,col_range);
+        let mut vec = matrix
+            .data_row(offset)
+            .map(|c| c.conj())
+            .collect::<Vec<_>>();
+        vec[row_range[0]] = Complex::ONE;
+        self.apply_left_local_vec(matrix, &vec, row_range, col_range);
     }
 
     pub fn apply_left_local_vec(
@@ -59,18 +62,20 @@ impl<'a, T: Float + 'a> Householder<T> {
         row_range: [usize; 2],
         col_range: [usize; 2],
     ) {
+        if self.tau == Complex::ZERO {
+            return;
+        }
+        let mut tmp = Complex::ZERO;
         (col_range[0]..col_range[1]).for_each(|i| {
-            let mut tmp = Complex::ZERO;
+            tmp = Complex::ZERO;
             (row_range[0]..row_range[1]).for_each(|j| {
                 tmp = matrix.coeff(i, j).fma(vec[j], tmp);
             });
             tmp *= -self.tau;
-            (row_range[0]..row_range[1]).for_each(|j| {
-                *matrix.coeff_ref(i ,j) = vec[j].fma(tmp, matrix.coeff(i ,j))
-            });
+            (row_range[0]..row_range[1])
+                .for_each(|j| *matrix.coeff_ref(i, j) = vec[j].fma(tmp, matrix.coeff(i, j)));
         })
     }
-     
 
     //This is a cache optimized version written originally for cuda and may not be optimal here (not tested for real complex numbers)
     pub fn apply_right_local(
@@ -80,8 +85,11 @@ impl<'a, T: Float + 'a> Householder<T> {
         row_range: [usize; 2],
         col_range: [usize; 2],
     ) {
-        let mut vec = matrix.data_row(offset).map(|c| c.conj()).collect::<Vec<_>>();
-        vec[row_range[0]] = Complex::new(T::ONE, T::ZERO);
+        let mut vec = matrix
+            .data_row(offset)
+            .map(|c| c.conj())
+            .collect::<Vec<_>>();
+        vec[row_range[0]] = Complex::ONE;
         self.apply_right_local_vec(matrix, &vec, row_range, col_range);
     }
 
@@ -92,15 +100,18 @@ impl<'a, T: Float + 'a> Householder<T> {
         row_range: [usize; 2],
         col_range: [usize; 2],
     ) {
+        if self.tau == Complex::ZERO {
+            return;
+        }
+        let mut tmp = Complex::ZERO;
         (col_range[0]..col_range[1]).for_each(|i| {
-            let mut tmp = Complex::ZERO;
+            tmp = Complex::ZERO;
             (row_range[0]..row_range[1]).for_each(|j| {
                 tmp = matrix.coeff(j, i).fma(vec[j], tmp);
             });
             tmp *= -self.tau;
-            (row_range[0]..row_range[1]).for_each(|j| {
-                *matrix.coeff_ref(j ,i) = vec[j].fma(tmp, matrix.coeff(j ,i))
-            });
+            (row_range[0]..row_range[1])
+                .for_each(|j| *matrix.coeff_ref(j, i) = vec[j].fma(tmp, matrix.coeff(j, i)));
         })
     }
 }
@@ -110,14 +121,9 @@ mod householder_tests {
     use super::*;
     #[test]
     fn make_local_1() {
-        let mut m = Matrix::new(
-            4,
-            (0..16)
-                .map(|i| Complex::new(i as f32, 0.0))
-                .collect(),
-        );
+        let mut m = Matrix::new(4, (0..16).map(|i| Complex::new(i as f32, 0.0)).collect());
         let house = Householder::make_householder_local(&mut m, 1, 0);
-        assert!((house.beta.real +3.7416575).square_norm() < f32::EPSILON);
+        assert!((house.beta.real + 3.7416575).square_norm() < f32::EPSILON);
         assert!((house.tau - Complex::new(1.2672611, 0.0)).square_norm() < f32::EPSILON);
     }
     #[test]
@@ -164,10 +170,10 @@ mod householder_tests {
             Complex::new(-5.177987, 0.0),
             Complex::new(-7.7669835, 0.0),
         ];
-        m.transposed().data()
+        m.transposed()
+            .data()
             .zip(know_data.iter())
-            .for_each(|(a, b)| {
-                assert!((*a - *b).square_norm() < f32::EPSILON)});
+            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -215,11 +221,10 @@ mod householder_tests {
             Complex::new(-0.0000002946524, 0.0),
             Complex::new(0.000000328435, 0.0),
         ];
-        m.transposed().data()
+        m.transposed()
+            .data()
             .zip(know_data.iter())
-            .for_each(|(a, b)| {
-                assert!((*a - *b).square_norm() < f32::EPSILON)
-            });
+            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -267,9 +272,10 @@ mod householder_tests {
             Complex::new(-2.8054e-07, 0.0),
             Complex::new(3.40572e-07, 0.0),
         ];
-        m.transposed().data().zip(know_data.iter()).for_each(|(a, b)| {
-            assert!((*a - *b).square_norm() < f32::EPSILON)
-        });
+        m.transposed()
+            .data()
+            .zip(know_data.iter())
+            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
     }
     #[test]
     fn right_local_1() {
@@ -284,7 +290,7 @@ mod householder_tests {
             Complex::new(-22.984466804468497, 0.0),
             Complex::new(0.42179344411906794, 0.0),
             Complex::new(-0.3926707294150136, 0.0),
-            Complex::new( -0.7853414588300254, 0.0),
+            Complex::new(-0.7853414588300254, 0.0),
             Complex::new(-1.178012188245038, 0.0),
             Complex::new(0.632690166178602, 0.0),
             Complex::new(-2.5890060941225226, 0.0),
@@ -316,12 +322,10 @@ mod householder_tests {
             Complex::new(0.0, 0.0),
             Complex::new(-9.53674e-07, 0.0),
         ];
-        m.transposed().data()
+        m.transposed()
+            .data()
             .zip(know_data.iter())
-            .for_each(|(a, b)| {
-                assert!((*a - *b).square_norm() < f32::EPSILON)
-                
-            });
+            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -363,13 +367,14 @@ mod householder_tests {
             Complex::new(0.421793, 0.0),
             Complex::new(-9.79796, 0.0),
             Complex::new(-9.962163e-7, 0.0),
-            Complex::new( 1.9629792e-7, 0.0),
+            Complex::new(1.9629792e-7, 0.0),
             Complex::new(0.63269, 0.0),
             Complex::new(0.859768, 0.0),
             Complex::new(-2.805402e-7, 0.0),
-            Complex::new( 3.4057175e-7, 0.0),
+            Complex::new(3.4057175e-7, 0.0),
         ];
-        m.transposed().data()
+        m.transposed()
+            .data()
             .zip(know_data.iter())
             .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
     }
@@ -419,7 +424,8 @@ mod householder_tests {
             Complex::new(-2.8054e-07, 0.0),
             Complex::new(3.40572e-07, 0.0),
         ];
-        m.transposed().data()
+        m.transposed()
+            .data()
             .zip(know_data.iter())
             .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
     }

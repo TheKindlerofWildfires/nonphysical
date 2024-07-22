@@ -7,32 +7,32 @@ use crate::{
 
 use super::Classification;
 
-trait IsoForest<T: Float,const N:usize> {
+trait IsoForest<T: Float, const N: usize> {
     fn cluster(
         input: &Self,
         tree_count: usize,
         samples: usize,
         extension_level: usize,
         seed: usize,
-    ) -> (Vec<IsoTree<T,N>>, T);
-
-    fn score(
+    ) -> (Vec<IsoTree<T, N>>, T);
+    fn classify(
         input: &Self,
-        trees: &[IsoTree<T,N>],
+        trees: &[IsoTree<T, N>],
         average_path: T,
         core_threshold: T,
         edge_threshold: T,
     ) -> Vec<Classification>;
+    fn score(input: &Self, trees: &[IsoTree<T, N>], average_path: T) -> Vec<T>;
 }
 
-impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
+impl<T: Float, const N: usize> IsoForest<T, N> for Vec<Point<T, N>> {
     fn cluster(
         input: &Self,
         tree_count: usize,
         samples: usize,
         extension_level: usize,
         seed: usize,
-    ) -> (Vec<IsoTree<T,N>>, T) {
+    ) -> (Vec<IsoTree<T, N>>, T) {
         debug_assert!(input.len() >= samples);
         debug_assert!(N > extension_level);
         let max_depth = T::usize(samples).ln().to_usize();
@@ -48,7 +48,10 @@ impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
                     .chunks(samples)
                     .take(sub_tree_count)
                     .map(|index_chunk| {
-                        let tree_data = index_chunk.iter().map(|i| input[*i].clone()).collect::<Vec<_>>();
+                        let tree_data = index_chunk
+                            .iter()
+                            .map(|i| input[*i].clone())
+                            .collect::<Vec<_>>();
 
                         IsoTree::new(&tree_data, max_depth, extension_level, &mut pcg)
                     })
@@ -56,36 +59,44 @@ impl<T: Float, const N: usize> IsoForest<T,N> for Vec<Point<T,N>> {
                 sub_trees
             })
             .collect::<Vec<_>>();
-        let average_path_length = IsoTree::<T,N>::c_factor(samples);
+        let average_path_length = IsoTree::<T, N>::c_factor(samples);
 
         (trees, average_path_length)
     }
 
-    fn score(
+    fn classify(
         input: &Self,
-        trees: &[IsoTree<T,N>],
+        trees: &[IsoTree<T, N>],
         average_path: T,
         core_threshold: T,
         edge_threshold: T,
     ) -> Vec<Classification> {
         debug_assert!(core_threshold < edge_threshold);
+        Self::score(input, trees, average_path)
+            .iter()
+            .map(|score| {
+                if *score < core_threshold {
+                    Core(0)
+                } else if *score < edge_threshold {
+                    Edge(0)
+                } else {
+                    Noise
+                }
+            })
+            .collect()
+    }
+
+    fn score(input: &Self, trees: &[IsoTree<T, N>], average_path: T) -> Vec<T> {
         input
             .iter()
             .map(|point| {
                 let path_length = trees
                     .iter()
-                    .map(|tree| IsoTree::<T,N>::path_length(&tree.root, point))
+                    .map(|tree| IsoTree::<T, N>::path_length(&tree.root, point))
                     .fold(T::ZERO, |acc, length| acc + length)
                     / T::usize(trees.len());
 
-                let anomaly_score = T::usize(2).powt(&(-path_length / average_path));
-                if anomaly_score < core_threshold {
-                    Core(0)
-                } else if anomaly_score < edge_threshold {
-                    Edge(0)
-                } else {
-                    Noise
-                }
+                T::usize(2).powt(&(-path_length / average_path))
             })
             .collect()
     }
@@ -125,8 +136,9 @@ mod iso_forest_tests {
             Point::new([-100.0, -100.0]),
         ];
 
-        let (trees, average_path) = <Vec<Point<f32,2>> as IsoForest<f32,2>>::cluster(&data, 20, 10, 0, 1);
-        assert!(trees.len() == 40);
+        let (trees, average_path) =
+            <Vec<Point<f32, 2>> as IsoForest<f32, 2>>::cluster(&data, 20, 10, 0, 1);
+        assert!(trees.len() == 60);
         assert!((average_path - 3.7488806).square_norm() < f32::EPSILON);
     }
 
@@ -159,43 +171,19 @@ mod iso_forest_tests {
             Point::new([-100.0, -100.0]),
         ];
 
-        let (trees, average_path) = <Vec<Point<f32,2>> as IsoForest<f32,2>>::cluster(&data, 20, 10, 0, 1);
-        let scores =
-            <Vec<Point<f32,2>> as IsoForest<f32,2>>::score(&data, &trees, average_path, 0.45, 0.55);
-
+        let (trees, average_path) =
+            <Vec<Point<f32, 2>> as IsoForest<f32, 2>>::cluster(&data, 100, 20, 1, 1);
+        let scores = <Vec<Point<f32, 2>> as IsoForest<f32, 2>>::score(&data, &trees, average_path);
         let known_scores = vec![
-            Edge(0),
-            Core(0),
-            Core(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Core(0),
-            Core(0),
-            Core(0),
-            Edge(0),
-            Edge(0),
-            Core(0),
-            Edge(0),
-            Edge(0),
-            Core(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Noise,
-            Noise,
-            Noise,
-            Noise,
+            0.56223166, 0.5465164, 0.5488712, 0.5472224, 0.56223166, 0.55240774, 0.5671994,
+            0.548802, 0.5488712, 0.5590197, 0.5484069, 0.5511991, 0.5628488, 0.5473299, 0.5628287,
+            0.5521582, 0.5619537, 0.54854256, 0.55106795, 0.5512792, 0.70974106, 0.70208126,
+            0.6949086, 0.68195057,
         ];
         scores
             .iter()
             .zip(known_scores.iter())
-            .for_each(|(s, ks)|{
-                assert!(*s == *ks)
-            }
-           );
+            .for_each(|(s, ks)| assert!((*s - *ks).square_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -223,48 +211,56 @@ mod iso_forest_tests {
             Point::new([-9.465804800021168, -2.2222090878656884]),
         ];
 
-        let noise_data =vec![
+        let noise_data = vec![
             Point::new([100.0, 100.0]),
             Point::new([-100.0, 100.0]),
             Point::new([100.0, -100.0]),
             Point::new([-100.0, -100.0]),
         ];
 
-        let (trees, average_path) = <Vec<Point<f32,2>> as IsoForest<f32,2>>::cluster(&data, 20, 10, 0, 1);
+        let (trees, average_path) =
+            <Vec<Point<f32, 2>> as IsoForest<f32, 2>>::cluster(&data, 60, 20, 1, 1);
         let scores =
-            <Vec<Point<f32,2>> as IsoForest<f32,2>>::score(&noise_data, &trees, average_path, 0.45, 0.50);
+            <Vec<Point<f32, 2>> as IsoForest<f32, 2>>::score(&noise_data, &trees, average_path);
+        let known_scores = vec![0.6438421, 0.58029604, 0.60804564, 0.5543376];
 
-        let known_scores = vec![Noise, Noise, Noise, Noise];
+        scores.iter().zip(known_scores.iter()).for_each(|(s, ks)| {
+            assert!((*s - *ks).square_norm() < f32::EPSILON);
+        });
 
-        scores
-            .iter()
-            .zip(known_scores.iter())
-            .for_each(|(s, ks)| {
-                assert!(*s == *ks);});
+        let combined_data = data.iter().chain(noise_data.iter()).cloned().collect();
 
-        let scores = <Vec<Point<f32,2>> as IsoForest<f32,2>>::score(&data, &trees, average_path, 0.45, 0.50);
-
-        dbg!(scores);
-        let _known_scores = vec![
-            Edge(0),
-            Core(0),
-            Core(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Edge(0),
-            Core(0),
-            Core(0),
-            Core(0),];
+        let scores =
+            <Vec<Point<f32, 2>> as IsoForest<f32, 2>>::score(&combined_data, &trees, average_path);
+        let known_scores = vec![
+            0.5693566,
+            0.48800576,
+            0.47635287,
+            0.50720954,
+            0.5770133,
+            0.5118281,
+            0.5752988,
+            0.5085732,
+            0.47635287,
+            0.556946,
+            0.48162508,
+            0.49083218,
+            0.5428835,
+            0.47606847,
+            0.5543319,
+            0.50869894,
+            0.55792373,
+            0.49518526,
+            0.5102761,
+            0.4808876,
+            0.6438421,
+            0.58029604,
+            0.60804564,
+            0.5543376,
+        ];
+        scores.iter().zip(known_scores.iter()).for_each(|(s, ks)| {
+            dbg!(s,ks);
+            assert!((*s - *ks).square_norm() < f32::EPSILON);
+        });
     }
 }

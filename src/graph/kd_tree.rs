@@ -731,6 +731,6 @@ mod kd_tree_tests {
         let mut kd_tree = KdTree::<f32, 2>::new(2);
         (0..500).for_each(|i| kd_tree.add(Point::new([f32::usize(i), f32::usize(i + 1)]), i));
 
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed());
     }
 }

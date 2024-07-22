@@ -86,20 +86,23 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
                     .zip(point_max.data.iter())
                     .zip(point_min.data.iter())
                     .for_each(|((sp, mxp), mnp)| {
-                        *sp = T::usize(rng.next_u32() as usize) / T::usize(u32::MAX as usize)
-                            * (*mxp - *mnp)
-                            + *mnp;
+                        *sp = if mxp == mnp {
+                            *mnp
+                        } else {
+                            rng.uniform(*mnp, *mxp, 1)[0]
+                        }
                     });
                 p
             };
             //zeros a split vector
             let mut split_vector = Point::ZERO;
-
+            let normals = rng.normal(Complex::ZERO, T::ONE, N);
             //sets the vars to normal randoms
             split_vector
                 .data
                 .iter_mut()
-                .for_each(|n| *n = rng.normal(Complex::ZERO, T::ONE, 1)[0].real);
+                .zip(normals)
+                .for_each(|(n, norm)| *n = norm.real);
             //rezeros unextended values (this feels backwards)
             let mut unextended = (0..N).collect::<Vec<_>>();
             rng.shuffle_usize(&mut unextended);
@@ -148,7 +151,7 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
             .map(|(pp, sp)| *pp - *sp)
             .zip(split_vector.data.iter())
             .fold(T::ZERO, |acc, (pp, v)| acc + pp * (*v))
-            < T::ZERO
+            <= T::ZERO
     }
 
     pub fn path_length(node: &IsoNode<T, N>, point: &Point<T, N>) -> T {
@@ -201,18 +204,26 @@ mod iso_tree_tests {
             }
             IsoNode::Branch(branch) => {
                 match branch.left.borrow() {
+                    IsoNode::Leaf(leaf) => {
+                        assert!(leaf.count == 1);
+                    }
+                    IsoNode::Branch(_) => {
+                        unreachable!()
+                    }
+                }
+                match branch.right.borrow() {
                     IsoNode::Leaf(_) => {
                         unreachable!()
                     }
                     IsoNode::Branch(branch) => {
                         match branch.left.borrow() {
                             IsoNode::Leaf(_) => {
-                                unreachable!();
+                                unreachable!()
                             }
                             IsoNode::Branch(branch) => {
                                 match branch.left.borrow() {
                                     IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1)
+                                        assert!(leaf.count == 1);
                                     }
                                     IsoNode::Branch(_) => {
                                         unreachable!()
@@ -220,7 +231,7 @@ mod iso_tree_tests {
                                 }
                                 match branch.right.borrow() {
                                     IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1)
+                                        assert!(leaf.count == 1);
                                     }
                                     IsoNode::Branch(_) => {
                                         unreachable!()
@@ -230,12 +241,12 @@ mod iso_tree_tests {
                         }
                         match branch.right.borrow() {
                             IsoNode::Leaf(_) => {
-                                unreachable!();
+                                unreachable!()
                             }
                             IsoNode::Branch(branch) => {
                                 match branch.left.borrow() {
                                     IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1)
+                                        assert!(leaf.count == 1);
                                     }
                                     IsoNode::Branch(_) => {
                                         unreachable!()
@@ -243,7 +254,7 @@ mod iso_tree_tests {
                                 }
                                 match branch.right.borrow() {
                                     IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1)
+                                        assert!(leaf.count == 1);
                                     }
                                     IsoNode::Branch(_) => {
                                         unreachable!()
@@ -253,14 +264,6 @@ mod iso_tree_tests {
                         }
                     }
                 }
-                match branch.right.borrow() {
-                    IsoNode::Leaf(leaf) => {
-                        assert!(leaf.count == 1)
-                    }
-                    IsoNode::Branch(_) => {
-                        unreachable!()
-                    }
-                };
             }
         }
     }

@@ -56,6 +56,7 @@ pub trait Float:
     fn tanh(&self) -> Self;
 
     fn fma(&self, mul: Self, add: Self) -> Self;
+    fn sign(&self) -> Self;
 
     //shared
     fn greater(&self, other: Self) -> Self {
@@ -190,6 +191,10 @@ impl Float for f32 {
     fn fma(&self, mul: Self, add: Self) -> Self{
         (*self).mul_add(mul,add)
     }
+    #[inline(always)]
+    fn sign(&self) -> Self{
+        (*self).signum()
+    }
 }
 impl Float for f64 {
     const PI: Self =  core::f64::consts::PI;
@@ -301,6 +306,10 @@ impl Float for f64 {
     fn fma(&self, mul: Self, add: Self) -> Self{
         (*self).mul_add(mul,add)
     }
+    #[inline(always)]
+    fn sign(&self) -> Self{
+        (*self).signum()
+    }
 }
 
 
@@ -317,14 +326,14 @@ mod float_tests {
         (0..100000000).for_each(|i|{
             a =(i as f32)*((i+1) as f32)+(-a);
         });
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed());
 
         let mut b = 0.0;
         let now = SystemTime::now();
         (0..100000000).for_each(|i|{
             b = (i as f32).fma((i+1) as f32, -b);
         });
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed());
     }
 }
 

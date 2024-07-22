@@ -14,10 +14,10 @@ impl<T: Float> Hessenberg<T> for Matrix<T> {
         debug_assert!(self.rows == self.columns);
         let n: usize = self.rows - 1;
         let mut h_coefficients = vec![Complex::ZERO; n];
-        for i in 0..n {
+        for (i,h_coefficient) in h_coefficients.iter_mut().enumerate() {
             let householder = Householder::make_householder_local(self, i + 1, i);
             *self.coeff_ref(i, i + 1) = householder.beta;
-            h_coefficients[i] = householder.tau;
+            *h_coefficient = householder.tau;
             householder.apply_left_local(self, i, [i + 1, self.rows], [i + 1, self.rows]);
             householder.apply_right_local(self, i, [i + 1, self.rows], [0, self.rows]);
         }

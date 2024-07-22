@@ -5,11 +5,7 @@ use std::{
 
 use crate::{
     cluster::Classification::{Core, Noise},
-    graph::{
-        kd_tree::KdTree,
-        ms_tree::MSTree,
-        sl_tree::SLTree,
-    },
+    graph::{kd_tree::KdTree, ms_tree::MSTree, sl_tree::SLTree},
     shared::{float::Float, point::Point},
 };
 
@@ -316,7 +312,6 @@ impl<T: Float, const N: usize> Hdbscan<T, N> for Vec<Point<T, N>> {
                 && Self::get_cluster_size(*cluster_idx, condensed_tree, size, parameters)
                     < parameters.max_points
             {
-                //wjhy set it to true then check...
                 *selected_clusters.get_mut(cluster_idx).unwrap() = true;
 
                 Self::find_child_clusters(cluster_idx, condensed_tree, size)
@@ -405,6 +400,7 @@ impl<T: Float, const N: usize> Hdbscan<T, N> for Vec<Point<T, N>> {
         parameters: &HdbscanParameters,
     ) -> Vec<Classification> {
         let mut labels = vec![-1; size];
+
         for (current_cluster_idx, cluster_idx) in wining_clusters.iter().enumerate() {
             let node_size = Self::get_cluster_size(*cluster_idx, condensed_tree, size, parameters);
             Self::find_child_samples(*cluster_idx, node_size, condensed_tree, size, parameters)
@@ -457,7 +453,8 @@ impl<T: Float, const N: usize> Hdbscan<T, N> for Vec<Point<T, N>> {
             for node in condensed_tree {
                 if node.parent_node_idx == current_node_idx {
                     if node.node_idx < size {
-                        if parameters.single_cluster && current_node_idx == size {
+                        //this line is concerning
+                        if !parameters.single_cluster && current_node_idx == size {
                             continue;
                         }
                         child_nodes.push(node.node_idx);
@@ -555,6 +552,125 @@ mod hdbscan_tests {
                 Core(0),
             ]
         };
+        mask.iter().zip(known_mask.iter()).for_each(|(m, k)| {
+            assert!(*m == *k);
+        });
+    }
+
+    #[test]
+    fn hdbscan_single_on() {
+        let data = vec![
+            Point::new([9.308548692822459, 2.1673586347139224]),
+            Point::new([10.107315875917662, 2.4489015959094216]),
+            Point::new([10.047917462523671, 5.1631966716389766]),
+            Point::new([8.30445373000034, 2.129694332932624]),
+            Point::new([9.072668506714033, 3.405664632524281]),
+            Point::new([9.627963795272553, 4.502533177849574]),
+            Point::new([8.292151321984209, 3.8776876670218834]),
+            Point::new([10.308548692822459, 2.1673586347139224]),
+            Point::new([11.107315875917662, 2.4489015959094216]),
+            Point::new([11.047917462523671, 5.1631966716389766]),
+            Point::new([9.30445373000034, 2.129694332932624]),
+            Point::new([10.072668506714033, 4.405664632524281]),
+            Point::new([10.627963795272553, 5.502533177849574]),
+            Point::new([9.292151321984209, 4.8776876670218834]),
+            Point::new([9.308548692822459, 3.1673586347139224]),
+            Point::new([10.107315875917662, 3.4489015959094216]),
+            Point::new([10.047917462523671, 4.1631966716389766]),
+            Point::new([8.30445373000034, 3.129694332932624]),
+            Point::new([9.072668506714033, 4.405664632524281]),
+            Point::new([9.627963795272553, 5.502533177849574]),
+            Point::new([8.292151321984209, 4.8776876670218834]),
+            Point::new([10.308548692822459, 3.1673586347139224]),
+            Point::new([11.107315875917662, 3.4489015959094216]),
+            Point::new([11.047917462523671, 4.1631966716389766]),
+            Point::new([9.30445373000034, 3.129694332932624]),
+            Point::new([10.072668506714033, 4.405664632524281]),
+            Point::new([10.627963795272553, 5.502533177849574]),
+            Point::new([9.292151321984209, 4.8776876670218834]),
+        ];
+        let parameters = HdbscanParameters {
+            min_points: 3,
+            max_points: 20,
+            single_cluster: true,
+            min_samples: 5,
+        };
+        let mask = <Vec<Point<f32, 2>> as Hdbscan<f32, 2>>::cluster(&data, &parameters);
+        mask.iter().for_each(|m| {
+            assert!(*m == Core(0));
+        });
+    }
+    #[test]
+    fn hdbscan_single_off() {
+        let data = vec![
+            Point::new([9.308548692822459, 2.1673586347139224]),
+            Point::new([10.107315875917662, 2.4489015959094216]),
+            Point::new([10.047917462523671, 5.1631966716389766]),
+            Point::new([8.30445373000034, 2.129694332932624]),
+            Point::new([9.072668506714033, 3.405664632524281]),
+            Point::new([9.627963795272553, 4.502533177849574]),
+            Point::new([8.292151321984209, 3.8776876670218834]),
+            Point::new([10.308548692822459, 2.1673586347139224]),
+            Point::new([11.107315875917662, 2.4489015959094216]),
+            Point::new([11.047917462523671, 5.1631966716389766]),
+            Point::new([9.30445373000034, 2.129694332932624]),
+            Point::new([10.072668506714033, 4.405664632524281]),
+            Point::new([10.627963795272553, 5.502533177849574]),
+            Point::new([9.292151321984209, 4.8776876670218834]),
+            Point::new([9.308548692822459, 3.1673586347139224]),
+            Point::new([10.107315875917662, 3.4489015959094216]),
+            Point::new([10.047917462523671, 4.1631966716389766]),
+            Point::new([8.30445373000034, 3.129694332932624]),
+            Point::new([9.072668506714033, 4.405664632524281]),
+            Point::new([9.627963795272553, 5.502533177849574]),
+            Point::new([8.292151321984209, 4.8776876670218834]),
+            Point::new([10.308548692822459, 3.1673586347139224]),
+            Point::new([11.107315875917662, 3.4489015959094216]),
+            Point::new([11.047917462523671, 4.1631966716389766]),
+            Point::new([9.30445373000034, 3.129694332932624]),
+            Point::new([10.072668506714033, 4.405664632524281]),
+            Point::new([10.627963795272553, 5.502533177849574]),
+            Point::new([9.292151321984209, 4.8776876670218834]),
+        ];
+        let parameters = HdbscanParameters {
+            min_points: 3,
+            max_points: 20,
+            single_cluster: false,
+            min_samples: 5,
+        };
+        let mask = <Vec<Point<f32, 2>> as Hdbscan<f32, 2>>::cluster(&data, &parameters);
+        dbg!(&mask);
+        let known_mask = vec![
+            Noise,
+            Noise,
+            Core(0),
+            Noise,
+            Noise,
+            Core(0),
+            Noise,
+            Noise,
+            Noise,
+            Noise,
+            Noise,
+            Core(0),
+            Noise,
+            Core(0),
+            Noise,
+            Core(0),
+            Core(0),
+            Noise,
+            Core(0),
+            Noise,
+            Noise,
+            Noise,
+            Noise,
+            Noise,
+            Noise,
+            Core(0),
+            Noise,
+            Core(0),
+        ];
+
         mask.iter().zip(known_mask.iter()).for_each(|(m, k)| {
             assert!(*m == *k);
         });

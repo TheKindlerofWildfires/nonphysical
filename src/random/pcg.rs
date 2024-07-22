@@ -37,6 +37,13 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
         ((word>>22) ^word).0
     }
 
+    pub fn uniform(&mut self, start: T, end:T, size: usize)-> Vec<T>{
+        (0..size).map(|_|{
+            let base = self.next_u32();
+            T::usize(base as usize)/T::usize(u32::MAX as usize)*(end-start)+start
+        }).collect()
+    }
+
     pub fn normal(&mut self, mean: Complex<T>, scale: T, size: usize) -> Vec<Complex<T>>{        
         let mut samples = Vec::with_capacity(size);
         (0..size).for_each(|_| {

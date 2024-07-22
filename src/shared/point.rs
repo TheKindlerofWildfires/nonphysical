@@ -1,6 +1,6 @@
 use super::float::Float;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Point<T:Float, const N: usize>{
     pub data: [T;N]
 }

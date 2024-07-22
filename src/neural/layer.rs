@@ -193,8 +193,6 @@ impl<T: Float> PerceptronLayer<T> {
         mul_layer.weights = Matrix::new(2, kw1);
         add_layer.biases = Matrix::new(1, kb1);
 
-        dbg!(&mul_layer.weights);
-
         Self {
             mul_layer,
             add_layer,
@@ -221,7 +219,6 @@ impl<T: Float> PerceptronLayer<T> {
         let activation_layer = TanhLayer::new(2, 3);
         mul_layer.weights = Matrix::new(3, kw1);
         add_layer.biases = Matrix::new(1, kb1);
-        dbg!(&mul_layer.weights);
         Self {
             mul_layer,
             add_layer,
@@ -242,7 +239,6 @@ impl<T: Float> Layer<T> for PerceptronLayer<T> {
             activation_layer: TanhLayer::new(size, previous_size),
             memories: Vec::new(),
         };
-        dbg!(&s.mul_layer.weights);
         s
     }
 

@@ -183,7 +183,7 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
                 )
             }
         };
-        rot1.apply_left(&mut sub_matrix, 0, 1,0..self.rows);
+        rot1.apply_left(&mut sub_matrix, 0, 1,0..2);
         let j_right = Jacobi::<T>::make_jacobi(&mut sub_matrix, 0, 1);
         let j_left = rot1 * j_right.transpose();
         (j_left, j_right)

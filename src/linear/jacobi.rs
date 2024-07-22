@@ -38,23 +38,24 @@ impl<'a, T: Float + 'a> Jacobi<T> {
             }
         }
     }
+    //not complex friendly
     pub fn make_givens(p: Complex<T>, q: Complex<T>, r: &mut Complex<T>) -> Self {
         let (c, s) = if q == Complex::ZERO {
-            let c = -p / p.norm();
+            let c = Complex::new(-p.real.sign(),T::ZERO);
             let s = Complex::ZERO;
             *r = c * p;
             (c, s)
         } else if p == Complex::ZERO {
-            let s = -q / q.norm();
+            let s = Complex::new(-q.real.sign(),T::ZERO);
             let c = Complex::ZERO;
             *r = s * q;
             (c, s)
         } else {
-            let p1 = p.norm();
+            let p1: T = p.norm();
             let q1 = q.norm();
             let (c, s) = if p1 > q1 {
                 let ps = p / p1;
-                let p2 = ps.square_norm();
+                let p2 = ps.square_norm(); //probably 1
                 let qs = q / p1;
                 let q2 = qs.square_norm();
 
@@ -93,9 +94,10 @@ impl<'a, T: Float + 'a> Jacobi<T> {
             return;
         }
         range.for_each(|i| {
-            let tmp = matrix.coeff(i, p);
-            *matrix.coeff_ref(i, p) = self.c.fma(tmp,self.s.conj() * matrix.coeff(i, q));
-            *matrix.coeff_ref(i, q) = (-self.s).fma(tmp,self.c.conj() * matrix.coeff(i, q));
+            let tmp_p = matrix.coeff(i, p);
+            let tmp_q = matrix.coeff(i, q); 
+            *matrix.coeff_ref(i, p) = self.c.fma(tmp_p,self.s.conj() * tmp_q);
+            *matrix.coeff_ref(i, q) = (-self.s).fma(tmp_p,self.c.conj() * tmp_q);
         });
     }
 
@@ -104,9 +106,10 @@ impl<'a, T: Float + 'a> Jacobi<T> {
             return;
         }
         range.for_each(|i| {
-            let tmp = matrix.coeff(p, i);
-            *matrix.coeff_ref(p, i) = self.c.fma(tmp, self.s.conj() * matrix.coeff(q, i));
-            *matrix.coeff_ref(q, i) =  (-self.s).fma(tmp, self.c.conj() * matrix.coeff(q, i));
+            let tmp_p = matrix.coeff(p,i);
+            let tmp_q = matrix.coeff(q,i); 
+            *matrix.coeff_ref(p, i) = self.c.fma(tmp_p, self.s.conj() * tmp_q);
+            *matrix.coeff_ref(q, i) =  (-self.s).fma(tmp_p, self.c.conj() * tmp_q);
 
         });
     }

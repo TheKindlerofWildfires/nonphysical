@@ -98,7 +98,6 @@ impl<T: Float + 'static> Network<T> {
                     if epoch % 100 == 0 {
                         let loss = self.loss(&mut batch_x_cp,&batch_y_cp);
                         println!("On Epoch {}", epoch);
-                        dbg!(loss);
                     }
 
                 })
@@ -108,8 +107,6 @@ impl<T: Float + 'static> Network<T> {
     pub fn predict(&mut self,input: &mut Matrix<T>){
         self.forward(input);
         let probabilities = SoftPredictor::predict(input);
-
-        dbg!(probabilities);
     }
 
     fn compile_layers(

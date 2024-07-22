@@ -460,10 +460,10 @@ mod gemm_test {
         let now = SystemTime::now();
         let _ = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1, &m2);
         let _ = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m2, &m1);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed());
         let now = SystemTime::now();
         let _ = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m1, &m2);
         let _ = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed());
     }
 }

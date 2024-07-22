@@ -12,10 +12,5 @@ pub mod cluster;
 pub mod graph;
 
 
-pub mod playground;
-
 fn main() {
-    playground::play_svd();
-    //playground::play_neural();
-    //playground::play_matrix();
 }
