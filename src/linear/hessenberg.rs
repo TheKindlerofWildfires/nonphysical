@@ -18,8 +18,8 @@ impl<T: Float> Hessenberg<T> for Matrix<T> {
             let householder = Householder::make_householder_local(self, i + 1, i);
             *self.coeff_ref(i, i + 1) = householder.beta;
             *h_coefficient = householder.tau;
-            householder.apply_left_local(self, i, [i + 1, self.rows], [i + 1, self.rows]);
-            householder.apply_right_local(self, i, [i + 1, self.rows], [0, self.rows]);
+            //householder.apply_left_local(self, i, [i + 1, self.rows], [i + 1, self.rows]);
+            //householder.apply_right_local(self, i, [i + 1, self.rows], [0, self.rows]);
         }
         h_coefficients
     }
@@ -32,7 +32,7 @@ impl<T: Float> Hessenberg<T> for Matrix<T> {
             };
             let mut vec = self.data_row(i).map(|c| c.conj()).collect::<Vec<_>>();
             vec[i+1] = Complex::new(T::ONE, T::ZERO);
-            householder.apply_left_local_vec(&mut output, &vec, [i + 1, self.rows], [i + 1, self.rows]);
+            //householder.apply_left_local_vec(&mut output, &vec, [i + 1, self.rows], [i + 1, self.rows]);
         }
         output
     }

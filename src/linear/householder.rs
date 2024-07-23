@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
 
 #[derive(Debug)]
@@ -9,17 +11,17 @@ pub struct Householder<T: Float> {
 impl<'a, T: Float + 'a> Householder<T> {
     //modifies vector to become householder
 
-    pub fn make_householder_local(matrix: &mut Matrix<T>, row: usize, column: usize) -> Self {
+    pub fn make_householder_local(matrix: &mut Matrix<T>, column: usize, row: usize) -> Self {
         let squared_norm_sum =
-            <Vec<&Complex<T>> as Vector<T>>::square_norm_sum(matrix.data_row(column).skip(row + 1));
-        let first = matrix.coeff(column, row);
+            <Vec<&Complex<T>> as Vector<T>>::square_norm_sum(matrix.data_row(row).skip(column + 1));
+        let first = matrix.coeff(row, column);
 
         let (beta, tau) = if squared_norm_sum < T::EPSILON && first.imag.norm() < T::EPSILON {
             matrix
-                .data_column_ref(column)
-                .skip(row)
+                .data_row_ref(row)
+                .skip(column + 1)
                 .for_each(|c| *c = Complex::ZERO);
-            (Complex::ZERO, first)
+            (first, Complex::ZERO)
         } else {
             let beta = Complex::new((first.square_norm() + squared_norm_sum).sqrt(), T::ZERO)
                 * -first.real.sign();
@@ -27,8 +29,8 @@ impl<'a, T: Float + 'a> Householder<T> {
             let inv_bmc = -bmc.recip();
 
             matrix
-                .data_column_ref(column)
-                .skip(row)
+                .data_row_ref(row)
+                .skip(column + 1)
                 .for_each(|c| *c *= inv_bmc);
 
             let tau = (bmc / beta).conj();
@@ -44,14 +46,14 @@ impl<'a, T: Float + 'a> Householder<T> {
         &self,
         matrix: &mut Matrix<T>,
         offset: usize,
-        row_range: [usize; 2],
-        col_range: [usize; 2],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
     ) {
         let mut vec = matrix
             .data_row(offset)
             .map(|c| c.conj())
             .collect::<Vec<_>>();
-        vec[row_range[0]] = Complex::ONE;
+        vec[row_range.clone().nth(0).unwrap()] = Complex::ONE;
         self.apply_left_local_vec(matrix, &vec, row_range, col_range);
     }
 
@@ -59,20 +61,21 @@ impl<'a, T: Float + 'a> Householder<T> {
         &self,
         matrix: &mut Matrix<T>,
         vec: &[Complex<T>],
-        row_range: [usize; 2],
-        col_range: [usize; 2],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
     ) {
         if self.tau == Complex::ZERO {
             return;
         }
         let mut tmp = Complex::ZERO;
-        (col_range[0]..col_range[1]).for_each(|i| {
+        col_range.for_each(|i| {
             tmp = Complex::ZERO;
-            (row_range[0]..row_range[1]).for_each(|j| {
+            row_range.clone().for_each(|j| {
                 tmp = matrix.coeff(i, j).fma(vec[j], tmp);
             });
             tmp *= -self.tau;
-            (row_range[0]..row_range[1])
+            row_range
+                .clone()
                 .for_each(|j| *matrix.coeff_ref(i, j) = vec[j].fma(tmp, matrix.coeff(i, j)));
         })
     }
@@ -82,14 +85,14 @@ impl<'a, T: Float + 'a> Householder<T> {
         &self,
         matrix: &mut Matrix<T>,
         offset: usize,
-        row_range: [usize; 2],
-        col_range: [usize; 2],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
     ) {
         let mut vec = matrix
             .data_row(offset)
             .map(|c| c.conj())
             .collect::<Vec<_>>();
-        vec[row_range[0]] = Complex::ONE;
+        vec[row_range.clone().nth(0).unwrap()] = Complex::ONE;
         self.apply_right_local_vec(matrix, &vec, row_range, col_range);
     }
 
@@ -97,20 +100,21 @@ impl<'a, T: Float + 'a> Householder<T> {
         &self,
         matrix: &mut Matrix<T>,
         vec: &[Complex<T>],
-        row_range: [usize; 2],
-        col_range: [usize; 2],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
     ) {
         if self.tau == Complex::ZERO {
             return;
         }
         let mut tmp = Complex::ZERO;
-        (col_range[0]..col_range[1]).for_each(|i| {
+        col_range.for_each(|i| {
             tmp = Complex::ZERO;
-            (row_range[0]..row_range[1]).for_each(|j| {
+            row_range.clone().for_each(|j| {
                 tmp = matrix.coeff(j, i).fma(vec[j], tmp);
             });
             tmp *= -self.tau;
-            (row_range[0]..row_range[1])
+            row_range
+                .clone()
                 .for_each(|j| *matrix.coeff_ref(j, i) = vec[j].fma(tmp, matrix.coeff(j, i)));
         })
     }
@@ -119,314 +123,796 @@ impl<'a, T: Float + 'a> Householder<T> {
 #[cfg(test)]
 mod householder_tests {
     use super::*;
+
     #[test]
-    fn make_local_1() {
-        let mut m = Matrix::new(4, (0..16).map(|i| Complex::new(i as f32, 0.0)).collect());
+    fn make_local_3x3_real_1() {
+        let mut m = Matrix::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
         let house = Householder::make_householder_local(&mut m, 1, 0);
-        assert!((house.beta.real + 3.7416575).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.2672611, 0.0)).square_norm() < f32::EPSILON);
+        assert!((house.beta.real + 2.23607).square_norm() < f32::EPSILON);
+        assert!((house.tau - Complex::new(1.44721, 0.0)).square_norm() < f32::EPSILON);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(4.0, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0),
+            Complex::new(8.0, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
     }
     #[test]
-    fn left_local_1() {
+    fn left_local_3x3_real_1() {
         let data = vec![
             Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(3.0, 0.0),
             Complex::new(4.0, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(-3.74166, 0.0),
             Complex::new(5.0, 0.0),
-            Complex::new(9.0, 0.0),
-            Complex::new(13.0, 0.0),
-            Complex::new(0.421793, 0.0),
             Complex::new(6.0, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(14.0, 0.0),
-            Complex::new(0.63269, 0.0),
             Complex::new(7.0, 0.0),
+            Complex::new(8.0, 0.0),
+        ];
+        let mut m = Matrix::new(3, data);
+        let house = Householder {
+            tau: Complex::new(1.44721, 0.0),
+            beta: Complex::new(-2.23607, 0.0),
+        };
+        house.apply_left_local(&mut m, 0, 1..3, 1..3);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-6.26099, 0.0),
+            Complex::new(-1.34164, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(-10.2859, 0.0),
+            Complex::new(-2.68328, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            dbg!(c, k);
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn right_local_3x3_real_1() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-6.26099, 0.0),
+            Complex::new(-1.34164, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(-10.2859, 0.0),
+            Complex::new(-2.68328, 0.0),
+        ];
+        let mut m = Matrix::new(3, data);
+        let house = Householder {
+            tau: Complex::new(1.44721, 0.0),
+            beta: Complex::new(-2.23607, 0.0),
+        };
+        house.apply_right_local(&mut m, 0, 1..3, 0..3);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn make_local_3x3_real_2() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        let mut m = Matrix::new(3, data);
+        let house = Householder::make_householder_local(&mut m, 2, 1);
+        assert!((house.beta.real - 3.0).square_norm() < f32::EPSILON);
+        assert!((house.tau - Complex::new(0.0, 0.0)).square_norm() < f32::EPSILON);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn left_local_3x3_real_2() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        let mut m = Matrix::new(3, data);
+        let house = Householder {
+            tau: Complex::new(0.0, 0.0),
+            beta: Complex::new(3.0, 0.0),
+        };
+        house.apply_left_local(&mut m, 0, 2..3, 2..3);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn right_local_3x3_real_2() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        let mut m = Matrix::new(3, data);
+        let house = Householder {
+            tau: Complex::new(0.0, 0.0),
+            beta: Complex::new(3.0, 0.0),
+        };
+        house.apply_right_local(&mut m, 0, 2..3, 0..3);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.23607, 0.0),
+            Complex::new(0.61803395, 0.0),
+            Complex::new(-6.7082, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(3.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn make_local_4x4_real_1() {
+        let mut m = Matrix::new(4, (0..16).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let house = Householder::make_householder_local(&mut m, 1, 0);
+        assert!((house.beta.real + 3.74166).square_norm() < f32::EPSILON);
+        assert!((house.tau - Complex::new(1.26726, 0.0)).square_norm() < f32::EPSILON);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(4.0, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0),
+            Complex::new(8.0, 0.0),
+            Complex::new(9.0, 0.0),
+            Complex::new(10.0, 0.0),
             Complex::new(11.0, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(13.0, 0.0),
+            Complex::new(14.0, 0.0),
             Complex::new(15.0, 0.0),
         ];
-        let mut m = Matrix::new(4, data).transposed();
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn left_local_4x4_real_1() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(4.0, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0),
+            Complex::new(8.0, 0.0),
+            Complex::new(9.0, 0.0),
+            Complex::new(10.0, 0.0),
+            Complex::new(11.0, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(13.0, 0.0),
+            Complex::new(14.0, 0.0),
+            Complex::new(15.0, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
         let house = Householder {
             tau: Complex::new(1.26726, 0.0),
             beta: Complex::new(-3.74166, 0.0),
         };
-        house.apply_left_local(&mut m, 0, [1, 4], [1, 4]);
-        let know_data = vec![
+        house.apply_left_local(&mut m, 0, 1..4, 1..4);
+
+        let known = vec![
             Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
             Complex::new(4.0, 0.0),
+            Complex::new(-10.1559, 0.0),
+            Complex::new(-0.392671, 0.0),
+            Complex::new(-2.58901, 0.0),
             Complex::new(8.0, 0.0),
+            Complex::new(-16.5702, 0.0),
+            Complex::new(-0.785341, 0.0),
+            Complex::new(-5.17801, 0.0),
             Complex::new(12.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(-10.155907, 0.0),
-            Complex::new(-16.570163995199998, 0.0),
-            Complex::new(-22.98442, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(-0.39265555, 0.0),
-            Complex::new(-0.7853164, 0.0),
-            Complex::new(-1.1779773, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-2.5889907, 0.0),
-            Complex::new(-5.177987, 0.0),
-            Complex::new(-7.7669835, 0.0),
+            Complex::new(-22.9845, 0.0),
+            Complex::new(-1.17801, 0.0),
+            Complex::new(-7.76702, 0.0),
         ];
-        m.transposed()
-            .data()
-            .zip(know_data.iter())
-            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
-    }
-
-    #[test]
-    fn left_local_2() {
-        let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(2.98023e-07, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-        ];
-        let mut m = Matrix::new(4, data).transposed();
-        let house = Householder {
-            tau: Complex::new(1.14995, 0.0),
-            beta: Complex::new(-9.79796, 0.0),
-        };
-        house.apply_left_local(&mut m, 1, [2, 4], [2, 4]);
-
-        let know_data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-0.000000044688562, 0.0),
-            Complex::new(0.0000010143897, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(-0.0000002946524, 0.0),
-            Complex::new(0.000000328435, 0.0),
-        ];
-        m.transposed()
-            .data()
-            .zip(know_data.iter())
-            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
-    }
-
-    #[test]
-    fn left_local_3() {
-        let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
-        ];
-        let mut m = Matrix::new(4, data).transposed();
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new(-2.8054e-07, 0.0),
-        };
-        house.apply_left_local(&mut m, 2, [3, 4], [3, 4]);
-
-        let know_data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
-        ];
-        m.transposed()
-            .data()
-            .zip(know_data.iter())
-            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
     }
     #[test]
-    fn right_local_1() {
+    fn right_local_4x4_real_1() {
         let data = vec![
             Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
             Complex::new(4.0, 0.0),
+            Complex::new(-10.1559, 0.0),
+            Complex::new(-0.392671, 0.0),
+            Complex::new(-2.58901, 0.0),
             Complex::new(8.0, 0.0),
+            Complex::new(-16.5702, 0.0),
+            Complex::new(-0.785341, 0.0),
+            Complex::new(-5.17801, 0.0),
             Complex::new(12.0, 0.0),
-            Complex::new(-3.7416573867739413, 0.0),
-            Complex::new(-10.155927192672129, 0.0),
-            Complex::new(-16.5701969985703, 0.0),
-            Complex::new(-22.984466804468497, 0.0),
-            Complex::new(0.42179344411906794, 0.0),
-            Complex::new(-0.3926707294150136, 0.0),
-            Complex::new(-0.7853414588300254, 0.0),
-            Complex::new(-1.178012188245038, 0.0),
-            Complex::new(0.632690166178602, 0.0),
-            Complex::new(-2.5890060941225226, 0.0),
-            Complex::new(-5.178012188245038, 0.0),
-            Complex::new(-7.767018282367559, 0.0),
+            Complex::new(-22.9845, 0.0),
+            Complex::new(-1.17801, 0.0),
+            Complex::new(-7.76702, 0.0),
         ];
-        let mut m = Matrix::<f32>::new(4, data).transposed();
+        let mut m = Matrix::new(4, data);
         let house = Householder {
-            tau: Complex::new(1.2672612419124243, 0.0),
-            beta: Complex::new(-3.7416573867739413, 0.0),
+            tau: Complex::new(1.26726, 0.0),
+            beta: Complex::new(-3.74166, 0.0),
         };
-        house.apply_right_local(&mut m, 0, [1, 4], [0, 4]);
+        house.apply_right_local(&mut m, 0, 1..4, 0..4);
 
-        let know_data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.966629547095767, 0.0),
-            Complex::new(0.0, 0.0),
+        let known = vec![
             Complex::new(0.0, 0.0),
             Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.42179, 0.0),
             Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
             Complex::new(1.46924, 0.0),
-            Complex::new(2.98023e-07, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(0.63269, 0.0),
             Complex::new(9.68717, 0.0),
             Complex::new(0.0, 0.0),
+            Complex::new(0.36731, 0.0),
+            Complex::new(2.98023e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.42179, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
             Complex::new(-9.53674e-07, 0.0),
         ];
-        m.transposed()
-            .data()
-            .zip(know_data.iter())
-            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
     }
 
     #[test]
-    fn right_local_2() {
+    fn make_local_4x4_real_2() {
         let data = vec![
             Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
             Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(1.46924, 0.0),
+            Complex::new(9.68717, 0.0),
             Complex::new(0.0, 0.0),
+            Complex::new(0.36731, 0.0),
+            Complex::new(2.98023e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.42179, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(-9.53674e-07, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
+        let house = Householder::make_householder_local(&mut m, 2, 1);
+        assert!((house.beta.real + 9.79796).square_norm() < f32::EPSILON);
+        assert!((house.tau - Complex::new(1.14995, 0.0)).square_norm() < f32::EPSILON);
+
+        let known = vec![
             Complex::new(0.0, 0.0),
             Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.42179, 0.0),
             Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-4.46897e-08, 0.0),
-            Complex::new(1.01439e-06, 0.0),
             Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(1.46924, 0.0),
             Complex::new(0.859768, 0.0),
-            Complex::new(-2.94653e-07, 0.0),
-            Complex::new(3.28438e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.36731, 0.0),
+            Complex::new(2.98023e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.42179, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(-9.53674e-07, 0.0),
         ];
-        let mut m = Matrix::new(4, data).transposed();
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn left_local_4x4_real_2() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.36731, 0.0),
+            Complex::new(2.98023e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.42179, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(-9.53674e-07, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
         let house = Householder {
             tau: Complex::new(1.14995, 0.0),
             beta: Complex::new(-9.79796, 0.0),
         };
-        house.apply_right_local(&mut m, 1, [2, 4], [0, 4]);
+        house.apply_left_local(&mut m, 1, 2..4, 2..4);
 
-        let know_data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(0.0, 0.0),
+        let known = vec![
             Complex::new(0.0, 0.0),
             Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-2.4494781, 0.0),
-            Complex::new(5.605246e-6, 0.0),
             Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-9.962163e-7, 0.0),
-            Complex::new(1.9629792e-7, 0.0),
             Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
             Complex::new(0.859768, 0.0),
-            Complex::new(-2.805402e-7, 0.0),
-            Complex::new(3.4057175e-7, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.36731, 0.0),
+            Complex::new(-4.46897e-08, 0.0),
+            Complex::new(-2.94653e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.42179, 0.0),
+            Complex::new(1.01439e-06, 0.0),
+            Complex::new(3.28438e-07, 0.0),
         ];
-        m.transposed()
-            .data()
-            .zip(know_data.iter())
-            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
     }
-
     #[test]
-    fn right_local_3() {
+    fn right_local_4x4_real_2() {
         let data = vec![
             Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
             Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
             Complex::new(0.0, 0.0),
+            Complex::new(0.36731, 0.0),
+            Complex::new(-4.46897e-08, 0.0),
+            Complex::new(-2.94653e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(2.42179, 0.0),
+            Complex::new(1.01439e-06, 0.0),
+            Complex::new(3.28438e-07, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
+        let house = Householder {
+            tau: Complex::new(1.14995, 0.0),
+            beta: Complex::new(-9.79796, 0.0),
+        };
+        house.apply_right_local(&mut m, 1, 2..4, 0..4);
+        let known = vec![
             Complex::new(0.0, 0.0),
             Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(4.76837e-07, 0.0),
             Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
             Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
             Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
             Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
             Complex::new(3.40572e-07, 0.0),
         ];
-        let mut m = Matrix::new(4, data).transposed();
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn make_local_4x4_real_3() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
+            Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
+            Complex::new(3.40572e-07, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
+        let house = Householder::make_householder_local(&mut m, 3, 2);
+        assert!((house.beta.real + 2.8054e-07).square_norm() < f32::EPSILON);
+        assert!((house.tau - Complex::new(0.0, 0.0)).square_norm() < f32::EPSILON);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
+            Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
+            Complex::new(3.40572e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn left_local_4x4_real_3() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
+            Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
+            Complex::new(3.40572e-07, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
         let house = Householder {
             tau: Complex::new(0.0, 0.0),
-            beta: Complex::new(-2.8054e-07, 0.0),
+            beta: Complex::new( 2.8054e-07, 0.0),
         };
-        house.apply_right_local(&mut m, 2, [3, 4], [0, 4]);
+        house.apply_left_local(&mut m, 2, 3..4, 3..4);
 
-        let know_data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(0.0, 0.0),
+        let known = vec![
             Complex::new(0.0, 0.0),
             Complex::new(-3.74166, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(4.76837e-07, 0.0),
             Complex::new(0.421793, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
             Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
             Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
             Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
             Complex::new(3.40572e-07, 0.0),
         ];
-        m.transposed()
-            .data()
-            .zip(know_data.iter())
-            .for_each(|(a, b)| assert!((*a - *b).square_norm() < f32::EPSILON));
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
     }
+    #[test]
+    fn right_local_4x4_real_3() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
+            Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
+            Complex::new(3.40572e-07, 0.0),
+        ];
+        let mut m = Matrix::new(4, data);
+        let house = Householder {
+            tau: Complex::new(0.0, 0.0),
+            beta: Complex::new( 2.8054e-07, 0.0),
+        };
+        house.apply_right_local(&mut m, 2, 3..4, 0..4);
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-3.74166, 0.0),
+            Complex::new(0.421793, 0.0),
+            Complex::new(0.63269, 0.0),
+            Complex::new(-14.9666, 0.0),
+            Complex::new(30.0, 0.0),
+            Complex::new(-9.79796, 0.0),
+            Complex::new(0.859768, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-2.44949, 0.0),
+            Complex::new(-9.96223e-07, 0.0),
+            Complex::new(-2.8054e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.76837e-07, 0.0),
+            Complex::new(1.96297e-07, 0.0),
+            Complex::new(3.40572e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn make_local_5x5_real_1() {
+        let mut m = Matrix::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let house = Householder::make_householder_local(&mut m, 1, 0);
+        assert!((house.beta.real + 5.47723).square_norm() < f32::EPSILON);
+        assert!((house.tau - Complex::new(1.18257, 0.0)).square_norm() < f32::EPSILON);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(1.0, 0.0),
+            Complex::new(0.308774, 0.0),
+            Complex::new(0.463161, 0.0),
+            Complex::new(0.617548, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0),
+            Complex::new(8.0, 0.0),
+            Complex::new(9.0, 0.0),
+            Complex::new(10.0, 0.0),
+            Complex::new(11.0, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(13.0, 0.0),
+            Complex::new(14.0, 0.0),
+            Complex::new(15.0, 0.0),
+            Complex::new(16.0, 0.0),
+            Complex::new(17.0, 0.0),
+            Complex::new(18.0, 0.0),
+            Complex::new(19.0, 0.0),
+            Complex::new(20.0, 0.0),
+            Complex::new(21.0, 0.0),
+            Complex::new(22.0, 0.0),
+            Complex::new(23.0, 0.0),
+            Complex::new(24.0, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn left_local_5x5_real_1() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-5.47723, 0.0),
+            Complex::new(0.308774, 0.0),
+            Complex::new(0.463161, 0.0),
+            Complex::new(0.617548, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(6.0, 0.0),
+            Complex::new(7.0, 0.0),
+            Complex::new(8.0, 0.0),
+            Complex::new(9.0, 0.0),
+            Complex::new(10.0, 0.0),
+            Complex::new(11.0, 0.0),
+            Complex::new(12.0, 0.0),
+            Complex::new(13.0, 0.0),
+            Complex::new(14.0, 0.0),
+            Complex::new(15.0, 0.0),
+            Complex::new(16.0, 0.0),
+            Complex::new(17.0, 0.0),
+            Complex::new(18.0, 0.0),
+            Complex::new(19.0, 0.0),
+            Complex::new(20.0, 0.0),
+            Complex::new(21.0, 0.0),
+            Complex::new(22.0, 0.0),
+            Complex::new(23.0, 0.0),
+            Complex::new(24.0, 0.0),
+        ];
+        let mut m = Matrix::new(5, data);
+        let house = Householder {
+            tau: Complex::new(1.18257, 0.0),
+            beta: Complex::new(-5.47723, 0.0),
+        };
+        house.apply_left_local(&mut m, 0, 1..5, 1..5);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-5.47723, 0.0),
+            Complex::new(0.308774, 0.0),
+            Complex::new(0.463161, 0.0),
+            Complex::new(0.617548, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(-14.6059, 0.0),
+            Complex::new(0.63742, 0.0),
+            Complex::new(-1.54387, 0.0),
+            Complex::new(-3.72516, 0.0),
+            Complex::new(10.0, 0.0),
+            Complex::new(-23.7346, 0.0),
+            Complex::new(1.27484, 0.0),
+            Complex::new(-3.08774, 0.0),
+            Complex::new(-7.45032, 0.0),
+            Complex::new(15.0, 0.0),
+            Complex::new(-32.8633, 0.0),
+            Complex::new(1.91226, 0.0),
+            Complex::new(-4.63161, 0.0),
+            Complex::new(-11.1755, 0.0),
+            Complex::new(20.0, 0.0),
+            Complex::new(-41.9921, 0.0),
+            Complex::new(2.54968, 0.0),
+            Complex::new(-6.17548, 0.0),
+            Complex::new(-14.9006, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+    #[test]
+    fn right_local_5x5_real_1() {
+        let data = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-5.47723, 0.0),
+            Complex::new(0.308774, 0.0),
+            Complex::new(0.463161, 0.0),
+            Complex::new(0.617548, 0.0),
+            Complex::new(5.0, 0.0),
+            Complex::new(-14.6059, 0.0),
+            Complex::new(0.63742, 0.0),
+            Complex::new(-1.54387, 0.0),
+            Complex::new(-3.72516, 0.0),
+            Complex::new(10.0, 0.0),
+            Complex::new(-23.7346, 0.0),
+            Complex::new(1.27484, 0.0),
+            Complex::new(-3.08774, 0.0),
+            Complex::new(-7.45032, 0.0),
+            Complex::new(15.0, 0.0),
+            Complex::new(-32.8633, 0.0),
+            Complex::new(1.91226, 0.0),
+            Complex::new(-4.63161, 0.0),
+            Complex::new(-11.1755, 0.0),
+            Complex::new(20.0, 0.0),
+            Complex::new(-41.9921, 0.0),
+            Complex::new(2.54968, 0.0),
+            Complex::new(-6.17548, 0.0),
+            Complex::new(-14.9006, 0.0),
+        ];
+        let mut m = Matrix::new(5, data);
+        let house = Householder {
+            tau: Complex::new(1.18257, 0.0),
+            beta: Complex::new(-5.47723, 0.0),
+        };
+        house.apply_right_local(&mut m, 0, 1..5, 0..5);
+
+        let known = vec![
+            Complex::new(0.0, 0.0),
+            Complex::new(-5.47723, 0.0),
+            Complex::new(0.308774, 0.0),
+            Complex::new(0.463161, 0.0),
+            Complex::new(0.617548, 0.0),
+            Complex::new(-27.3861, 0.0),
+            Complex::new(60.0, 0.0),
+            Complex::new(-3.49129, 0.0),
+            Complex::new(8.45612, 0.0),
+            Complex::new(20.4035, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-0.698259, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-4.76837e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(1.69122, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-9.53674e-07, 0.0),
+            Complex::new(-9.53674e-07, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(4.08071, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(0.0, 0.0),
+            Complex::new(-9.53674e-07, 0.0),
+        ];
+        m.data().zip(known.iter()).for_each(|(c, k)| {
+            assert!((*c - *k).square_norm() < f32::EPSILON);
+        })
+    }
+
 }
+
+/*        for i in m.data() {
+            print!("Complex::new({:?},0.0),", i.real)
+        }
+
+*/
