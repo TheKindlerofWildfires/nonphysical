@@ -15,7 +15,6 @@ impl<'a, T: Float + 'a> Householder<T> {
         let squared_norm_sum =
             <Vec<&Complex<T>> as Vector<T>>::square_norm_sum(matrix.data_row(row).skip(column + 1));
         let first = matrix.coeff(row, column);
-        dbg!(first, squared_norm_sum);
         let (beta, tau) = if squared_norm_sum <= T::SMALL && first.imag.square_norm() <= T::SMALL {
             matrix
                 .data_row_ref(row)
@@ -178,7 +177,6 @@ mod householder_tests {
             Complex::new(-2.68328, 0.0),
         ];
         m.data().zip(known.iter()).for_each(|(c, k)| {
-            dbg!(c, k);
             assert!((*c - *k).square_norm() < f32::EPSILON);
         })
     }

@@ -192,6 +192,8 @@ impl<T: Float> SingularValueDecomposition<T> for Matrix<T> {
 
 #[cfg(test)]
 pub mod svd_tests {
+    use std::time::SystemTime;
+
     use super::*;
 
     #[test]
@@ -269,6 +271,18 @@ pub mod svd_tests {
             .for_each(|(si, ki)| {
                 assert!((si - ki).square_norm() < f32::EPSILON);
             });
+
+    }
+
+    #[test]
+    fn jacobi_svd_speed_square() {
+        let mut in_mat =
+            Matrix::<f32>::new(512, (0..512*512).map(|i| Complex::new(i as f32, 0.0)).collect());
+        let now = SystemTime::now();
+        let (u, s, v) =
+            <Matrix<f32> as SingularValueDecomposition<f32>>::jacobi_svd_full(&mut in_mat);
+        dbg!(now.elapsed());
+        assert!(1==2);
 
     }
 }
