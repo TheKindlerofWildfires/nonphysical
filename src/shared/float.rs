@@ -1,5 +1,12 @@
 use core::{fmt::Debug, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
+use super::real::Real;
+
+/*
+    This Trait is shared by both real and complex numbers and defines functions that can be expected from any float in a field
+
+*/
+
 pub trait Float:
     Neg<Output = Self>
     + Add<Output = Self>
@@ -12,328 +19,309 @@ pub trait Float:
     + SubAssign
     + Clone
     + Copy
-    + PartialOrd
     + Sized
     + Sync
     + Send
     + Debug
+    + PartialEq
 {
-
-    const PI: Self;
+    type Primitive: Real;
     const ZERO: Self;
-    const ONE: Self;
-    const N_ONE: Self;
-    const MAX: Self;
-    const MIN: Self;
-    const SMALL: Self;
-    const EPSILON: Self;
-    const GAMMA: Self;
-    //conversion functions
-    fn usize(u: usize) -> Self;
-    fn isize(i: isize) -> Self;
-    fn float(f: f32) -> Self;
-    fn double(f: f64) -> Self;
-    fn to_usize(&self) -> usize;
-    fn is_nan(&self) -> bool;
-
-    //utility
-    fn sin_cos(&self) -> (Self, Self);
-    fn atan2(&self, other: &Self) -> Self;
-    fn exp(&self) -> Self;
-    fn recip(&self) -> Self;
+    const IDENTITY: Self;
+    fn l1_norm(&self) -> Self::Primitive;
+    fn l2_norm(&self) -> Self::Primitive;
+    fn fma(&self, mul: Self, add: Self) -> Self;
+    fn powf(&self, other: Self) -> Self;
+    fn powi(&self, other: i32) ->Self;
     fn sqrt(&self) -> Self;
+    fn cbrt(&self) -> Self;
     fn ln(&self) -> Self;
+    fn log2(&self) -> Self;
+    fn exp(&self) -> Self;
+    fn exp2(&self) -> Self;
+    fn recip(&self) -> Self;
     fn sin(&self) -> Self;
     fn cos(&self) -> Self;
+    fn tan(&self) -> Self;
+    fn asin(&self) -> Self;
+    fn acos(&self) -> Self;
+    fn atan(&self) -> Self;
     fn sinh(&self) -> Self;
     fn cosh(&self) -> Self;
-    fn norm(&self) -> Self;
-    fn square_norm(&self) -> Self;
-    fn powt(&self, other: &Self) -> Self;
-    fn powi(&self, other: i32) ->Self;
-
-    fn tan(&self) -> Self;
     fn tanh(&self) -> Self;
-
-    fn fma(&self, mul: Self, add: Self) -> Self;
-    fn sign(&self) -> Self;
-
-    //shared
-    fn greater(&self, other: Self) -> Self {
-        if *self > other {
-            *self
-        } else {
-            other
-        }
-    }
-
-    fn lesser(&self, other: Self) -> Self {
-        if *self < other {
-            *self
-        } else {
-            other
-        }
-    }
+    fn asinh(&self) -> Self;
+    fn acosh(&self) -> Self;
+    fn atanh(&self) -> Self;
+    fn to_be_bytes(&self) -> Box<[u8]>;
+    fn to_le_bytes(&self) -> Box<[u8]>;
 }
 
 impl Float for f32 {
-
-    const PI: Self =  core::f32::consts::PI;
     const ZERO: Self = 0.0;
-    const ONE: Self = 1.0;
-    const N_ONE: Self = -1.0;
-    const MAX: Self = f32::MAX;
-    const MIN: Self = f32::MIN;
-    const SMALL: Self = f32::MIN_POSITIVE;
-    const EPSILON: Self = f32::EPSILON;
-    const GAMMA: Self = 0.577_215_7;
-
+    const IDENTITY: Self = 1.0;
+    type Primitive = f32;
     #[inline(always)]
-    fn sin_cos(&self) -> (Self, Self) {
-        (*self).sin_cos()
-    }
-
-    #[inline(always)]
-    fn usize(u: usize) -> Self {
-        u as f32
-    }
-
-    #[inline(always)]
-    fn isize(i: isize) -> Self {
-        i as f32
-    }
-
-    #[inline(always)]
-    fn exp(&self) -> Self {
-        (*self).exp()
-    }
-
-    #[inline(always)]
-    fn float(f: f32) -> Self {
-        f
-    }
-
-    #[inline(always)]
-    fn double(f: f64) -> Self {
-        f as f32
-    }
-
-    #[inline(always)]
-    fn recip(&self) -> Self {
-        (*self).recip()
-    }
-
-    #[inline(always)]
-    fn sqrt(&self) -> Self {
-        (*self).sqrt()
-    }
-
-    #[inline(always)]
-    fn norm(&self) -> Self {
+    fn l1_norm(&self) -> Self::Primitive {
         (*self).abs()
     }
 
     #[inline(always)]
-    fn square_norm(&self) -> Self {
+    fn l2_norm(&self) -> Self::Primitive {
         (*self).powi(2)
     }
-    #[inline(always)]
-    fn powt(&self, other: &Self) -> Self{
-        (*self).powf(*other)
-    }
-    #[inline(always)]
-    fn powi(&self, other: i32) ->Self{
-        (*self).powi(other)
-    }
-    #[inline(always)]
-    fn atan2(&self, other: &Self) -> Self{
-        (*self).atan2(*other)
-    }
 
-    #[inline(always)]
-    fn ln(&self) -> Self {
-        (*self).ln()
-    }
-
-    #[inline(always)]
-    fn sin(&self) -> Self {
-        (*self).sin()
-    }
-    #[inline(always)]
-    fn cos(&self) -> Self {
-        (*self).cos()
-    }
-    #[inline(always)]
-    fn tan(&self) -> Self{
-        (*self).tan()
-    }
-    #[inline(always)]
-    fn to_usize(&self) -> usize{
-        *self as usize 
-    }
-    #[inline(always)]
-    fn is_nan(&self) -> bool{
-        (*self).is_nan()
-    }
-    #[inline(always)]
-    fn sinh(&self) -> Self{
-        (*self).sinh()
-    }
-    #[inline(always)]
-    fn cosh(&self) -> Self{
-        (*self).cosh()
-    }
-    #[inline(always)]
-    fn tanh(&self) -> Self{
-        (*self).tanh()
-    }
     #[inline(always)]
     fn fma(&self, mul: Self, add: Self) -> Self{
         (*self).mul_add(mul,add)
     }
+
     #[inline(always)]
-    fn sign(&self) -> Self{
-        (*self).signum()
+    fn powf(&self, other: Self) -> Self{
+        (*self).powf(other)
+    }
+
+    #[inline(always)]
+    fn powi(&self, other: i32) ->Self{
+        (*self).powi(other)
+    }
+
+    #[inline(always)]
+    fn sqrt(&self) -> Self{
+        (*self).sqrt()
+    }
+
+    #[inline(always)]
+    fn cbrt(&self) -> Self{
+        (*self).cbrt()
+    }
+
+    #[inline(always)]
+    fn ln(&self) -> Self{
+        (*self).ln()
+    }
+
+    #[inline(always)]
+    fn log2(&self) -> Self{
+        (*self).log2()
+    }
+
+    #[inline(always)]
+    fn exp(&self) -> Self{
+        (*self).exp() 
+    }
+
+    #[inline(always)]
+    fn exp2(&self) -> Self{
+        (*self).exp2() 
+    }
+
+    #[inline(always)]
+    fn recip(&self) -> Self{
+        (*self).recip()
+    }
+
+    #[inline(always)]
+    fn sin(&self) -> Self{
+        (*self).sin()
+    }
+
+    #[inline(always)]
+    fn cos(&self) -> Self{
+        (*self).cos()
+    }
+
+    #[inline(always)]
+    fn tan(&self) -> Self{
+        (*self).cos()
+    }
+
+    #[inline(always)]
+    fn asin(&self) -> Self{
+        (*self).asin()
+    }
+
+    #[inline(always)]
+    fn acos(&self) -> Self{
+        (*self).acos()
+    }
+
+    #[inline(always)]
+    fn atan(&self) -> Self{
+        (*self).atan()
+    }
+
+    #[inline(always)]
+    fn sinh(&self) -> Self{
+        (*self).sinh()
+    }
+
+    #[inline(always)]
+    fn cosh(&self) -> Self{
+        (*self).cosh()
+    }
+
+    #[inline(always)]
+    fn tanh(&self) -> Self{
+        (*self).tanh() 
+    }
+
+    #[inline(always)]
+    fn asinh(&self) -> Self{
+        (*self).asinh()
+    }
+
+    #[inline(always)]
+    fn acosh(&self) -> Self{
+        (*self).acosh()
+    }
+
+    #[inline(always)]
+    fn atanh(&self) -> Self{
+        (*self).atanh()
+    }
+
+    #[inline(always)]
+    fn to_be_bytes(&self) -> Box<[u8]>{
+        Box::new((*self).to_be_bytes())
+    }
+
+    #[inline(always)]
+    fn to_le_bytes(&self) ->  Box<[u8]>{
+        Box::new((*self).to_le_bytes())
     }
 }
+
 impl Float for f64 {
-    const PI: Self =  core::f64::consts::PI;
     const ZERO: Self = 0.0;
-    const ONE: Self = 1.0;
-    const N_ONE: Self = -1.0;
-    const MAX: Self = f64::MAX;
-    const MIN: Self = f64::MIN;
-    const SMALL: Self = f64::MIN_POSITIVE;
-    const EPSILON: Self = f64::EPSILON;
-    const GAMMA: Self = 0.577_215_664_901_532_9;
-
+    const IDENTITY: Self = 1.0;
+    type Primitive = f64;
     #[inline(always)]
-    fn usize(u: usize) -> Self {
-        u as f64
-    }
-    #[inline(always)]
-    fn isize(i: isize) -> Self {
-        i as f64
-    }
-
-    #[inline(always)]
-    fn float(f: f32) -> Self {
-        f as f64
-    }
-
-    #[inline(always)]
-    fn double(f: f64) -> Self {
-        f
-    }
-
-    #[inline(always)]
-    fn sin_cos(&self) -> (Self, Self) {
-        (*self).sin_cos()
-    }
-    #[inline(always)]
-    fn exp(&self) -> Self {
-        (*self).exp()
-    }
-    #[inline(always)]
-    fn recip(&self) -> Self {
-        (*self).recip()
-    }
-    #[inline(always)]
-    fn sqrt(&self) -> Self {
-        (*self).sqrt()
-    }
-
-    #[inline(always)]
-    fn norm(&self) -> Self {
+    fn l1_norm(&self) -> Self::Primitive {
         (*self).abs()
     }
 
     #[inline(always)]
-    fn square_norm(&self) -> Self {
+    fn l2_norm(&self) -> Self::Primitive {
         (*self).powi(2)
-    }    
-    
-    #[inline(always)]
-    fn powt(&self, other: &Self) -> Self{
-        (*self).powf(*other)
     }
+    #[inline(always)]
+    fn fma(&self, mul: Self, add: Self) -> Self{
+        (*self).mul_add(mul,add)
+    }
+
+    #[inline(always)]
+    fn powf(&self, other: Self) -> Self{
+        (*self).powf(other)
+    }
+
     #[inline(always)]
     fn powi(&self, other: i32) ->Self{
         (*self).powi(other)
     }
 
     #[inline(always)]
-    fn atan2(&self, other: &Self) -> Self{
-        (*self).atan2(*other)
+    fn sqrt(&self) -> Self{
+        (*self).sqrt()
     }
+
     #[inline(always)]
-    fn ln(&self) -> Self {
+    fn cbrt(&self) -> Self{
+        (*self).cbrt()
+    }
+
+    #[inline(always)]
+    fn ln(&self) -> Self{
         (*self).ln()
     }
 
     #[inline(always)]
-    fn sin(&self) -> Self {
+    fn log2(&self) -> Self{
+        (*self).log2()
+    }
+
+    #[inline(always)]
+    fn exp(&self) -> Self{
+        (*self).exp() 
+    }
+
+    #[inline(always)]
+    fn exp2(&self) -> Self{
+        (*self).exp2() 
+    }
+
+    #[inline(always)]
+    fn recip(&self) -> Self{
+        (*self).recip()
+    }
+
+    #[inline(always)]
+    fn sin(&self) -> Self{
         (*self).sin()
     }
+
     #[inline(always)]
-    fn cos(&self) -> Self {
+    fn cos(&self) -> Self{
         (*self).cos()
     }
+
     #[inline(always)]
     fn tan(&self) -> Self{
-        (*self).tan()
+        (*self).cos()
     }
+
     #[inline(always)]
-    fn to_usize(&self) -> usize{
-        *self as usize 
+    fn asin(&self) -> Self{
+        (*self).asin()
     }
+
     #[inline(always)]
-    fn is_nan(&self) -> bool{
-        (*self).is_nan()
+    fn acos(&self) -> Self{
+        (*self).acos()
     }
+
+    #[inline(always)]
+    fn atan(&self) -> Self{
+        (*self).atan()
+    }
+
     #[inline(always)]
     fn sinh(&self) -> Self{
         (*self).sinh()
     }
+
+    #[inline(always)]
     fn cosh(&self) -> Self{
         (*self).cosh()
     }
+
     #[inline(always)]
     fn tanh(&self) -> Self{
-        (*self).tanh()
+        (*self).tanh() 
     }
+
     #[inline(always)]
-    fn fma(&self, mul: Self, add: Self) -> Self{
-        (*self).mul_add(mul,add)
+    fn asinh(&self) -> Self{
+        (*self).asinh()
     }
+
     #[inline(always)]
-    fn sign(&self) -> Self{
-        (*self).signum()
+    fn acosh(&self) -> Self{
+        (*self).acosh()
     }
-}
 
+    #[inline(always)]
+    fn atanh(&self) -> Self{
+        (*self).atanh()
+    }
 
-#[cfg(test)]
-mod float_tests {
+    #[inline(always)]
+    fn to_be_bytes(&self) -> Box<[u8]>{
+        Box::new((*self).to_be_bytes())
+    }
 
-    use std::time::SystemTime;
-
-    use super::*;
-    #[test]
-    pub fn speed_fma(){
-        let now = SystemTime::now();
-        let mut a = 0.0;
-        (0..100000000).for_each(|i|{
-            a =(i as f32)*((i+1) as f32)+(-a);
-        });
-        let _ = println!("{:?}",now.elapsed());
-
-        let mut b = 0.0;
-        let now = SystemTime::now();
-        (0..100000000).for_each(|i|{
-            b = (i as f32).fma((i+1) as f32, -b);
-        });
-        let _ = println!("{:?}",now.elapsed());
+    #[inline(always)]
+    fn to_le_bytes(&self) ->  Box<[u8]>{
+        Box::new((*self).to_le_bytes())
     }
 }
 

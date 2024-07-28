@@ -1,17 +1,17 @@
 use core::cmp::min;
 
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix};
+use crate::shared::{float::Float, matrix::Matrix};
 
-pub trait Gemm<'a, T: Float + 'a> {
+pub trait Gemm<'a, F: Float + 'a> {
     const MC: usize = 256;
     const KC: usize = 128;
 
-    fn naive(x: &Matrix<T>, y: &Matrix<T>) -> Matrix<T> {
+    fn naive(x: &Matrix<F>, y: &Matrix<F>) -> Matrix<F> {
         debug_assert!(x.columns == y.rows);
-        let mut z = Matrix::new(x.rows, vec![Complex::ZERO; x.rows * y.columns]);
+        let mut z =  Matrix::zero(x.rows, y.columns);
         (0..y.columns).for_each(|c| {
             (0..x.rows).for_each(|r| {
-                let mut tmp = Complex::<T>::ZERO;
+                let mut tmp =F::ZERO;
                 (0..x.columns).for_each(|a| {
                     //tmp = x.coeff(r, a).fma(y.coeff(a, c),tmp)
                     tmp += x.coeff(r, a) * y.coeff(a, c);
@@ -21,7 +21,7 @@ pub trait Gemm<'a, T: Float + 'a> {
         });
         z
     }
-    fn gemm(x: &Matrix<T>, y: &Matrix<T>) -> Matrix<T> {
+    fn gemm(x: &Matrix<F>, y: &Matrix<F>) -> Matrix<F> {
         debug_assert!(x.columns == y.rows);
         let x_rows = x.rows;
         let y_cols = y.columns;
@@ -54,10 +54,10 @@ pub trait Gemm<'a, T: Float + 'a> {
     }
 
     #[inline(always)]
-    fn pad(x: &Matrix<T>) -> Matrix<T> {
+    fn pad(x: &Matrix<F>) -> Matrix<F> {
         let x_rows = ((x.rows >> 2) << 2) + 4;
         let x_cols = ((x.columns >> 2) << 2) + 4;
-        let mut output = Matrix::<T>::zero(x_rows, x_cols);
+        let mut output = Matrix::zero(x_rows, x_cols);
         x.data_rows()
             .zip(output.data_rows_ref())
             .for_each(|(x_row, o_row)| {
@@ -69,8 +69,8 @@ pub trait Gemm<'a, T: Float + 'a> {
     }
 
     #[inline(always)]
-    fn cut(r: usize, c: usize, z: &Matrix<T>) -> Matrix<T> {
-        let mut output = Matrix::<T>::zero(r, c);
+    fn cut(r: usize, c: usize, z: &Matrix<F>) -> Matrix<F> {
+        let mut output = Matrix::zero(r, c);
         output
             .data_rows_ref()
             .zip(z.data_rows())
@@ -89,11 +89,11 @@ pub trait Gemm<'a, T: Float + 'a> {
         p_chunk_size: usize,
         p_index: usize,
         i_index: usize,
-        x: &Matrix<T>,
-        y: &Matrix<T>,
-        z: &mut Matrix<T>,
+        x: &Matrix<F>,
+        y: &Matrix<F>,
+        z: &mut Matrix<F>,
     ) {
-        let mut packed_x = Matrix::<T>::zero(i_chunk_size, p_chunk_size);
+        let mut packed_x = Matrix::zero(i_chunk_size, p_chunk_size);
 
         for row in (0..i_chunk_size).step_by(4) {
             Self::pack_x(row, p_chunk_size, p_index, x, i_index, &mut packed_x);
@@ -109,9 +109,9 @@ pub trait Gemm<'a, T: Float + 'a> {
         row: usize,
         p_chunk_size: usize,
         p_index: usize,
-        x: &Matrix<T>,
+        x: &Matrix<F>,
         i_index: usize,
-        packed: &mut Matrix<T>,
+        packed: &mut Matrix<F>,
     ) {
         let mut pack_index = row * p_chunk_size;
         for j in 0..p_chunk_size {
@@ -128,13 +128,13 @@ pub trait Gemm<'a, T: Float + 'a> {
         k: usize,
         p_index: usize,
         i_index: usize,
-        packed: &Matrix<T>,
-        y: &Matrix<T>,
-        z: &mut Matrix<T>,
+        packed: &Matrix<F>,
+        y: &Matrix<F>,
+        z: &mut Matrix<F>,
     ) {
-        let mut local_z = [Complex::<T>::ZERO; 16];
-        let mut local_x = [Complex::<T>::ZERO; 4];
-        let mut local_y = [Complex::<T>::ZERO; 4];
+        let mut local_z = [F::ZERO; 16];
+        let mut local_x = [F::ZERO; 4];
+        let mut local_y = [F::ZERO; 4];
 
         let mut y_index = y.index(p_index, col);
         let mut x_index = row * k;
@@ -184,13 +184,13 @@ pub trait Gemm<'a, T: Float + 'a> {
     }
 }
 
-impl<'a, T: Float + 'a> Gemm<'a, T> for Matrix<T> {}
+impl<'a, F: Float + 'a> Gemm<'a, F> for Matrix<F> {}
 
 #[cfg(test)]
 mod gemm_test {
     use std::time::SystemTime;
 
-    use crate::{random::pcg::PermutedCongruentialGenerator, shared::matrix};
+    use crate::{random::pcg::PermutedCongruentialGenerator, shared::complex::{Complex, ComplexFloat}};
 
     use super::*;
 
@@ -198,84 +198,84 @@ mod gemm_test {
     fn naive_static() {
         let m33 = Matrix::new(
             3,
-            (0..9).map(|c| Complex::<f32>::new(c as f32, 0.0)).collect(),
+            (0..9).map(|c| ComplexFloat::new(c as f32, 0.0)).collect(),
         );
         let m34 = Matrix::new(
             3,
             (0..12)
-                .map(|c| Complex::<f32>::new(c as f32, 0.0))
+                .map(|c| ComplexFloat::new(c as f32, 0.0))
                 .collect(),
         );
         let m43 = Matrix::new(
             4,
             (0..12)
-                .map(|c| Complex::<f32>::new(c as f32, 0.0))
+                .map(|c| ComplexFloat::new(c as f32, 0.0))
                 .collect(),
         );
 
-        let r1 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m33, &m33);
-        let r2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m33, &m34);
-        let r3 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m43, &m33);
-        let r4 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m34, &m43);
-        let r5 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m43, &m34);
+        let r1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m33, &m33);
+        let r2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m33, &m34);
+        let r3 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m43, &m33);
+        let r4 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m34, &m43);
+        let r5 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m43, &m34);
 
-        let k1 = Matrix::<f32>::new(
+        let k1 = Matrix::new(
             3,
             [15.0, 18.0, 21.0, 42.0, 54.0, 66.0, 69.0, 90.0]
                 .iter()
-                .map(|&r| Complex::<f32>::new(r, 0.0))
+                .map(|&r| ComplexFloat::real(r))
                 .collect(),
         );
         r1.data().zip(k1.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
 
-        let k2 = Matrix::<f32>::new(
+        let k2 = Matrix::new(
             3,
             [
                 20.0, 23.0, 26.0, 29.0, 56.0, 68.0, 80.0, 92.0, 92.0, 113.0, 134.0, 155.0,
             ]
             .iter()
-            .map(|&r| Complex::<f32>::new(r, 0.0))
+            .map(|&r| ComplexFloat::real(r))
             .collect(),
         );
         r2.data().zip(k2.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
-        let k3 = Matrix::<f32>::new(
+        let k3 = Matrix::new(
             4,
             [
                 15.0, 18.0, 21.0, 42.0, 54.0, 66.0, 69.0, 90.0, 111.0, 96.0, 126.0, 156.0,
             ]
             .iter()
-            .map(|&r| Complex::<f32>::new(r, 0.0))
+            .map(|&r| ComplexFloat::real(r))
             .collect(),
         );
         r3.data().zip(k3.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
-        let k4 = Matrix::<f32>::new(
+        let k4 = Matrix::new(
             3,
             [42.0, 48.0, 54.0, 114.0, 136.0, 158.0, 186.0, 224.0, 262.0]
                 .iter()
-                .map(|&r| Complex::<f32>::new(r, 0.0))
+                .map(|&r| ComplexFloat::real(r))
                 .collect(),
         );
         r4.data().zip(k4.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
-        let k5 = Matrix::<f32>::new(
+        let k5 = Matrix::new(
             4,
             [
                 20.0, 23.0, 26.0, 29.0, 56.0, 68.0, 80.0, 92.0, 92.0, 113.0, 134.0, 155.0, 128.0,
                 158.0, 188.0, 218.0,
             ]
             .iter()
-            .map(|&r| Complex::<f32>::new(r, 0.0))
+            .map(|&r| ComplexFloat::real(r))
             .collect(),
         );
         r5.data().zip(k5.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
     }
 
@@ -283,187 +283,187 @@ mod gemm_test {
     fn gemm_static() {
         let m33 = Matrix::new(
             3,
-            (0..9).map(|c| Complex::<f32>::new(c as f32, 0.0)).collect(),
+            (0..9).map(|c| ComplexFloat::new(c as f32, 0.0)).collect(),
         );
         let m34 = Matrix::new(
             3,
             (0..12)
-                .map(|c| Complex::<f32>::new(c as f32, 0.0))
+                .map(|c| ComplexFloat::new(c as f32, 0.0))
                 .collect(),
         );
         let m43 = Matrix::new(
             4,
             (0..12)
-                .map(|c| Complex::<f32>::new(c as f32, 0.0))
+                .map(|c| ComplexFloat::new(c as f32, 0.0))
                 .collect(),
         );
-        let r1 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m33, &m33);
-        let r2 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m33, &m34);
-        let r3 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m43, &m33);
-        let r4 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m34, &m43);
-        let r5 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m43, &m34);
+        let r1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m33, &m33);
+        let r2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m33, &m34);
+        let r3 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m43, &m33);
+        let r4 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m34, &m43);
+        let r5 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m43, &m34);
 
-        let k1 = Matrix::<f32>::new(
+        let k1 = Matrix::new(
             3,
             [15.0, 18.0, 21.0, 42.0, 54.0, 66.0, 69.0, 90.0]
                 .iter()
-                .map(|&r| Complex::<f32>::new(r, 0.0))
+                .map(|&r| ComplexFloat::real(r))
                 .collect(),
         );
         r1.data().zip(k1.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
 
-        let k2 = Matrix::<f32>::new(
+        let k2 = Matrix::new(
             3,
             [
                 20.0, 23.0, 26.0, 29.0, 56.0, 68.0, 80.0, 92.0, 92.0, 113.0, 134.0, 155.0,
             ]
             .iter()
-            .map(|&r| Complex::<f32>::new(r, 0.0))
+            .map(|&r| ComplexFloat::real(r))
             .collect(),
         );
         r2.data().zip(k2.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
-        let k3 = Matrix::<f32>::new(
+        let k3 = Matrix::new(
             4,
             [
                 15.0, 18.0, 21.0, 42.0, 54.0, 66.0, 69.0, 90.0, 111.0, 96.0, 126.0, 156.0,
             ]
             .iter()
-            .map(|&r| Complex::<f32>::new(r, 0.0))
+            .map(|&r| ComplexFloat::real(r))
             .collect(),
         );
         r3.data().zip(k3.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
-        let k4 = Matrix::<f32>::new(
+        let k4 = Matrix::new(
             3,
             [42.0, 48.0, 54.0, 114.0, 136.0, 158.0, 186.0, 224.0, 262.0]
                 .iter()
-                .map(|&r| Complex::<f32>::new(r, 0.0))
+                .map(|&r| ComplexFloat::real(r))
                 .collect(),
         );
         r4.data().zip(k4.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
-        let k5 = Matrix::<f32>::new(
+        let k5 = Matrix::new(
             4,
             [
                 20.0, 23.0, 26.0, 29.0, 56.0, 68.0, 80.0, 92.0, 92.0, 113.0, 134.0, 155.0, 128.0,
                 158.0, 188.0, 218.0,
             ]
             .iter()
-            .map(|&r| Complex::<f32>::new(r, 0.0))
+            .map(|&r| ComplexFloat::real(r))
             .collect(),
         );
         r5.data().zip(k5.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).square_norm() < f32::EPSILON);
+            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
         });
     }
 
     #[test]
     fn gemm_lesser() {
-        let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
 
         let n1 = (pcg.next_u32() as usize % (Matrix::<f32>::KC - 1) + 4) as usize;
-        let n2 = (pcg.next_u32() as usize % (Matrix::<f32>::KC - 1) + 4) as usize;
+        let n2 = (pcg.next_u32() as usize % (Matrix::<f32>::KC  - 1) + 4) as usize;
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m1 = Matrix::new(n1, data.collect());
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m2 = Matrix::new(n2, data.collect());
 
-        let g1 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1, &m2);
-        let g2 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m2, &m1);
+        let g1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m1, &m2);
+        let g2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m2, &m1);
 
-        let k1 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m1, &m2);
-        let k2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
+        let k1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m1, &m2);
+        let k2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m2, &m1);
 
         g1.data().zip(k1.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::EPSILON);
+            assert!((g.real - k.real).l2_norm() < f32::EPSILON);
         });
 
         g2.data().zip(k2.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::EPSILON);
+            assert!((g.real - k.real).l2_norm() < f32::EPSILON);
         });
     }
     #[test]
     fn gemm_middle() {
-        let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
 
-        let n1 = (pcg.next_u32() as usize % Matrix::<f32>::KC + Matrix::<f32>::KC) as usize;
-        let n2 = (pcg.next_u32() as usize % Matrix::<f32>::KC + Matrix::<f32>::KC) as usize;
+        let n1 = (pcg.next_u32() as usize % Matrix::<f32>::KC  + Matrix::<f32>::KC ) as usize;
+        let n2 = (pcg.next_u32() as usize % Matrix::<f32>::KC  + Matrix::<f32>::KC ) as usize;
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m1 = Matrix::new(n1, data.collect());
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m2 = Matrix::new(n2, data.collect());
 
-        let g1 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1, &m2);
-        let g2 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m2, &m1);
+        let g1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m1, &m2);
+        let g2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m2, &m1);
 
-        let k1 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m1, &m2);
-        let k2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
+        let k1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m1, &m2);
+        let k2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m2, &m1);
 
         g1.data().zip(k1.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::EPSILON);
+            assert!((g.real - k.real).l2_norm() < f32::EPSILON);
         });
 
         g2.data().zip(k2.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::EPSILON);
+            assert!((g.real - k.real).l2_norm() < f32::EPSILON);
         });
     }
 
     #[test]
     fn gemm_greater() {
-        let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
-        let n1 = (pcg.next_u32() as usize % Matrix::<f32>::MC + Matrix::<f32>::MC) as usize;
-        let n2 = (pcg.next_u32() as usize % Matrix::<f32>::MC + Matrix::<f32>::MC) as usize;
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let n1 = (pcg.next_u32() as usize % Matrix::<f32>::MC  + Matrix::<f32>::MC ) as usize;
+        let n2 = (pcg.next_u32() as usize % Matrix::<f32>::MC  + Matrix::<f32>::MC ) as usize;
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m1 = Matrix::new(n1, data.collect());
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m2 = Matrix::new(n2, data.collect());
 
-        let g1 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1, &m2);
-        let g2 = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m2, &m1);
+        let g1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m1, &m2);
+        let g2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m2, &m1);
 
-        let k1 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m1, &m2);
-        let k2 = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
+        let k1 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m1, &m2);
+        let k2 = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m2, &m1);
 
         g1.data().zip(k1.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::EPSILON);
+            assert!((g.real - k.real).l2_norm() < f32::EPSILON);
         });
 
         g2.data().zip(k2.data()).for_each(|(g, k)| {
-            assert!((g.real - k.real).square_norm() < f32::EPSILON);
+            assert!((g.real - k.real).l2_norm() < f32::EPSILON);
         });
     }
 
     #[test]
     fn gemm_speed() {
-        let mut pcg = PermutedCongruentialGenerator::<f32>::new(3, 0);
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
         let n1 = 1000;
         let n2 = 1000;
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m1 = Matrix::new(n1, data.collect());
         let data =
-            (0..n1 * n2).map(|_| Complex::<f32>::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
+            (0..n1 * n2).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0));
         let m2 = Matrix::new(n2, data.collect());
 
         let now = SystemTime::now();
-        let _ = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m1, &m2);
-        let _ = <matrix::Matrix<f32> as Gemm<f32>>::gemm(&m2, &m1);
+        let _ = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m1, &m2);
+        let _ = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::gemm(&m2, &m1);
         let _ = println!("{:?}",now.elapsed());
         let now = SystemTime::now();
-        let _ = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m1, &m2);
-        let _ = <matrix::Matrix<f32> as Gemm<f32>>::naive(&m2, &m1);
+        let _ = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m1, &m2);
+        let _ = <Matrix<ComplexFloat<f32>> as Gemm<ComplexFloat<f32>>>::naive(&m2, &m1);
         let _ = println!("{:?}",now.elapsed());
     }
 }

@@ -1,20 +1,20 @@
-use crate::shared::float::Float;
+use crate::shared::point::Point;
 
 use super::ms_tree::MSTree;
 
-pub struct SLTreeNode<T: Float> {
+pub struct SLTreeNode<P: Point> {
     pub left_node_idx: usize,
     pub right_node_idx: usize,
-    pub distance: T,
+    pub distance: P::Primitive,
     pub size: usize,
 }
 
-pub struct SLTree<T: Float> {
-    pub sl_tree_vec: Vec<SLTreeNode<T>>,
+pub struct SLTree<P: Point> {
+    pub sl_tree_vec: Vec<SLTreeNode<P>>,
 }
 
-impl<T: Float> SLTreeNode<T> {
-    fn new(left_node_idx: usize, right_node_idx: usize, distance: T, size: usize) -> Self {
+impl<P: Point> SLTreeNode<P> {
+    fn new(left_node_idx: usize, right_node_idx: usize, distance: P::Primitive, size: usize) -> Self {
         Self {
             left_node_idx,
             right_node_idx,
@@ -24,8 +24,8 @@ impl<T: Float> SLTreeNode<T> {
     }
 }
 
-impl<T: Float> SLTree<T> {
-    pub fn new(input: &MSTree<T>) -> Self {
+impl<P: Point> SLTree<P> {
+    pub fn new(input: &MSTree<P>) -> Self {
         let samples = input.ms_tree_vec.len()+1;
         let mut sl_tree_vec = Vec::with_capacity(samples-1);
         let double_length = 2 * samples-1;

@@ -1,17 +1,17 @@
-use crate::shared::{float::Float, point::Point};
+use crate::shared::{float::Float,real::Real, point::Point};
 
-pub struct MSTreeNode<T: Float> {
+pub struct MSTreeNode<P: Point> {
     pub left_node_idx: usize,
     pub right_node_idx: usize,
-    pub distance: T,
+    pub distance: P::Primitive,
 }
 
-pub struct MSTree<T: Float> {
-    pub ms_tree_vec: Vec<MSTreeNode<T>>,
+pub struct MSTree<P: Point> {
+    pub ms_tree_vec: Vec<MSTreeNode<P>>,
 }
 
-impl<T: Float> MSTreeNode<T> {
-    fn new(left_node_idx: usize, right_node_idx: usize, distance: T) -> Self {
+impl<P: Point> MSTreeNode<P> {
+    fn new(left_node_idx: usize, right_node_idx: usize, distance: P::Primitive) -> Self {
         Self {
             left_node_idx,
             right_node_idx,
@@ -21,13 +21,13 @@ impl<T: Float> MSTreeNode<T> {
 }
 
 //prim's algorithm
-impl<T: Float> MSTree<T> {
-    pub fn new<const N: usize>(input: &[Point<T,N>],distance_overrides: &[T]) -> Self{
+impl<P: Point> MSTree<P> {
+    pub fn new(input: &[P],distance_overrides: &[P::Primitive]) -> Self{
         let samples = input.len();
         let mut in_tree = vec![false; samples];
-        let mut distances = vec![T::MAX; samples];
+        let mut distances = vec![P::Primitive::MAX; samples];
 
-        distances[0] = T::ZERO;
+        distances[0] = P::Primitive::ZERO;
 
         let mut ms_tree_vec = Vec::with_capacity(samples);
         let mut left_node_idx = 0;
@@ -35,7 +35,7 @@ impl<T: Float> MSTree<T> {
 
         (1..samples).for_each(|_| {
             in_tree[left_node_idx] = true;
-            let mut current_min_dist = T::MAX;
+            let mut current_min_dist = P::Primitive::MAX;
             (0..samples).for_each(|i| {
                 if !in_tree[i] {
                     let mutual_reach = Self::mutual_reach(left_node_idx, i, input,distance_overrides);
@@ -61,11 +61,11 @@ impl<T: Float> MSTree<T> {
         output
     }
 
-    fn mutual_reach<const N: usize>(node_a_idx: usize, node_b_idx: usize, input: &[Point<T,N>],distances: &[T]) -> T{
+    fn mutual_reach(node_a_idx: usize, node_b_idx: usize, input: &[P],distances: &[P::Primitive]) -> P::Primitive{
         let dist_a = distances[node_a_idx];
         let dist_b = distances[node_b_idx];
 
-        let dist = input[node_a_idx].distance(&input[node_b_idx]);
+        let dist = input[node_a_idx].l1_distance(&input[node_b_idx]);
 
         dist.greater(dist_a).greater(dist_b)
     }

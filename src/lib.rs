@@ -1,15 +1,21 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
-
-pub mod linear;
+//core
 pub mod shared;
-pub mod signal;
-//pub mod neural;
 pub mod random;
-pub mod filter;
-pub mod cluster;
 pub mod graph;
+pub mod cluster;
+pub mod signal;
+
+
+//unstable
+pub mod linear;
+
+//stalled
+//pub mod neural;
+//pub mod filter;
+
 
 
 fn main() {

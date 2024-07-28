@@ -9,7 +9,6 @@ edition = "2021"
 codegen-units = 1
 panic = "abort"
 strip = "symbols"
-target-cpu = "native"
 
 [profile.lto]
 inherits = "release"

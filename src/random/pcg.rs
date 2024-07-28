@@ -1,18 +1,16 @@
-use std::{marker::PhantomData, num::Wrapping, time::SystemTime};
+use std::{num::Wrapping, time::SystemTime};
+use crate::shared::real::Real;
 
-use crate::shared::{complex::Complex, float::Float};
-
-pub struct PermutedCongruentialGenerator<T> {
+pub struct PermutedCongruentialGenerator {
     state: u32,
     inc: u32,
-    phantom: PhantomData<T>,
 }
 
 //this is probably not cryptographically secure
-impl<T:Float> PermutedCongruentialGenerator<T> {
+impl PermutedCongruentialGenerator{
     pub fn new(state: u32, inc: u32) -> Self {
         debug_assert!(state!=0 || inc!=0);
-        Self { state, inc, phantom: PhantomData }
+        Self { state, inc }
     }
 
     //not safe at all, reasonably easy to extract time
@@ -27,7 +25,7 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
 
         let inc = state<<1 |1;
 
-        Self { state, inc,phantom: PhantomData }
+        Self { state, inc }
     }
 
     pub fn next_u32(&mut self) -> u32 {
@@ -37,23 +35,32 @@ impl<T:Float> PermutedCongruentialGenerator<T> {
         ((word>>22) ^word).0
     }
 
-    pub fn uniform(&mut self, start: T, end:T, size: usize)-> Vec<T>{
+    pub fn uniform_singular<R:Real>(&mut self, start: R, end:R)-> R{
+        R::u32(self.next_u32())/R::u32(u32::MAX)*(end-start)+start
+    }
+
+    pub fn uniform<R:Real>(&mut self, start: R, end:R, size: usize)-> Vec<R>{
         (0..size).map(|_|{
-            let base = self.next_u32();
-            T::usize(base as usize)/T::usize(u32::MAX as usize)*(end-start)+start
+            R::u32(self.next_u32())/R::u32(u32::MAX)*(end-start)+start
         }).collect()
     }
 
-    pub fn normal(&mut self, mean: Complex<T>, scale: T, size: usize) -> Vec<Complex<T>>{        
+    pub fn interval<R:Real>(&mut self, size: usize)-> Vec<R>{
+        (0..size).map(|_|{
+            R::u32(self.next_u32())/R::u32(u32::MAX)
+        }).collect()
+    }
+
+    pub fn normal<R:Real>(&mut self, mean: R, scale: R, size: usize) -> Vec<R>{        
         let mut samples = Vec::with_capacity(size);
         (0..size).for_each(|_| {
-            let mut u1 = T::usize(self.next_u32() as usize)/T::usize(u32::MAX as usize);
-            while u1==T::ZERO{
-                u1 = T::usize(self.next_u32()as usize)/T::usize(u32::MAX as usize);
+            let mut u1 = R::u32(self.next_u32())/R::u32(u32::MAX);
+            while u1==R::ZERO{
+                u1 = R::u32(self.next_u32())/R::u32(u32::MAX);
             }
-            let u2 = T::usize(self.next_u32()as usize)/T::usize(u32::MAX as usize);
-            let z0 = (-T::usize(2)*u1.ln()).sqrt() * (T::usize(2)*T::PI*u2).cos();
-            samples.push(mean+Complex::new(z0*scale,T::ZERO));
+            let u2 = R::u32(self.next_u32())/R::u32(u32::MAX);
+            let z0 = (-R::usize(2)*u1.ln()).sqrt() * (R::u8(2)*R::PI*u2).cos();
+            samples.push(mean+z0*scale);
         });
         samples
     }

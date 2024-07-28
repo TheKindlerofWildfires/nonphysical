@@ -1,25 +1,25 @@
 use crate::{
     random::pcg::PermutedCongruentialGenerator,
-    shared::{complex::Complex, float::Float, point::Point},
+    shared::{float::Float, point::Point,real::Real},
 };
 
 pub struct IsoLeaf {
     count: usize,
 }
-pub struct IsoBranch<T: Float, const N: usize> {
-    left: Box<IsoNode<T, N>>,
-    right: Box<IsoNode<T, N>>,
-    split_vector: Point<T, N>,
-    split_point: Point<T, N>,
+pub struct IsoBranch<P: Point> {
+    left: Box<IsoNode<P>>,
+    right: Box<IsoNode<P>>,
+    split_vector: P,
+    split_point: P,
 }
 
-pub enum IsoNode<T: Float, const N: usize> {
+pub enum IsoNode<P: Point> {
     Leaf(IsoLeaf),
-    Branch(IsoBranch<T, N>),
+    Branch(IsoBranch<P>),
 }
 
-pub struct IsoTree<T: Float, const N: usize> {
-    pub root: IsoNode<T, N>,
+pub struct IsoTree<P: Point> {
+    pub root: IsoNode<P>,
 }
 
 impl IsoLeaf {
@@ -28,12 +28,12 @@ impl IsoLeaf {
     }
 }
 
-impl<T: Float, const N: usize> IsoBranch<T, N> {
+impl<P: Point> IsoBranch<P> {
     fn new(
-        left: Box<IsoNode<T, N>>,
-        right: Box<IsoNode<T, N>>,
-        split_vector: Point<T, N>,
-        split_point: Point<T, N>,
+        left: Box<IsoNode<P>>,
+        right: Box<IsoNode<P>>,
+        split_vector: P,
+        split_point: P,
     ) -> Self {
         Self {
             left,
@@ -44,74 +44,42 @@ impl<T: Float, const N: usize> IsoBranch<T, N> {
     }
 }
 
-impl<T: Float, const N: usize> IsoTree<T, N> {
+impl<P: Point> IsoTree<P> {
     pub fn new(
-        points: &[Point<T, N>],
+        points: &[P],
         max_depth: usize,
         extension_level: usize,
-        rng: &mut PermutedCongruentialGenerator<T>,
+        rng: &mut PermutedCongruentialGenerator,
     ) -> Self {
         let root = Self::make_node(points, 0, max_depth, extension_level, rng);
         Self { root }
     }
 
     fn make_node(
-        points: &[Point<T, N>],
+        points: &[P],
         current_depth: usize,
         max_depth: usize,
         extension_level: usize,
-        rng: &mut PermutedCongruentialGenerator<T>,
-    ) -> IsoNode<T, N> {
+        rng: &mut PermutedCongruentialGenerator,
+    ) -> IsoNode<P> {
         let point_count = points.len();
 
         let node = if current_depth >= max_depth || point_count <= 1 {
             IsoNode::Leaf(IsoLeaf::new(point_count))
         } else {
             let split_point = {
-                let mut point_max = points[0].clone();
-                let mut point_min = points[0].clone();
-                points.iter().skip(1).for_each(|s| {
-                    s.data
-                        .iter()
-                        .zip(point_max.data.iter_mut())
-                        .zip(point_min.data.iter_mut())
-                        .for_each(|((sp, mxp), mnp)| {
-                            *mxp = sp.greater(*mxp);
-                            *mnp = sp.lesser(*mnp);
-                        })
-                });
-                let mut p = Point::ZERO;
-                p.data
-                    .iter_mut()
-                    .zip(point_max.data.iter())
-                    .zip(point_min.data.iter())
-                    .for_each(|((sp, mxp), mnp)| {
-                        *sp = if mxp == mnp {
-                            *mnp
-                        } else {
-                            rng.uniform(*mnp, *mxp, 1)[0]
-                        }
-                    });
-                p
-            };
-            //zeros a split vector
-            let mut split_vector = Point::ZERO;
-            let normals = rng.normal(Complex::ZERO, T::ONE, N);
-            //sets the vars to normal randoms
-            split_vector
-                .data
-                .iter_mut()
-                .zip(normals)
-                .for_each(|(n, norm)| *n = norm.real);
-            //rezeros unextended values (this feels backwards)
-            let mut unextended = (0..N).collect::<Vec<_>>();
-            rng.shuffle_usize(&mut unextended);
-            unextended[0..N - extension_level - 1]
-                .iter_mut()
-                .for_each(|i| split_vector.data[*i] = T::ZERO);
 
-            let mut points_left = Vec::new();
-            let mut points_right = Vec::new();
+                let point_max = points.iter().fold(P::MIN, |acc,p|p.greater(&acc));
+                let point_min = points.iter().fold(P::MAX, |acc,p|p.lesser(&acc));
+                P::uniform(&point_min, &point_max,rng)
+
+            };
+            //Creates a split vector
+            let normals = rng.normal(P::Primitive::ZERO, P::Primitive::ONE, extension_level);
+            let split_vector = P::partial_random(normals,rng);
+
+            let mut points_left = Vec::with_capacity(points.len()/2);
+            let mut points_right = Vec::with_capacity(points.len()/2);
 
             points.iter().for_each(|point| {
                 match Self::branch_left(point, &split_point, &split_vector) {
@@ -140,25 +108,19 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
         node
     }
     fn branch_left(
-        point: &Point<T, N>,
-        split_point: &Point<T, N>,
-        split_vector: &Point<T, N>,
+        point: &P,
+        split_point: &P,
+        split_vector: &P,
     ) -> bool {
-        point
-            .data
-            .iter()
-            .zip(split_point.data.iter())
-            .map(|(pp, sp)| *pp - *sp)
-            .zip(split_vector.data.iter())
-            .fold(T::ZERO, |acc, (pp, v)| acc + pp * (*v))
-            <= T::ZERO
+        point.sub(split_point).dot(split_vector) <= P::Primitive::ZERO
+        
     }
 
-    pub fn path_length(node: &IsoNode<T, N>, point: &Point<T, N>) -> T {
+    pub fn path_length(node: &IsoNode<P>, point: &P) ->  P::Primitive {
         match node {
             IsoNode::Leaf(leaf) => {
                 if leaf.count <= 1 {
-                    T::ZERO
+                    P::Primitive::ZERO
                 } else {
                     Self::c_factor(leaf.count)
                 }
@@ -169,14 +131,14 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
                         true => &branch.left,
                         false => &branch.right,
                     };
-                T::ONE + Self::path_length(child, point)
+                P::Primitive::ONE + Self::path_length(child, point)
             }
         }
     }
 
-    pub fn c_factor(n: usize) -> T {
-        T::usize(2) * ((T::usize(n) - T::ONE).ln() + T::GAMMA)
-            - (T::usize(2) * (T::usize(n) - T::ONE) / T::usize(n))
+    pub fn c_factor(n: usize) -> P::Primitive {
+        P::Primitive::usize(2) * ((P::Primitive::usize(n) - P::Primitive::ONE).ln() + P::Primitive::GAMMA)
+            - (P::Primitive::usize(2) * (P::Primitive::usize(n) - P::Primitive::ONE) / P::Primitive::usize(n))
     }
 }
 
@@ -184,18 +146,49 @@ impl<T: Float, const N: usize> IsoTree<T, N> {
 mod iso_tree_tests {
     use std::borrow::Borrow;
 
-    use super::*;
+    use crate::shared::point::StaticPoint;
 
+    use super::*;
+    #[test]
+    fn print_iso_tree(){
+        let data = vec![
+            StaticPoint::new([9.308548692822459, 2.1673586347139224]),
+            StaticPoint::new([-5.6424039931897765, -1.9620561766472002]),
+            StaticPoint::new([-9.821995596375428, -3.1921112766174997]),
+            StaticPoint::new([-4.992109362834896, -2.0745015313494455]),
+            StaticPoint::new([10.107315875917662, 2.4489015959094216]),
+        ];
+        let mut rng = PermutedCongruentialGenerator::new(1, 1);
+        let tree: IsoTree<StaticPoint<f32, 2>> = IsoTree::new(&data, 4, 1, &mut rng);
+        let node = tree.root;
+        print_node(&node, 0);
+
+
+    }
+
+    fn print_node(node: &IsoNode<StaticPoint<f32, 2>>,depth: usize){
+        match node {
+            IsoNode::Leaf(leaf) =>{
+                println!("{}: Leaf: {}", depth, leaf.count);
+            },
+            IsoNode::Branch(branch) => {
+                println!("{}: Branch: {:?} {:?}", depth,branch.split_point, branch.split_vector);
+                print_node(&branch.left, depth+1);
+                print_node(&branch.right, depth+1);
+            },
+        }
+
+    }
     #[test]
     fn create_tree_static() {
         let data = vec![
-            Point::new([9.308548692822459, 2.1673586347139224]),
-            Point::new([-5.6424039931897765, -1.9620561766472002]),
-            Point::new([-9.821995596375428, -3.1921112766174997]),
-            Point::new([-4.992109362834896, -2.0745015313494455]),
-            Point::new([10.107315875917662, 2.4489015959094216]),
+            StaticPoint::new([9.308548692822459, 2.1673586347139224]),
+            StaticPoint::new([-5.6424039931897765, -1.9620561766472002]),
+            StaticPoint::new([-9.821995596375428, -3.1921112766174997]),
+            StaticPoint::new([-4.992109362834896, -2.0745015313494455]),
+            StaticPoint::new([10.107315875917662, 2.4489015959094216]),
         ];
-        let mut rng = PermutedCongruentialGenerator::<f32>::new(1, 1);
+        let mut rng = PermutedCongruentialGenerator::new(1, 1);
         let tree = IsoTree::new(&data, 4, 1, &mut rng);
         let node = tree.root;
         match node {
@@ -205,7 +198,7 @@ mod iso_tree_tests {
             IsoNode::Branch(branch) => {
                 match branch.left.borrow() {
                     IsoNode::Leaf(leaf) => {
-                        assert!(leaf.count == 1);
+                        assert!(leaf.count == 0);
                     }
                     IsoNode::Branch(_) => {
                         unreachable!()
@@ -223,18 +216,33 @@ mod iso_tree_tests {
                             IsoNode::Branch(branch) => {
                                 match branch.left.borrow() {
                                     IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1);
+                                        assert!(leaf.count == 0);
                                     }
                                     IsoNode::Branch(_) => {
                                         unreachable!()
                                     }
                                 }
                                 match branch.right.borrow() {
-                                    IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1);
-                                    }
-                                    IsoNode::Branch(_) => {
+                                    IsoNode::Leaf(_) => {
                                         unreachable!()
+                                    }
+                                    IsoNode::Branch(branch) => {
+                                        match branch.left.borrow() {
+                                            IsoNode::Leaf(leaf) => {
+                                                assert!(leaf.count == 0);
+                                            }
+                                            IsoNode::Branch(_) => {
+                                                unreachable!()
+                                            }
+                                        }
+                                        match branch.right.borrow() {
+                                            IsoNode::Leaf(leaf) => {
+                                                assert!(leaf.count == 2);
+                                            }
+                                            IsoNode::Branch(_) => {
+                                                unreachable!()
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -253,11 +261,26 @@ mod iso_tree_tests {
                                     }
                                 }
                                 match branch.right.borrow() {
-                                    IsoNode::Leaf(leaf) => {
-                                        assert!(leaf.count == 1);
+                                    IsoNode::Leaf(_) => {
+                                        unreachable!();
                                     }
-                                    IsoNode::Branch(_) => {
-                                        unreachable!()
+                                    IsoNode::Branch(branch) => {
+                                        match branch.left.borrow() {
+                                            IsoNode::Leaf(leaf) => {
+                                                assert!(leaf.count == 0);
+                                            }
+                                            IsoNode::Branch(_) => {
+                                                unreachable!()
+                                            }
+                                        }
+                                        match branch.right.borrow() {
+                                            IsoNode::Leaf(leaf) => {
+                                                assert!(leaf.count == 2);
+                                            }
+                                            IsoNode::Branch(_) => {
+                                                unreachable!()
+                                            }
+                                        }
                                     }
                                 }
                             }

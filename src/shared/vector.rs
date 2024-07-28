@@ -1,124 +1,210 @@
-use super::{complex::Complex, float::Float};
+use super::{complex::Complex, float::Float, real::Real};
 
-pub trait Vector<'a, T: Float + 'a> {
-    fn norm_max<I>(iter: I) -> T
+pub trait Vector<'a, F:Float+'a>{
+    fn sum<I>(iter: I) -> F
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a F>,
     {
-        iter.fold(T::MIN, |acc, x| acc.greater(x.norm()))
+        iter.fold(F::ZERO, |acc, x| acc+ *x)
     }
 
-    fn norm_min<I>(iter: I) -> T
+    fn dot<I>(iter: I,other: I) -> F
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a F>,
     {
-        iter.fold(T::MAX, |acc, x| acc.lesser(x.norm()))
+        iter.zip(other).fold(F::IDENTITY, |acc, (x,y)| acc+ (*x * *y))
     }
 
-    fn norm_sum<I>(iter: I) -> T
+
+    fn l1_sum<I>(iter: I) -> F::Primitive
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a F>,
     {
-        iter.fold(T::ZERO, |acc, x| acc+ x.norm())
+        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
     }
 
-    fn square_norm_max<I>(iter: I) -> T
+    fn l2_sum<I>(iter: I) -> F::Primitive
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a F>,
     {
-        iter.fold(T::MIN, |acc, x| acc.greater(x.square_norm()))
+        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
     }
 
-    fn square_norm_min<I>(iter: I) -> T
+    fn add<I>(iter: I, other: F)
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
     {
-        iter.fold(T::MAX, |acc, x| acc.lesser(x.square_norm()))
+        iter.for_each(|c| *c += other)
     }
 
-    fn square_norm_sum<I>(iter: I) -> T
+    fn sub<I>(iter: I, other: F)
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
     {
-        iter.fold(T::ZERO, |acc, x| acc+ x.square_norm())
+        iter.for_each(|c| *c -= other)
     }
 
-    fn sum<I>(iter: I) -> Complex<T>
+    fn mul<I>(iter: I, other: F)
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
     {
-        iter.fold(Complex::<T>::ZERO, |acc, x| acc+ *x)
-    }
-    fn scale<I>(iter: I, scaler: T)
-    where
-        I: Iterator<Item = &'a mut Complex<T>>,
-    {
-        iter.for_each(|c| *c = *c * scaler)
+        iter.for_each(|c| *c *= other)
     }
 
-    fn mul<I>(iter: I, rhs: Complex<T>)
+    fn div<I>(iter: I, other: F)
     where
-        I: Iterator<Item = &'a mut Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
     {
-        iter.for_each(|c| *c *= rhs)
+        iter.for_each(|c| *c /= other)
     }
 
-    fn add<I>(iter: I, rhs: Complex<T>)
+    fn add_vec<I,J>(iter: I, other:J)
     where
-        I: Iterator<Item = &'a mut Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
+        J: Iterator<Item = &'a F>,
     {
-        iter.for_each(|c| *c += rhs)
+        iter.zip(other).for_each(|(i,j)| *i += *j)
     }
 
-    fn acc<I,J>(iter: I, rhs:J)
+    fn sub_vec<I,J>(iter: I, other:J)
     where
-        I: Iterator<Item = &'a mut Complex<T>>,
-        J: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
+        J: Iterator<Item = &'a F>,
     {
-        iter.zip(rhs).for_each(|(i,j)| *i += *j)
+        iter.zip(other).for_each(|(i,j)| *i -= *j)
     }
 
-    fn prod<I,J>(iter: I, rhs:J)
+    fn mul_vec<I,J>(iter: I, other:J)
     where
-        I: Iterator<Item = &'a mut Complex<T>>,
-        J: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
+        J: Iterator<Item = &'a F>,
     {
-        iter.zip(rhs).for_each(|(i,j)| *i *= *j)
+        iter.zip(other).for_each(|(i,j)| *i *= *j)
     }
 
-    fn mean<I>(iter: I) -> T
+    fn div_vec<I,J>(iter: I, other:J)
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a mut F>,
+        J: Iterator<Item = &'a F>,
     {
-        let (_, mean) = iter.fold((0,T::ZERO), |acc, x| {
+        iter.zip(other).for_each(|(i,j)| *i /= *j)
+    }
+
+}
+
+pub trait RealVector<'a, R:Real<Primitive = R>+'a>: Vector<'a,R>{
+    fn l1_min<I>(iter: I) -> R::Primitive
+    where
+        I: Iterator<Item = &'a R>,
+    {
+        iter.fold( R::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
+    }
+
+    fn l2_min<I>(iter: I) ->  R::Primitive
+    where
+        I: Iterator<Item = &'a R>,
+    {
+        iter.fold( R::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
+    }
+
+    fn l1_max<I>(iter: I) ->  R::Primitive
+    where
+        I: Iterator<Item = &'a R>,
+    {
+        iter.fold( R::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
+    }
+
+    fn l2_max<I>(iter: I) ->  R::Primitive
+    where
+        I: Iterator<Item = &'a R>,
+    {
+        iter.fold( R::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
+    }
+
+    fn mean<I>(iter: I) -> R::Primitive
+    where
+        I: Iterator<Item = &'a R>,
+    {
+        let (_, mean) = iter.fold((0,R::Primitive::ZERO), |acc, x| {
             let (mut count, mut mean) = acc;
             count +=1;
-            let norm = x.norm();
-            let delta = norm-mean;
-            mean += delta/T::usize(count);
+            let delta = *x-mean;
+            mean += delta/R::usize(count);
             (count,mean)
         });
         mean
     }
 
-    fn variance<I>(iter: I) -> (T,T)
+    fn variance<I>(iter: I) -> (R::Primitive,R::Primitive)
     where
-        I: Iterator<Item = &'a Complex<T>>,
+        I: Iterator<Item = &'a R>,
     {
-        let (count, mean, square_distance) = iter.fold((0,T::ZERO,T::ZERO), |acc, x| {
+        let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
             let (mut count, mut mean, mut square_distance) = acc;
             count +=1;
-            let norm = x.norm();
-            let delta = norm-mean;
-            mean += delta/T::usize(count);
-            let delta2 = norm - mean;
+            let delta = *x-mean;
+            mean += delta/R::usize(count);
+            let delta2 = *x - mean;
             square_distance+= delta*delta2;
             (count,mean,square_distance)
         });
-        (mean,square_distance/T::usize(count))
+        (mean,square_distance/R::usize(count))
     }
-    
+
 }
 
-impl<'a, T: Float> Vector<'a, T> for Vec<&'a Complex<T>> {}
-impl<'a, T: Float> Vector<'a, T> for Vec<&'a mut Complex<T>> {}
+
+pub trait ComplexVector<'a, C:Complex+'a>: Vector<'a,C>{
+    fn scale<I>(iter: I, scaler: C::Primitive)
+    where
+        I: Iterator<Item = &'a mut C>,
+    {
+        iter.for_each(|c| *c *= scaler)
+    }
+
+    fn descale<I>(iter: I, scaler:C::Primitive)
+    where
+        I: Iterator<Item = &'a mut C>,
+    {
+        iter.for_each(|c| *c /= scaler)
+    }
+    /* 
+    fn mean<I>(iter: I) -> C
+    where
+        I: Iterator<Item = &'a C>,
+    {
+        let (_, mean) = iter.fold((0,C::ZERO), |acc, x| {
+            let (mut count, mut mean) = acc;
+            count +=1;
+            let delta = *x-mean;
+            mean += delta/C::Primitive::usize(count);
+            (count,mean)
+        });
+        mean
+    }
+
+    fn variance<I>(iter: I) -> (C,C)
+    where
+     I: Iterator<Item = &'a C>,
+    {
+        let (count, mean, square_distance) = iter.fold((0,C::ZERO,C::ZERO), |acc, x| {
+            let (mut count, mut mean, mut square_distance) = acc;
+            count +=1;
+            let delta = *x-mean;
+            mean += delta/C::Primitive::usize(count);
+            let delta2 = *x - mean;
+            square_distance+= delta*delta2;
+            (count,mean,square_distance)
+        });
+        (mean,square_distance/C::Primitive::usize(count))
+    }*/
+}
+
+
+
+impl<'a, F: Float> Vector<'a, F> for Vec<&'a F> {}
+impl<'a, F: Float> Vector<'a, F> for Vec<&'a mut F> {}
+impl<'a, R: Real<Primitive = R>> RealVector<'a, R> for Vec<&'a R> {}
+impl<'a, R: Real<Primitive = R>> RealVector<'a, R> for Vec<&'a mut R> {}
+impl<'a, C: Complex<Primitive = C>> ComplexVector<'a, C> for Vec<&'a C> {}
+impl<'a, C: Complex<Primitive = C>> ComplexVector<'a, C> for Vec<&'a mut C> {}

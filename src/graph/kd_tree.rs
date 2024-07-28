@@ -1,37 +1,36 @@
+use crate::shared::{float::Float, point::Point, real::Real};
 use core::cmp::{min, Ordering};
 use std::{collections::BinaryHeap, time::SystemTime};
 
-use crate::shared::{float::Float, point::Point};
-
-pub struct KdLeaf<T: Float, const N: usize> {
+pub struct KdLeaf<P: Point> {
     capacity: usize,
-    points: Vec<Point<T, N>>,
+    points: Vec<P>,
     bucket: Vec<usize>,
 }
-pub struct KdBranch<T: Float, const N: usize> {
-    left: Box<KdTree<T, N>>,
-    right: Box<KdTree<T, N>>,
-    split_value: T,
+pub struct KdBranch<P: Point> {
+    left: Box<KdTree<P>>,
+    right: Box<KdTree<P>>,
+    split_value: P::Primitive,
     split_dimension: usize,
 }
 
-pub struct KdShared<T: Float, const N: usize> {
+pub struct KdShared<P: Point> {
     size: usize,
-    min_bounds: Point<T, N>,
-    max_bounds: Point<T, N>,
+    min_bounds: P,
+    max_bounds: P,
 }
 
-pub enum KdNode<T: Float, const N: usize> {
-    Leaf(KdLeaf<T, N>),
-    Branch(KdBranch<T, N>),
+pub enum KdNode<P: Point> {
+    Leaf(KdLeaf<P>),
+    Branch(KdBranch<P>),
 }
 
-pub struct KdTree<T: Float, const N: usize> {
-    shared: KdShared<T, N>,
-    node: KdNode<T, N>,
+pub struct KdTree<P: Point> {
+    shared: KdShared<P>,
+    node: KdNode<P>,
 }
 
-impl<T: Float, const N: usize> KdLeaf<T, N> {
+impl<P: Point> KdLeaf<P> {
     fn new(capacity: usize) -> Self {
         let points = Vec::with_capacity(capacity);
         let bucket = Vec::with_capacity(capacity);
@@ -43,10 +42,10 @@ impl<T: Float, const N: usize> KdLeaf<T, N> {
     }
     fn add_to_bucket(
         &mut self,
-        shared: &KdShared<T, N>,
-        point: Point<T, N>,
+        shared: &KdShared<P>,
+        point: P,
         data: usize,
-    ) -> Option<KdBranch<T, N>> {
+    ) -> Option<KdBranch<P>> {
         self.points.push(point);
         self.bucket.push(data);
 
@@ -57,22 +56,15 @@ impl<T: Float, const N: usize> KdLeaf<T, N> {
         }
     }
 
-    fn split(&mut self, shared: &KdShared<T, N>) -> KdBranch<T, N> {
-        let (_, split_dimension) = (0..N).fold((T::MIN, 0), |acc, dim| {
-            let difference = shared.max_bounds.data[dim] - shared.min_bounds.data[dim];
-            if difference > acc.0 {
-                (difference, dim)
-            } else {
-                acc
-            }
-        });
+    fn split(&mut self, shared: &KdShared<P>) -> KdBranch<P> {
+        let (_, split_dimension) = shared.max_bounds.ordered_farthest(&shared.min_bounds);
 
-        let min = shared.min_bounds.data[split_dimension];
-        let max = shared.max_bounds.data[split_dimension];
-        let split_value = min + (max - min) / T::usize(2);
+        let min = shared.min_bounds.data(split_dimension);
+        let max = shared.max_bounds.data(split_dimension);
+        let split_value = min + (max - min) / P::Primitive::usize(2);
 
-        let left = Box::new(KdTree::<T, N>::new(self.capacity));
-        let right = Box::new(KdTree::<T, N>::new(self.capacity));
+        let left = Box::new(KdTree::<P>::new(self.capacity));
+        let right = Box::new(KdTree::<P>::new(self.capacity));
         let mut branch = KdBranch::new(left, right, split_value, split_dimension);
 
         while !self.points.is_empty() {
@@ -89,11 +81,11 @@ impl<T: Float, const N: usize> KdLeaf<T, N> {
     }
 }
 
-impl<T: Float, const N: usize> KdBranch<T, N> {
+impl<P: Point> KdBranch<P> {
     fn new(
-        left: Box<KdTree<T, N>>,
-        right: Box<KdTree<T, N>>,
-        split_value: T,
+        left: Box<KdTree<P>>,
+        right: Box<KdTree<P>>,
+        split_value: P::Primitive,
         split_dimension: usize,
     ) -> Self {
         Self {
@@ -104,21 +96,24 @@ impl<T: Float, const N: usize> KdBranch<T, N> {
         }
     }
 
-    fn branch_left(&self, shared: &KdShared<T, N>, point: &Point<T, N>) -> bool {
+    fn branch_left(&self, shared: &KdShared<P>, point: &P) -> bool {
         //reduce the
-        if point.data[self.split_dimension] == self.split_value{
-            SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap()
-            .as_nanos()%2==0
-        }
-        else if shared.min_bounds.data[self.split_dimension] == self.split_value {
-            point.data[self.split_dimension] <= self.split_value
+        if point.data(self.split_dimension) == self.split_value {
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+                % 2
+                == 0
+        } else if shared.min_bounds.data(self.split_dimension) == self.split_value {
+            point.data(self.split_dimension) <= self.split_value
         } else {
-            point.data[self.split_dimension] < self.split_value
+            point.data(self.split_dimension) < self.split_value
         }
     }
 }
 
-impl<T: Float, const N: usize> KdShared<T, N> {
+impl<P: Point> KdShared<P> {
     fn new() -> Self {
         let min_bounds = Point::MAX;
         let max_bounds = Point::MIN;
@@ -131,7 +126,7 @@ impl<T: Float, const N: usize> KdShared<T, N> {
     }
 }
 
-impl<T: Float, const N: usize> KdTree<T, N> {
+impl<P: Point> KdTree<P> {
     pub fn new(capacity: usize) -> Self {
         let leaf = KdLeaf::new(capacity);
         let node = KdNode::Leaf(leaf);
@@ -142,11 +137,11 @@ impl<T: Float, const N: usize> KdTree<T, N> {
     pub fn len(&self) -> usize {
         self.shared.size
     }
-    pub fn is_empty(&self) -> bool{
-        self.shared.size==0
+    pub fn is_empty(&self) -> bool {
+        self.shared.size == 0
     }
 
-    pub fn add(&mut self, point: Point<T, N>, data: usize) {
+    pub fn add(&mut self, point: P, data: usize) {
         self.extend(&point);
         self.shared.size += 1;
         match &mut self.node {
@@ -165,33 +160,21 @@ impl<T: Float, const N: usize> KdTree<T, N> {
         }
     }
 
-    fn extend(&mut self, point: &Point<T, N>) {
-        self.shared
-            .min_bounds
-            .data
-            .iter_mut()
-            .zip(self.shared.max_bounds.data.iter_mut())
-            .zip(point.data.iter())
-            .for_each(|((min_b, max_b), pb)| {
-                if pb < min_b {
-                    *min_b = *pb;
-                }
-                if pb > max_b {
-                    *max_b = *pb;
-                }
-            });
+    fn extend(&mut self, point: &P) {
+        self.shared.min_bounds = point.lesser(&self.shared.min_bounds);
+        self.shared.max_bounds = point.greater(&self.shared.max_bounds);
     }
 
-    pub fn nearest(&self, point: &Point<T, N>, k: usize) -> Vec<(T, usize)> {
+    pub fn nearest(&self, point: &P, k: usize) -> Vec<(P::Primitive, usize)> {
         debug_assert!(k != 0);
         let k = min(k, self.len());
 
-        let mut pending: BinaryHeap<HeapElement<T, &KdTree<T, N>>> =
-            BinaryHeap::<HeapElement<T, &Self>>::new();
-        let mut evaluated = BinaryHeap::<HeapElement<T, &usize>>::new();
+        let mut pending: BinaryHeap<HeapElement<P::Primitive, &KdTree<P>>> =
+            BinaryHeap::<HeapElement<P::Primitive, &Self>>::new();
+        let mut evaluated = BinaryHeap::<HeapElement<P::Primitive, &usize>>::new();
 
         pending.push(HeapElement {
-            distance: T::ZERO,
+            distance: P::Primitive::ZERO,
             element: self,
         });
 
@@ -199,7 +182,7 @@ impl<T: Float, const N: usize> KdTree<T, N> {
             && (evaluated.len() < k
                 || (-pending.peek().unwrap().distance <= evaluated.peek().unwrap().distance))
         {
-            self.nearest_step(point, k, T::MAX, &mut pending, &mut evaluated);
+            self.nearest_step(point, k, P::Primitive::MAX, &mut pending, &mut evaluated);
         }
         evaluated
             .into_sorted_vec()
@@ -211,11 +194,11 @@ impl<T: Float, const N: usize> KdTree<T, N> {
 
     fn nearest_step<'b>(
         &self,
-        point: &Point<T, N>,
+        point: &P,
         k: usize,
-        max_dist: T,
-        pending: &mut BinaryHeap<HeapElement<T, &'b Self>>,
-        evaluated: &mut BinaryHeap<HeapElement<T, &'b usize>>,
+        max_dist: P::Primitive,
+        pending: &mut BinaryHeap<HeapElement<P::Primitive, &'b Self>>,
+        evaluated: &mut BinaryHeap<HeapElement<P::Primitive, &'b usize>>,
     ) {
         debug_assert!(evaluated.len() <= k);
         let mut current = pending.pop().unwrap().element;
@@ -241,8 +224,7 @@ impl<T: Float, const N: usize> KdTree<T, N> {
                         }
                     };
 
-                    let candidate_to_space = self.distance_to_space(
-                        point,
+                    let candidate_to_space = point.distance_to_range(
                         &candidate.shared.min_bounds,
                         &candidate.shared.max_bounds,
                     );
@@ -259,7 +241,7 @@ impl<T: Float, const N: usize> KdTree<T, N> {
                     points
                         .zip(bucket)
                         .map(|(p, d)| HeapElement {
-                            distance: point.distance(p),
+                            distance: point.l1_distance(p),
                             element: d,
                         })
                         .for_each(|element| {
@@ -277,47 +259,28 @@ impl<T: Float, const N: usize> KdTree<T, N> {
             }
         }
     }
-
-    fn distance_to_space(
-        &self,
-        p1: &Point<T, N>,
-        min_bounds: &Point<T, N>,
-        max_bounds: &Point<T, N>,
-    ) -> T {
-        let mut p2 = Point::ZERO;
-        (0..N).for_each(|i| {
-            if p1.data[i] > max_bounds.data[i] {
-                p2.data[i] = max_bounds.data[i];
-            } else if p1.data[i] < min_bounds.data[i] {
-                p2.data[i] = min_bounds.data[i];
-            } else {
-                p2.data[i] = p1.data[i];
-            }
-        });
-        p1.distance(&p2)
-    }
 }
 
-pub struct HeapElement<T: Float, O> {
-    pub distance: T,
+pub struct HeapElement<R: Real, O> {
+    pub distance: R,
     pub element: O,
 }
 
-impl<T: Float, O> Ord for HeapElement<T, O> {
+impl<R: Real, O> Ord for HeapElement<R, O> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.distance.partial_cmp(&other.distance).unwrap()
     }
 }
 
-impl<T: Float, O> PartialOrd for HeapElement<T, O> {
+impl<R: Real, O> PartialOrd for HeapElement<R, O> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: Float, O> Eq for HeapElement<T, O> {}
+impl<R: Real, O> Eq for HeapElement<R, O> {}
 
-impl<T: Float, O> PartialEq for HeapElement<T, O> {
+impl<R: Real, O> PartialEq for HeapElement<R, O> {
     fn eq(&self, other: &Self) -> bool {
         self.distance == other.distance
     }
@@ -327,18 +290,20 @@ impl<T: Float, O> PartialEq for HeapElement<T, O> {
 mod kd_tree_tests {
     use std::time::SystemTime;
 
+    use crate::shared::point::StaticPoint;
+
     use super::*;
 
     #[test]
     fn kd_tree_first() {
-        let mut kd_tree = KdTree::<f32, 2>::new(2);
-        kd_tree.add(Point::new([1.0, 2.0]), 0);
+        let mut kd_tree = KdTree::<StaticPoint<f32, 2>>::new(2);
+        kd_tree.add(StaticPoint::new([1.0, 2.0]), 0);
 
         let known_buckets = vec![0];
-        let known_max_bounds = Point::new([1.0, 2.0]);
-        let known_min_bounds = Point::new([1.0, 2.0]);
+        let known_max_bounds = StaticPoint::new([1.0, 2.0]);
+        let known_min_bounds = StaticPoint::new([1.0, 2.0]);
 
-        let known_points = vec![Point::new([1.0, 2.0])];
+        let known_points = vec![StaticPoint::new([1.0, 2.0])];
 
         match kd_tree.node {
             KdNode::Leaf(leaf) => {
@@ -383,15 +348,15 @@ mod kd_tree_tests {
 
     #[test]
     fn kd_tree_second() {
-        let mut kd_tree = KdTree::<f32, 2>::new(2);
-        kd_tree.add(Point::new([1.0, 2.0]), 0);
-        kd_tree.add(Point::new([-1.0, 3.0]), 1);
+        let mut kd_tree = KdTree::<StaticPoint<f32, 2>>::new(2);
+        kd_tree.add(StaticPoint::new([1.0, 2.0]), 0);
+        kd_tree.add(StaticPoint::new([-1.0, 3.0]), 1);
 
         let known_buckets = vec![0, 1];
-        let known_max_bounds = Point::new([1.0, 3.0]);
-        let known_min_bounds = Point::new([-1.0, 2.0]);
+        let known_max_bounds = StaticPoint::new([1.0, 3.0]);
+        let known_min_bounds = StaticPoint::new([-1.0, 2.0]);
 
-        let known_points = vec![Point::new([1.0, 2.0]), Point::new([-1.0, 3.0])];
+        let known_points = vec![StaticPoint::new([1.0, 2.0]), StaticPoint::new([-1.0, 3.0])];
         match kd_tree.node {
             KdNode::Leaf(leaf) => {
                 leaf.bucket
@@ -435,16 +400,16 @@ mod kd_tree_tests {
 
     #[test]
     fn kd_tree_split() {
-        let mut kd_tree = KdTree::<f32, 2>::new(2);
-        kd_tree.add(Point::new([1.0, 2.0]), 0);
-        kd_tree.add(Point::new([-1.0, 3.0]), 1);
-        kd_tree.add(Point::new([-2.0, 3.0]), 2);
+        let mut kd_tree = KdTree::<StaticPoint<f32, 2>>::new(2);
+        kd_tree.add(StaticPoint::new([1.0, 2.0]), 0);
+        kd_tree.add(StaticPoint::new([-1.0, 3.0]), 1);
+        kd_tree.add(StaticPoint::new([-2.0, 3.0]), 2);
 
         match kd_tree.node {
             KdNode::Leaf(_) => assert!(false),
             KdNode::Branch(branch) => {
-                let known_max_bounds = Point::new([1.0, 3.0]);
-                let known_min_bounds = Point::new([-2.0, 2.0]);
+                let known_max_bounds = StaticPoint::new([1.0, 3.0]);
+                let known_min_bounds = StaticPoint::new([-2.0, 2.0]);
 
                 kd_tree
                     .shared
@@ -471,10 +436,11 @@ mod kd_tree_tests {
                 match branch.left.node {
                     KdNode::Leaf(leaf) => {
                         let known_buckets = vec![2, 1];
-                        let known_max_bounds = Point::new([-1.0, 3.0]);
-                        let known_min_bounds = Point::new([-2.0, 3.0]);
+                        let known_max_bounds = StaticPoint::new([-1.0, 3.0]);
+                        let known_min_bounds = StaticPoint::new([-2.0, 3.0]);
 
-                        let known_points = vec![Point::new([-2.0, 3.0]), Point::new([-1.0, 3.0])];
+                        let known_points =
+                            vec![StaticPoint::new([-2.0, 3.0]), StaticPoint::new([-1.0, 3.0])];
 
                         leaf.bucket
                             .iter()
@@ -519,10 +485,10 @@ mod kd_tree_tests {
                 match branch.right.node {
                     KdNode::Leaf(leaf) => {
                         let known_buckets = vec![0];
-                        let known_max_bounds = Point::new([1.0, 2.0]);
-                        let known_min_bounds = Point::new([1.0, 2.0]);
+                        let known_max_bounds = StaticPoint::new([1.0, 2.0]);
+                        let known_min_bounds = StaticPoint::new([1.0, 2.0]);
 
-                        let known_points = vec![Point::new([1.0, 2.0])];
+                        let known_points = vec![StaticPoint::new([1.0, 2.0])];
 
                         leaf.bucket
                             .iter()
@@ -570,17 +536,17 @@ mod kd_tree_tests {
 
     #[test]
     fn kd_tree_split_add() {
-        let mut kd_tree = KdTree::<f32, 2>::new(2);
-        kd_tree.add(Point::new([1.0, 2.0]), 0);
-        kd_tree.add(Point::new([-1.0, 3.0]), 1);
-        kd_tree.add(Point::new([-2.0, 3.0]), 2);
-        kd_tree.add(Point::new([2.0, 4.0]), 4);
+        let mut kd_tree = KdTree::<StaticPoint<f32, 2>>::new(2);
+        kd_tree.add(StaticPoint::new([1.0, 2.0]), 0);
+        kd_tree.add(StaticPoint::new([-1.0, 3.0]), 1);
+        kd_tree.add(StaticPoint::new([-2.0, 3.0]), 2);
+        kd_tree.add(StaticPoint::new([2.0, 4.0]), 4);
 
         match kd_tree.node {
             KdNode::Leaf(_) => assert!(false),
             KdNode::Branch(branch) => {
-                let known_max_bounds = Point::new([2.0, 4.0]);
-                let known_min_bounds = Point::new([-2.0, 2.0]);
+                let known_max_bounds = StaticPoint::new([2.0, 4.0]);
+                let known_min_bounds = StaticPoint::new([-2.0, 2.0]);
                 kd_tree
                     .shared
                     .max_bounds
@@ -606,10 +572,11 @@ mod kd_tree_tests {
                 match branch.left.node {
                     KdNode::Leaf(leaf) => {
                         let known_buckets = vec![2, 1];
-                        let known_max_bounds = Point::new([-1.0, 3.0]);
-                        let known_min_bounds = Point::new([-2.0, 3.0]);
+                        let known_max_bounds = StaticPoint::new([-1.0, 3.0]);
+                        let known_min_bounds = StaticPoint::new([-2.0, 3.0]);
 
-                        let known_points = vec![Point::new([-2.0, 3.0]), Point::new([-1.0, 3.0])];
+                        let known_points =
+                            vec![StaticPoint::new([-2.0, 3.0]), StaticPoint::new([-1.0, 3.0])];
 
                         leaf.bucket
                             .iter()
@@ -654,10 +621,11 @@ mod kd_tree_tests {
                 match branch.right.node {
                     KdNode::Leaf(leaf) => {
                         let known_buckets = vec![0];
-                        let known_max_bounds = Point::new([2.0, 4.0]);
-                        let known_min_bounds = Point::new([1.0, 2.0]);
+                        let known_max_bounds = StaticPoint::new([2.0, 4.0]);
+                        let known_min_bounds = StaticPoint::new([1.0, 2.0]);
 
-                        let known_points = vec![Point::new([1.0, 2.0]), Point::new([2.0, 4.0])];
+                        let known_points =
+                            vec![StaticPoint::new([1.0, 2.0]), StaticPoint::new([2.0, 4.0])];
 
                         leaf.bucket
                             .iter()
@@ -705,13 +673,13 @@ mod kd_tree_tests {
 
     #[test]
     fn kd_tree_nearest() {
-        let mut kd_tree = KdTree::<f32, 2>::new(2);
-        kd_tree.add(Point::new([1.0, 2.0]), 0);
-        kd_tree.add(Point::new([-1.0, 3.0]), 1);
-        kd_tree.add(Point::new([-2.0, 3.0]), 2);
-        kd_tree.add(Point::new([2.0, 4.0]), 4);
+        let mut kd_tree = KdTree::<StaticPoint<f32, 2>>::new(2);
+        kd_tree.add(StaticPoint::new([1.0, 2.0]), 0);
+        kd_tree.add(StaticPoint::new([-1.0, 3.0]), 1);
+        kd_tree.add(StaticPoint::new([-2.0, 3.0]), 2);
+        kd_tree.add(StaticPoint::new([2.0, 4.0]), 4);
 
-        let point = Point::new([1.5, 2.0]);
+        let point = StaticPoint::new([1.5, 2.0]);
         let near = kd_tree.nearest(&point, 4);
 
         let known_dist = vec![0.5, 2.5, 3.5, 4.5];
@@ -728,9 +696,9 @@ mod kd_tree_tests {
     #[test]
     fn kd_speed() {
         let now = SystemTime::now();
-        let mut kd_tree = KdTree::<f32, 2>::new(2);
-        (0..500).for_each(|i| kd_tree.add(Point::new([f32::usize(i), f32::usize(i + 1)]), i));
+        let mut kd_tree = KdTree::<StaticPoint<f32, 2>>::new(2);
+        (0..500).for_each(|i| kd_tree.add(StaticPoint::new([f32::usize(i), f32::usize(i + 1)]), i));
 
-        let _ = println!("{:?}",now.elapsed());
+        let _ = println!("{:?}", now.elapsed());
     }
 }

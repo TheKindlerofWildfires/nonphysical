@@ -1,38 +1,30 @@
 use crate::{
-    cluster::Classification::Core, random::pcg::PermutedCongruentialGenerator, shared::{float::Float, point::Point}
+    cluster::Classification::Core, shared::{float::Float, point::Point, real::Real}
 };
 use super::Classification;
-trait Kmeans<T: Float,const N: usize> {
-    fn new(input: &Self, count: usize,seed:usize) -> Self;
 
-    fn cluster(
-        input: &Self,
-        centroids: &mut Self,
-        iterations: usize,
-    ) -> Vec<Classification>
-    where
-        Self: Sized;
+
+pub struct Kmeans<P:Point>{
+    centroids: Vec<P>,
+    iterations: usize,
 }
+impl<P:Point> Kmeans<P>{
+    fn new(seed_data: &[P], clusters: usize,iterations: usize) -> Self{
+        let mut taken: Vec<bool> = vec![false; seed_data.len()];
+        let mut centroids = vec![P::ZERO;clusters];
+        taken[0] = true; 
+        centroids[0] = seed_data[0].clone();
 
-impl<T: Float,const N: usize> Kmeans<T,N> for Vec<Point<T,N>> {
-    fn new(input: &Self, count: usize,seed:usize) ->Self {
-        let mut taken = vec![false; input.len()];
-        let mut centroids = Vec::with_capacity(count);
-        let mut pcg = PermutedCongruentialGenerator::<T>::new(seed as u32, seed as u32+1);
-        let first = pcg.next_u32() as usize % input.len();
-        taken[first] = true; 
-        centroids.push(input[first].clone());
-
-        (1..count).for_each(|_| {
+        (1..clusters).for_each(|i| {
             let mut max_index = 0;
-            let mut max_distance = T::MIN;
+            let mut max_distance = P::Primitive::MIN;
 
-            input.iter().enumerate().for_each(|(i, c)| {
+            seed_data.iter().enumerate().for_each(|(i, c)| {
                 if !taken[i] {
-                    let mut min_distance = T::MIN;
+                    let mut min_distance = P::Primitive::MAX;
 
                     centroids.iter().for_each(|centroid| {
-                        let dx = c.distance(centroid);
+                        let dx = c.l1_distance(centroid);
                         if dx < min_distance {
                             min_distance = dx;
                         }
@@ -46,34 +38,26 @@ impl<T: Float,const N: usize> Kmeans<T,N> for Vec<Point<T,N>> {
 
             });
             taken[max_index] = true;
-            centroids.push(input[max_index].clone());
+            centroids[i] = seed_data[max_index].clone();
         });
-        centroids
+        Self { centroids,iterations }
     }
 
-    //doesn't have the early exit
-    fn cluster(
-        input: &Self,
-        centroids: &mut Self,
-        iterations: usize,
-    ) -> Vec<Classification>
-    where
-        Self: Sized,
-    {
-        let mut counts = vec![0; centroids.len()];
+    fn cluster(&mut self, data: &[P]) -> Vec<Classification>{
+        let mut counts = vec![0; self.centroids.len()];
 
-        let mut membership = vec![Core(0); input.len()];
-        (0..iterations).for_each(|_| {
-            input.iter().enumerate().for_each(|(i, c)| {
+        let mut membership = vec![Core(0); data.len()];
+        (0..self.iterations).for_each(|_| {
+            data.iter().enumerate().for_each(|(i, c)| {
                 let old = membership[i];
                 match old {
                     Core(op) => {
                         let mut cluster = old;
                 
-                        let mut dist = c.distance(&centroids[op]);
+                        let mut dist = c.l1_distance(&self.centroids[op]);
         
-                        centroids.iter().enumerate().for_each(|(j, centroid)| {
-                            let square_distance = c.distance(centroid);
+                        self.centroids.iter().enumerate().for_each(|(j, centroid)| {
+                            let square_distance = c.l1_distance(centroid);
                             if square_distance < dist {
                                 dist = square_distance;
                                 cluster = Core(j);
@@ -86,16 +70,13 @@ impl<T: Float,const N: usize> Kmeans<T,N> for Vec<Point<T,N>> {
                 
             });
             counts.iter_mut().for_each(|x| *x = 0);
-            centroids.iter_mut().for_each(|c| c.data.iter_mut().for_each(|d|*d = T::ZERO));
+            self.centroids.iter_mut().for_each(|c| *c = P::ZERO);
     
-            input.iter().zip(membership.iter()).for_each(|(c,m)|{
+            data.iter().zip(membership.iter()).for_each(|(c,m)|{
                 match m {
                     Core(mp) => {
                         counts[*mp] +=1;
-    
-                        centroids[*mp].data.iter_mut().zip(c.data.iter()).for_each(|(centroid_p,cp)|{
-                            *centroid_p += *cp 
-                        });
+                        self.centroids[*mp] = self.centroids[*mp].add(c);
                     },
                     _ => {unreachable!()}
 
@@ -103,68 +84,69 @@ impl<T: Float,const N: usize> Kmeans<T,N> for Vec<Point<T,N>> {
 
             });
 
-            centroids.iter_mut().zip(counts.iter()).for_each(|(centroid, count)|{
+            self.centroids.iter_mut().zip(counts.iter()).for_each(|(centroid, count)|{
                 match count {
                     0 => {
-                        centroid.data.iter_mut().for_each(|cp| *cp = T::ZERO);
+                        *centroid = P::ZERO;
                     },
                     size => {
-                        centroid.data.iter_mut().for_each(|cp| *cp /=T::usize(*size))
+                        let scaler = P::Primitive::usize(*size).recip();
+                        centroid.scale(scaler);
                     }
                 }
             });
         });
         membership
-    }
-
+    }   
 }
 
 #[cfg(test)]
 mod kmeans_tests{
-    use crate::shared::point::Point;
+    use crate::shared::{float::Float, point::{Point, StaticPoint}};
 
     use super::*;
 
     #[test]
     fn kmeans_simple() {
         let data = vec![
-            Point::new([9.308548692822459, 2.1673586347139224]),
-            Point::new([-5.6424039931897765, -1.9620561766472002]),
-            Point::new([-9.821995596375428, -3.1921112766174997]),
-            Point::new([-4.992109362834896, -2.0745015313494455]),
-            Point::new([10.107315875917662, 2.4489015959094216]),
-            Point::new([-7.962477597931141, -5.494741864480315]),
-            Point::new([10.047917462523671, 5.1631966716389766]),
-            Point::new([-5.243921934674187, -2.963359100733349]),
-            Point::new([-9.940544426622527, -3.2655473073528816]),
-            Point::new([8.30445373000034, 2.129694332932624]),
-            Point::new([-9.196460281784482, -3.987773678358418]),
-            Point::new([-10.513583123594056, -2.5364233580562887]),
-            Point::new([9.072668506714033, 3.405664632524281]),
-            Point::new([-7.031861004012987, -2.2616818331210844]),
-            Point::new([9.627963795272553, 4.502533177849574]),
-            Point::new([-10.442760023564471, -5.0830680881481065]),
-            Point::new([8.292151321984209, 3.8776876670218834]),
-            Point::new([-6.51560033683665, -3.8185628318207585]),
-            Point::new([-10.887633624071544, -4.416570704487158]),
-            Point::new([-9.465804800021168, -2.2222090878656884]),
+            StaticPoint::new([9.308548692822459, 2.1673586347139224]),
+            StaticPoint::new([-5.6424039931897765, -1.9620561766472002]),
+            StaticPoint::new([-9.821995596375428, -3.1921112766174997]),
+            StaticPoint::new([-4.992109362834896, -2.0745015313494455]),
+            StaticPoint::new([10.107315875917662, 2.4489015959094216]),
+            StaticPoint::new([-7.962477597931141, -5.494741864480315]),
+            StaticPoint::new([10.047917462523671, 5.1631966716389766]),
+            StaticPoint::new([-5.243921934674187, -2.963359100733349]),
+            StaticPoint::new([-9.940544426622527, -3.2655473073528816]),
+            StaticPoint::new([8.30445373000034, 2.129694332932624]),
+            StaticPoint::new([-9.196460281784482, -3.987773678358418]),
+            StaticPoint::new([-10.513583123594056, -2.5364233580562887]),
+            StaticPoint::new([9.072668506714033, 3.405664632524281]),
+            StaticPoint::new([-7.031861004012987, -2.2616818331210844]),
+            StaticPoint::new([9.627963795272553, 4.502533177849574]),
+            StaticPoint::new([-10.442760023564471, -5.0830680881481065]),
+            StaticPoint::new([8.292151321984209, 3.8776876670218834]),
+            StaticPoint::new([-6.51560033683665, -3.8185628318207585]),
+            StaticPoint::new([-10.887633624071544, -4.416570704487158]),
+            StaticPoint::new([-9.465804800021168, -2.2222090878656884]),
         ];
 
-        let mut centroids = <Vec<Point<f32,2>> as Kmeans<f32,2>>::new(&data,2,0);
-        let mask = <Vec<Point<f32,2>> as Kmeans<f32,2>>::cluster(&data, &mut centroids, 32);
+        let mut kmeans: Kmeans<StaticPoint<f32, 2>> = Kmeans::new(&data, 2,32);
 
-        let binding = vec![1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0];
+        let mask = kmeans.cluster(&data);
+
+        let binding = vec![0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1];
         let known_mask = binding.iter().map(|i| Core(*i));
 
         mask.iter().zip(known_mask).for_each(|(m,k)|{
             assert!(*m==k);
         });
         
-        let known_centroids = vec![vec![-8.2813197, -3.3291236],vec![9.2515742, 3.38500524],];
+        let known_centroids = vec![vec![9.2515742, 3.38500524],vec![-8.2813197, -3.3291236]];
 
-        centroids.iter().zip(known_centroids.iter()).for_each(|(c,k)|{
+        kmeans.centroids.iter().zip(known_centroids.iter()).for_each(|(c,k)|{
             c.data.iter().zip(k.iter()).for_each(|(cp, kp)|{
-                assert!((*cp-*kp).square_norm()<f32::EPSILON);
+                assert!((*cp-*kp).l2_norm()<f32::EPSILON);
             })
         });
 

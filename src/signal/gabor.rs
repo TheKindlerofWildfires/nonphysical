@@ -1,15 +1,14 @@
 use crate::shared::complex::Complex;
-use crate::shared::float::Float;
 use crate::shared::matrix::Matrix;
 use crate::signal::fourier::FastFourierTransform;
-pub struct GaborTransform<T: Float> {
+pub struct GaborTransform<C: Complex> {
     over_sample: usize,
-    window: Vec<Complex<T>>,
-    fourier: FastFourierTransform<T>,
+    window: Vec<C>,
+    fourier: FastFourierTransform<C>,
 }
 
-impl<T: Float> GaborTransform<T> {
-    pub fn new(over_sample: usize, window: Vec<Complex<T>>) -> Self {
+impl<C: Complex> GaborTransform<C> {
+    pub fn new(over_sample: usize, window: Vec<C>) -> Self {
         let fourier = FastFourierTransform::new(window.len());
         GaborTransform {
             over_sample,
@@ -18,7 +17,7 @@ impl<T: Float> GaborTransform<T> {
         }
     }
 
-    pub fn gabor(&self, x: &mut [Complex<T>]) -> Matrix<T> {
+    pub fn gabor(&self, x: &mut [C]) -> Matrix<C> {
         let win_step = self.window.len() / self.over_sample;
         let win_count = x.len() / win_step - self.over_sample + 1;
         let size = win_count * self.window.len();
@@ -43,9 +42,9 @@ impl<T: Float> GaborTransform<T> {
     }
 
     #[inline(always)]
-    fn convolve(x: &mut [Complex<T>], y: &[Complex<T>]) {
+    fn convolve(x: &mut [C], y: &[C]) {
         x.iter_mut()
             .zip(y)
-            .for_each(|(xi, yi)| *xi *= yi.conj());
+            .for_each(|(xi, yi)| *xi *= yi.conjugate());
     }
 }
