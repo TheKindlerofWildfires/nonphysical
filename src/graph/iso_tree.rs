@@ -2,6 +2,8 @@ use crate::{
     random::pcg::PermutedCongruentialGenerator,
     shared::{float::Float, point::Point,real::Real},
 };
+use alloc::vec::Vec;
+use alloc::boxed::Box;
 
 pub struct IsoLeaf {
     count: usize,
@@ -144,7 +146,8 @@ impl<P: Point> IsoTree<P> {
 
 #[cfg(test)]
 mod iso_tree_tests {
-    use std::borrow::Borrow;
+    use core::borrow::Borrow;
+    use alloc::vec;
 
     use crate::shared::point::StaticPoint;
 

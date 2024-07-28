@@ -1,6 +1,9 @@
 use crate::shared::{float::Float, point::Point, real::Real};
 use core::cmp::{min, Ordering};
-use std::{collections::BinaryHeap, time::SystemTime};
+use std::time::SystemTime;
+use alloc::vec::Vec;
+use alloc::boxed::Box;
+use alloc::collections::BinaryHeap;
 
 pub struct KdLeaf<P: Point> {
     capacity: usize,
@@ -288,6 +291,7 @@ impl<R: Real, O> PartialEq for HeapElement<R, O> {
 
 #[cfg(test)]
 mod kd_tree_tests {
+    use alloc::vec;
     use std::time::SystemTime;
 
     use crate::shared::point::StaticPoint;

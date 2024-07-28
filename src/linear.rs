@@ -1,11 +1,9 @@
 pub mod gemm;
 pub mod jacobi;
-//pub mod svd;
-//
-
+pub mod svd;
+pub mod pca;
 
 /* 
-pub mod pca;
 pub mod eigen;
 pub mod schur;
 pub mod hessenberg;

@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
+//#![no_std]
+
+extern crate alloc;
 
 //core
 pub mod shared;

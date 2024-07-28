@@ -4,6 +4,8 @@ use crate::{
 };
 
 use super::Classification;
+use alloc::vec;
+use alloc::vec::Vec;
 
 pub struct Dbscan<P:Point>{
     epsilon: P::Primitive,
@@ -59,6 +61,7 @@ impl<P:Point> Dbscan<P>{
 
 #[cfg(test)]
 mod dbscan_tests{
+    use alloc::vec;
     use crate::shared::point::StaticPoint;
 
     use super::*;

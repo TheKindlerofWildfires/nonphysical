@@ -1,25 +1,33 @@
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashMap, VecDeque}, marker::PhantomData,
-};
+use core::{cell::RefCell, marker::PhantomData};
+use std::collections::HashMap;
+use alloc::vec;
+use alloc::vec::Vec;
+use alloc::collections::{BTreeMap, VecDeque};
+
+
 
 use crate::{
     cluster::Classification::{Core, Noise},
     graph::{kd_tree::KdTree, ms_tree::MSTree, sl_tree::SLTree},
-    shared::{float::Float, real::Real, point::Point},
+    shared::{float::Float, point::Point, real::Real},
 };
 
 use super::Classification;
-pub struct Hdbscan<P:Point> {
+pub struct Hdbscan<P: Point> {
     min_points: usize,
     max_points: usize,
     single_cluster: bool,
     min_samples: usize,
-    phantom_data: PhantomData<P>
+    phantom_data: PhantomData<P>,
 }
 
-impl<P:Point> Hdbscan<P> {
-    pub fn new(min_points: usize, max_points: usize, single_cluster: bool, min_samples: usize) -> Self{
+impl<P: Point> Hdbscan<P> {
+    pub fn new(
+        min_points: usize,
+        max_points: usize,
+        single_cluster: bool,
+        min_samples: usize,
+    ) -> Self {
         let phantom_data = PhantomData;
         Self {
             min_points,
@@ -30,25 +38,23 @@ impl<P:Point> Hdbscan<P> {
         }
     }
 
-    pub fn cluster(&self,data: &[P]) -> Vec<Classification>{
+    pub fn cluster(&self, data: &[P]) -> Vec<Classification> {
         let core_distances = self.kd_core_distances(data);
         let ms_tree = MSTree::new(data, &core_distances);
         let sl_tree = SLTree::new(&ms_tree);
-        let condensed_tree =self.condense_tree(&sl_tree, data.len());
+        let condensed_tree = self.condense_tree(&sl_tree, data.len());
         let winning_clusters = self.winning_clusters(&condensed_tree, data.len());
 
         self.label_data(&winning_clusters, &condensed_tree, data.len())
     }
 
-    fn kd_core_distances(&self,data: &[P]) -> Vec<P::Primitive> {
+    fn kd_core_distances(&self, data: &[P]) -> Vec<P::Primitive> {
         let capacity = (data.len() as f32).sqrt() as usize;
         let mut kd_tree = KdTree::new(capacity);
-        data
-            .iter()
+        data.iter()
             .enumerate()
             .for_each(|(i, point)| kd_tree.add(point.clone(), i));
-        data
-            .iter()
+        data.iter()
             .map(|point| {
                 kd_tree
                     .nearest(point, self.min_samples)
@@ -60,10 +66,7 @@ impl<P:Point> Hdbscan<P> {
             .collect()
     }
 
-    fn condense_tree(&self,
-        sl_tree: &SLTree<P>,
-        size: usize,
-    ) -> Vec<CondensedNode<P>> {
+    fn condense_tree(&self, sl_tree: &SLTree<P>, size: usize) -> Vec<CondensedNode<P>> {
         let top_node = (size - 1) * 2;
         let node_indices = Self::search_sl_tree(sl_tree, top_node, size);
 
@@ -200,11 +203,7 @@ impl<P:Point> Hdbscan<P> {
             });
     }
 
-    fn winning_clusters(
-        &self,
-        condensed_tree: &[CondensedNode<P>],
-        size: usize,
-    ) -> Vec<usize> {
+    fn winning_clusters(&self, condensed_tree: &[CondensedNode<P>], size: usize) -> Vec<usize> {
         let n_clusters = condensed_tree.len() - size + 1;
         let stabilities = (0..size)
             .filter(|n| self.single_cluster || *n != 0)
@@ -232,8 +231,7 @@ impl<P:Point> Hdbscan<P> {
                     })
                     .fold(P::Primitive::ZERO, |acc, n| acc + n);
             if *stability.borrow() > combined_child_stability
-                && self.get_cluster_size(*cluster_idx, condensed_tree, size)
-                    < self.max_points
+                && self.get_cluster_size(*cluster_idx, condensed_tree, size) < self.max_points
             {
                 *selected_clusters.get_mut(cluster_idx).unwrap() = true;
 
@@ -259,7 +257,11 @@ impl<P:Point> Hdbscan<P> {
             .collect()
     }
 
-    fn calc_stability(cluster_idx: usize, condensed_tree: &[CondensedNode<P>], size: usize) -> P::Primitive {
+    fn calc_stability(
+        cluster_idx: usize,
+        condensed_tree: &[CondensedNode<P>],
+        size: usize,
+    ) -> P::Primitive {
         let lambda = if cluster_idx == size {
             P::Primitive::ZERO
         } else {
@@ -389,8 +391,6 @@ impl<P:Point> Hdbscan<P> {
         }
         child_nodes
     }
-
-    
 }
 struct CondensedNode<P: Point> {
     node_idx: usize,
@@ -440,7 +440,7 @@ mod hdbscan_tests {
             StaticPoint::new([-10.887633624071544, -4.416570704487158]),
             StaticPoint::new([-9.465804800021168, -2.2222090878656884]),
         ];
-        let hdbscan = Hdbscan::new(3,20,false,5);
+        let hdbscan = Hdbscan::new(3, 20, false, 5);
         let mask = hdbscan.cluster(&data);
         let known_mask = if mask[0] == Core(0) {
             vec![
@@ -527,7 +527,7 @@ mod hdbscan_tests {
             StaticPoint::new([9.292151321984209, 4.8776876670218834]),
         ];
 
-        let hdbscan = Hdbscan::new(3,20,true,5);
+        let hdbscan = Hdbscan::new(3, 20, true, 5);
         let mask = hdbscan.cluster(&data);
         mask.iter().for_each(|m| {
             assert!(*m == Core(0));
@@ -565,7 +565,7 @@ mod hdbscan_tests {
             StaticPoint::new([10.627963795272553, 5.502533177849574]),
             StaticPoint::new([9.292151321984209, 4.8776876670218834]),
         ];
-        let hdbscan = Hdbscan::new(3,20,false,5);
+        let hdbscan = Hdbscan::new(3, 20, false, 5);
         let mask = hdbscan.cluster(&data);
         dbg!(&mask);
         let known_mask = vec![
@@ -609,15 +609,14 @@ mod hdbscan_tests {
         let mut data = Vec::new();
         (0..20000).for_each(|i| data.push(StaticPoint::new([f32::usize(i), f32::usize(i + 1)])));
         let now = SystemTime::now();
-        let hdbscan = Hdbscan::new(2,1000,false,32);
+        let hdbscan = Hdbscan::new(2, 1000, false, 32);
         let _ = hdbscan.cluster(&data);
         let _ = dbg!(now.elapsed()); //about twice as fast as python.. but could it be better?
-
 
         let mut data = Vec::new();
         (0..20000).for_each(|i| data.push(i as f32));
         let now = SystemTime::now();
-        let hdbscan = Hdbscan::new(2,1000,false,32);
+        let hdbscan = Hdbscan::new(2, 1000, false, 32);
         let _ = hdbscan.cluster(&data);
         let _ = dbg!(now.elapsed()); //faster, but not by much
     }

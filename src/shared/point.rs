@@ -1,4 +1,5 @@
 use crate::random::pcg::PermutedCongruentialGenerator;
+use alloc::vec::Vec;
 
 use super::{real::Real, vector::Vector};
 

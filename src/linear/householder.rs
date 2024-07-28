@@ -1,4 +1,4 @@
-use std::ops::Range;
+use core::ops::Range;
 
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
 

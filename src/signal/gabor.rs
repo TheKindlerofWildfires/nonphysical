@@ -1,6 +1,8 @@
 use crate::shared::complex::Complex;
 use crate::shared::matrix::Matrix;
 use crate::signal::fourier::FastFourierTransform;
+use alloc::vec::Vec;
+
 pub struct GaborTransform<C: Complex> {
     over_sample: usize,
     window: Vec<C>,
@@ -23,7 +25,7 @@ impl<C: Complex> GaborTransform<C> {
         let size = win_count * self.window.len();
         let mut gabor_data = Vec::with_capacity(size);
         (0..win_count).for_each(|i| {
-            gabor_data.extend_from_slice(&x[i*win_step..i*win_step+self.window.len()])
+            gabor_data.extend_from_slice(&x[i * win_step..i * win_step + self.window.len()])
         });
 
         gabor_data

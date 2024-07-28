@@ -3,6 +3,9 @@ use core::{
     fmt::Debug,
     ops::{Add, Mul},
 };
+use alloc::vec::Vec;
+use alloc::vec;
+
 
 use super::{float::Float,vector::Vector};
 
@@ -42,7 +45,6 @@ impl<F: Float> Matrix<F> {
             data,
         }
     }
-    /* 
     pub fn identity(rows: usize, columns: usize) -> Self {
         debug_assert!(rows > 0);
         let data = vec![F::ZERO; rows * columns];
@@ -51,10 +53,9 @@ impl<F: Float> Matrix<F> {
             columns,
             data,
         };
-        <Vec<&'_ F> as Vector<F>>::add(id.data_diag_ref(), ComplexFloat::ONE);
+        <Vec<&'_ F> as Vector<F>>::add(id.data_diag_ref(), F::IDENTITY);
         id
-        todo!()
-    }*/
+    }
 
     pub fn explicit_copy(&self) -> Self {
         let new_data = self.data.clone();
@@ -288,7 +289,7 @@ impl<F: Float> Matrix<F> {
         let row_y = rows.nth(y - x - 1).unwrap();
 
         row_x.iter_mut().zip(row_y.iter_mut()).for_each(|(ap, bp)| {
-            std::mem::swap(&mut (*ap), &mut (*bp));
+            core::mem::swap(&mut (*ap), &mut (*bp));
         });
     }
 
@@ -332,13 +333,6 @@ impl<F: Float> Mul<F> for Matrix<F> {
         out_matrix
     }
 }
-
-/* 
-impl<T: Float> MulAssign<T> for Matrix<T> {
-    fn mul_assign(&mut self, rhs: T) {
-        <Vec<&'_ F> as Vector<T>>::scale(self.data_ref(), rhs);
-    }
-}*/
 
 impl<T: Float> Debug for Matrix<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

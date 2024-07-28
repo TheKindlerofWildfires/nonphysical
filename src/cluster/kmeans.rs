@@ -2,7 +2,8 @@ use crate::{
     cluster::Classification::Core, shared::{float::Float, point::Point, real::Real}
 };
 use super::Classification;
-
+use alloc::vec::Vec;
+use alloc::vec;
 
 pub struct Kmeans<P:Point>{
     centroids: Vec<P>,
@@ -103,7 +104,7 @@ impl<P:Point> Kmeans<P>{
 #[cfg(test)]
 mod kmeans_tests{
     use crate::shared::{float::Float, point::{Point, StaticPoint}};
-
+    use alloc::vec;
     use super::*;
 
     #[test]

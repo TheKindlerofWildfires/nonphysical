@@ -1,7 +1,7 @@
 use super::{float::Float, real::Real};
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-
+use alloc::boxed::Box;
 /*
     This Struct defines complex numbers and functions which are unique to them
 */

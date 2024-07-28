@@ -1,5 +1,6 @@
 use crate::shared::point::Point;
-
+use alloc::vec::Vec;
+use alloc::vec;
 use super::ms_tree::MSTree;
 
 pub struct SLTreeNode<P: Point> {

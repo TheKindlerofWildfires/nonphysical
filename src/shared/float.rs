@@ -1,6 +1,7 @@
 use core::{fmt::Debug, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
 
 use super::real::Real;
+use alloc::boxed::Box;
 
 /*
     This Trait is shared by both real and complex numbers and defines functions that can be expected from any float in a field

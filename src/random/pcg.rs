@@ -1,5 +1,7 @@
-use std::{num::Wrapping, time::SystemTime};
+use core::num::Wrapping;
+use std::time::SystemTime;
 use crate::shared::real::Real;
+use alloc::vec::Vec;
 
 pub struct PermutedCongruentialGenerator {
     state: u32,

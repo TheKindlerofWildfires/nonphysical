@@ -1,4 +1,5 @@
 use crate::shared::{complex::Complex, float::Float, real::Real};
+use alloc::vec::Vec;
 
 pub struct FastFourierTransform<C: Complex> {
     twiddles: Vec<C>,

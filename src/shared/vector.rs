@@ -1,4 +1,5 @@
 use super::{complex::Complex, float::Float, real::Real};
+use alloc::vec::Vec;
 
 pub trait Vector<'a, F:Float+'a>{
     fn sum<I>(iter: I) -> F
@@ -90,37 +91,37 @@ pub trait Vector<'a, F:Float+'a>{
         iter.zip(other).for_each(|(i,j)| *i /= *j)
     }
 
+    fn l1_min<I>(iter: I) -> F::Primitive
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
+    }
+
+    fn l2_min<I>(iter: I) ->  F::Primitive
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
+    }
+
+    fn l1_max<I>(iter: I) ->  F::Primitive
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
+    }
+
+    fn l2_max<I>(iter: I) ->  F::Primitive
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
+    }
+
 }
 
 pub trait RealVector<'a, R:Real<Primitive = R>+'a>: Vector<'a,R>{
-    fn l1_min<I>(iter: I) -> R::Primitive
-    where
-        I: Iterator<Item = &'a R>,
-    {
-        iter.fold( R::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
-    }
-
-    fn l2_min<I>(iter: I) ->  R::Primitive
-    where
-        I: Iterator<Item = &'a R>,
-    {
-        iter.fold( R::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
-    }
-
-    fn l1_max<I>(iter: I) ->  R::Primitive
-    where
-        I: Iterator<Item = &'a R>,
-    {
-        iter.fold( R::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
-    }
-
-    fn l2_max<I>(iter: I) ->  R::Primitive
-    where
-        I: Iterator<Item = &'a R>,
-    {
-        iter.fold( R::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
-    }
-
     fn mean<I>(iter: I) -> R::Primitive
     where
         I: Iterator<Item = &'a R>,
@@ -206,5 +207,5 @@ impl<'a, F: Float> Vector<'a, F> for Vec<&'a F> {}
 impl<'a, F: Float> Vector<'a, F> for Vec<&'a mut F> {}
 impl<'a, R: Real<Primitive = R>> RealVector<'a, R> for Vec<&'a R> {}
 impl<'a, R: Real<Primitive = R>> RealVector<'a, R> for Vec<&'a mut R> {}
-impl<'a, C: Complex<Primitive = C>> ComplexVector<'a, C> for Vec<&'a C> {}
-impl<'a, C: Complex<Primitive = C>> ComplexVector<'a, C> for Vec<&'a mut C> {}
+impl<'a, C: Complex> ComplexVector<'a, C> for Vec<&'a C> {}
+impl<'a, C: Complex> ComplexVector<'a, C> for Vec<&'a mut C> {}

@@ -1,5 +1,4 @@
-use core::ops::Mul;
-use std::ops::Range;
+use core::ops::Range;
 
 use crate::shared::{complex::Complex, float::Float, matrix::Matrix, real::Real};
 
@@ -20,6 +19,7 @@ pub trait Jacobian<F:Float>{
     fn apply_right(&self, matrix: &mut Matrix<F>, p: usize, q: usize, range: Range<usize>);
     fn transpose(&self) -> Self;
     fn adjoint(&self) -> Self;
+    fn dot(&self, other:Self)->Self;
 
 }
 
@@ -33,7 +33,7 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
         let y = matrix.coeff(p, q);
         let z = matrix.coeff(q, q);
         let denominator = R::usize(2) * y.l1_norm();
-        let out = match denominator < R::EPSILON {
+        match denominator < R::EPSILON {
             true => Self::new(R::ONE, R::ZERO),
             false => {
                 let tau = (x - z) / denominator;
@@ -47,20 +47,15 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
                     false => R::NEGATIVE_ONE,
                 };
                 let n = (t.l2_norm() +  R::Primitive::ONE).sqrt().recip();
-                let mut s = y;
-                s /= y.l1_norm();
-                s *= sign;
-                s *= t.l1_norm() * n;
+                let s = -sign*(y/y.l1_norm())*t.l1_norm()*n;
                 let  c = n;
                 Self::new(s, c)
             }
-        };
-        panic!();//untested
-
-        out
+        }
         
     }
 
+    //Undertested
     fn make_givens(p: R, q: R, r: &mut R) -> Self {
         let (c, s) = if q == R::ZERO {
             let c = -p.sign();
@@ -149,6 +144,12 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
             c: self.c,
         }
     }
+
+    fn dot(&self, other: Self) -> Self {
+        let c = self.c * other.c - self.s * other.s;
+        let s = self.c * other.s + self.s * other.c;
+        Self { c, s }
+    }
 }
 
 impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi<C>{
@@ -175,12 +176,8 @@ impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi
                     false => C::Primitive::NEGATIVE_ONE,
                 };
                 let n = (t.l2_norm() + C::Primitive::ONE).sqrt().recip();
-                let mut s = y.conjugate();
-                s /= y.l1_norm();
-                s *= sign;
-                s *= t.l1_norm() * n;
-                let mut c = C::ZERO;
-                *c.real_ref() = n;
+                let s = -(y.conjugate()/y.l1_norm())*t.l1_norm()*n*sign;
+                let c = C::new(n,C::Primitive::ZERO);
 
 
                 Self::new(s, c)
@@ -188,57 +185,55 @@ impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi
         }
     }
 
+    //Undertested
     fn make_givens(p: C, q: C, r: &mut C) -> Self {
-        todo!();
-        /* 
         let (c, s) = if q == C::ZERO {
-            let c = ComplexFloat::new(-p.real.sign(),T::ZERO);
-            let s = ComplexFloat::ZERO;
+            let c = C::new(-p.real().sign(),C::Primitive::ZERO);
+            let s = C::ZERO;
             *r = c * p;
             (c, s)
-        } else if p == ComplexFloat::ZERO {
-            let s = ComplexFloat::new(-q.real.sign(),T::ZERO);
-            let c = ComplexFloat::ZERO;
+        } else if p == C::ZERO {
+            let s = C::new(-q.real().sign(),C::Primitive::ZERO);
+            let c = C::ZERO;
             *r = s * q;
             (c, s)
         } else {
-            let p1: T = p.l1_norm();
+            let p1  = p.l1_norm();
             let q1 = q.l1_norm();
             let (c, s) = if p1 > q1 {
                 let ps = p / p1;
-                let p2 = ps.l2_l1_norm(); //probably 1
+                let p2 = ps.l2_norm(); //probably 1
                 let qs = q / p1;
-                let q2 = qs.l2_l1_norm();
+                let q2 = qs.l2_norm();
 
-                let mut u = (T::ONE + q2 / p2).sqrt();
-                if p.real < T::ZERO {
+                let mut u = (C::Primitive::ONE + q2 / p2).sqrt();
+                if p.real() < C::Primitive::ZERO {
                     u = -u;
                 }
-                let c = ComplexFloat::new(u.recip(), T::ZERO);
-                let s = -qs * ps.conj() * (c / p2);
+                let c = C::new(u.recip(), C::Primitive::ZERO);
+                let s = -qs * ps.conjugate() * (c / p2);
                 *r = p * u;
                 (c, s)
             } else {
                 let ps = p / q1;
-                let p2 = ps.l2_l1_norm();
+                let p2 = ps.l2_norm();
                 let qs = q / q1;
-                let q2 = qs.l2_l1_norm();
+                let q2 = qs.l2_norm();
 
                 let mut u = q1 * (p2 + q2).sqrt();
-                if p.real < T::ZERO {
+                if p.real() < C::Primitive::ZERO {
                     u = -u;
                 }
                 let p1 = p.l1_norm();
                 let ps = p / p1;
-                let c = ComplexFloat::new(p1 / u, T::ZERO);
-                let s = -ps.conj() * (q / u);
+                let c = C::new(p1 / u, C::Primitive::ZERO);
+                let s = -ps.conjugate() * (q / u);
                 *r = ps * u;
                 (c, s)
             };
             (c, s)
         };
-        todo!();//untested
-        Self { s, c }*/
+        Self { s, c }
     }
     
 
@@ -280,27 +275,126 @@ impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi
             c: self.c.conjugate(),
         }
     }
-}
 
-/* 
-impl<T: Float> Mul for Jacobi<T> {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        let c = self.c * rhs.c - self.s.conj() * rhs.s;
-        let s = (self.c * rhs.s.conj() + self.s.conj() * rhs.c.conj()).conj();
+    fn dot(&self, other: Self) -> Self {
+        let c = self.c * other.c - self.s.conjugate() * other.s;
+        let s = (self.c * other.s.conjugate() + self.s.conjugate() * other.c.conjugate()).conjugate();
         Self { c, s }
     }
-}*/
+}
+
 
 #[cfg(test)]
 mod jacobi_tests {
     use crate::shared::complex::ComplexFloat;
-
+    use alloc::vec;
+    use alloc::vec::Vec;
     use super::*;
 
     #[test]
-    fn test_left_1() {
+    fn test_left_1_r() {
+        let data: Vec<f32> = vec![
+            0.0,
+            -3.74166,
+            0.0,
+            0.0,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.0,
+            0.0,
+            -2.44949,
+            -9.96223e-7,
+            -2.8054e-7,
+            0.0,
+            4.76837e-7,
+            1.96297e-7,
+            3.40572e-7,
+        ];
+        let mut m = Matrix::new(4, data);
+
+        let jacobi = RealJacobi {
+            c: -7.964988e-8,
+            s: 1.0,
+        };
+        jacobi.apply_left(&mut m, 1, 0,0..4);
+        let known_data = vec![
+            3.74166,
+            2.9802277e-7,
+            0.0,
+            0.0,
+            -29.999999,
+            -14.966603,
+            -9.79796,
+            0.0,
+            2.44949,
+            1.9510159e-7,
+            -9.96223e-7,
+            -2.8054e-7,
+            -4.76837e-7,
+            -3.7980009829560004e-14,
+            1.96297e-7,
+            3.40572e-7,
+        ];
+        known_data
+            .iter()
+            .zip(m.data())
+            .for_each(|(k, c)| assert!((*k - *c).l2_norm() < f32::EPSILON));
+    }
+
+    #[test]
+    fn test_right_1_r() {
+        let data: Vec<f32> = vec![
+            3.74166,
+            2.9802277e-7,
+            0.0,
+            0.0,
+            -29.999998,
+            -14.966603,
+            -9.79796,
+            0.0,
+            2.44949,
+            1.9510159e-7,
+            -9.96223e-7,
+            -2.8054e-7,
+            -4.76837e-7,
+            -3.798001e-14,
+            1.96297e-7,
+            3.40572e-7,
+        ];
+        let mut m = Matrix::new(4, data);
+
+        let jacobi = RealJacobi {
+            c: -7.964988e-8,
+            s: 1.0,
+        };
+        jacobi.apply_right(&mut m, 1, 0,0..4);
+        let known_data = vec![
+            29.999998,
+            14.966603,
+            9.79796,
+            0.0,
+            3.7416625,
+            1.4901109e-6,
+            7.8040637e-7,
+            0.0,
+            2.44949,
+            1.9510159e-7,
+            -9.96223e-7,
+            -2.8054e-7,
+            -4.76837e-7,
+            -3.798001e-14,
+            1.96297e-7,
+            3.40572e-7,
+        ];
+        known_data
+            .iter()
+            .zip(m.data())
+            .for_each(|(k, c)| assert!((*k - *c).l2_norm() < f32::EPSILON));
+    }
+
+    #[test]
+    fn test_left_1_c() {
         let data: Vec<ComplexFloat<f32>> = vec![
             ComplexFloat::new(0.0, 0.0),
             ComplexFloat::new(-3.74166, 0.0),
@@ -351,7 +445,7 @@ mod jacobi_tests {
     }
 
     #[test]
-    fn test_right_1() {
+    fn test_right_1_c() {
         let data: Vec<ComplexFloat<f32>> = vec![
             ComplexFloat::new(3.74166, 0.0),
             ComplexFloat::new(2.9802277e-7, 0.0),

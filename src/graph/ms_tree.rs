@@ -1,5 +1,6 @@
 use crate::shared::{float::Float,real::Real, point::Point};
-
+use alloc::vec::Vec;
+use alloc::vec;
 pub struct MSTreeNode<P: Point> {
     pub left_node_idx: usize,
     pub right_node_idx: usize,

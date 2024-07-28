@@ -5,6 +5,9 @@ use crate::{
     shared::{float::Float, point::Point, real::Real},
 };
 
+use alloc::vec::Vec;
+
+
 use super::Classification;
 
 pub struct IsoForest<P: Point> {
@@ -102,7 +105,7 @@ impl<P: Point> IsoForest<P> {
 mod iso_forest_tests {
 
     use std::time::SystemTime;
-
+    use alloc::vec;
     use super::*;
 
     use crate::shared::point::StaticPoint;
