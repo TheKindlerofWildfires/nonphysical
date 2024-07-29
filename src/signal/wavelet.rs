@@ -171,7 +171,7 @@ mod wavelet_tests {
         ];
         let knowns = vec![
             vec![ComplexFloat::new(2.0.sqrt(), 0.0)],
-            vec![ComplexFloat::new(-2.0.sqrt() / 2.0, 0.0)],
+            vec![ComplexFloat::new(-(2.0).sqrt() / 2.0, 0.0)],
         ];
 
         let dfw = DaubechiesFirstComplexWavelet::new();
@@ -202,7 +202,7 @@ mod wavelet_tests {
                 ComplexFloat::new(-7.0 * 2.0.sqrt() / 4.0, 0.0),
             ],
             vec![
-                ComplexFloat::new(-2.0.sqrt() / 2.0, 0.0),
+                ComplexFloat::new(-(2.0).sqrt() / 2.0, 0.0),
                 ComplexFloat::new(3.0 * 2.0.sqrt() / 4.0, 0.0),
             ],
         ];
@@ -241,7 +241,7 @@ mod wavelet_tests {
                 ComplexFloat::ZERO,
             ],
             vec![
-                ComplexFloat::new(-2.0.sqrt() / 2.0, 0.0),
+                ComplexFloat::new(-(2.0).sqrt() / 2.0, 0.0),
                 ComplexFloat::new(3.0 * 2.0.sqrt() / 4.0, 0.0),
                 ComplexFloat::new(-3.0 * 2.0.sqrt() / 2.0, 0.0),
                 ComplexFloat::new(-2.0 * 2.0.sqrt(), 0.0),
@@ -270,7 +270,7 @@ mod wavelet_tests {
         ];
         let knowns = vec![
             vec![2.0.sqrt()],
-            vec![-2.0.sqrt() / 2.0],
+            vec![-(2.0).sqrt() / 2.0],
         ];
 
         let dfw: DaubechiesFirstRealWavelet<f32> = DaubechiesFirstRealWavelet::new();
@@ -301,7 +301,7 @@ mod wavelet_tests {
                 -7.0 * 2.0.sqrt() / 4.0,
             ],
             vec![
-                -2.0.sqrt() / 2.0,
+                -(2.0).sqrt() / 2.0,
                 3.0 * 2.0.sqrt() / 4.0,
             ],
         ];
@@ -340,7 +340,7 @@ mod wavelet_tests {
                 0.0,
             ],
             vec![
-                -2.0.sqrt() / 2.0,
+                -(2.0).sqrt() / 2.0,
                 3.0 * 2.0.sqrt() / 4.0,
                 -3.0 * 2.0.sqrt() / 2.0,
                 -2.0 * 2.0.sqrt(),

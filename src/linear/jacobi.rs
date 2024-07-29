@@ -34,7 +34,7 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
         let z = matrix.coeff(q, q);
         let denominator = R::usize(2) * y.l1_norm();
         match denominator < R::EPSILON {
-            true => Self::new(R::ONE, R::ZERO),
+            true => Self{c:R::ONE, s:R::ZERO},
             false => {
                 let tau = (x - z) / denominator;
                 let w = (tau.l2_norm() + R::Primitive::ONE).sqrt();
@@ -146,8 +146,8 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
     }
 
     fn dot(&self, other: Self) -> Self {
-        let c = self.c * other.c - self.s * other.s;
-        let s = self.c * other.s + self.s * other.c;
+        let c = self.c.fma(other.c, -self.s * other.s);
+        let s = self.c.fma( other.s, self.s * other.c);
         Self { c, s }
     }
 }
@@ -163,7 +163,7 @@ impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi
         let z = matrix.coeff(q, q).real();
         let denominator = C::Primitive::usize(2) * y.l1_norm();
         match denominator < C::Primitive::EPSILON {
-            true => Self::new(C::ONE, C::ZERO),
+            true => Self{c:C::ONE, s:C::ZERO},
             false => {
                 let tau = (x - z) / denominator;
                 let w = (tau.l2_norm() + C::Primitive::ONE).sqrt();
