@@ -244,7 +244,7 @@ impl<P: Point> KdTree<P> {
                     points
                         .zip(bucket)
                         .map(|(p, d)| HeapElement {
-                            distance: point.l1_distance(p),
+                            distance: point.l1_distance(&p),
                             element: d,
                         })
                         .for_each(|element| {
@@ -312,17 +312,17 @@ mod kd_tree_tests {
         match kd_tree.node {
             KdNode::Leaf(leaf) => {
                 leaf.bucket
-                    .iter()
-                    .zip(known_buckets.iter())
+                    .into_iter()
+                    .zip(known_buckets.into_iter())
                     .for_each(|(bp, kbp)| {
-                        assert!(*bp == *kbp);
+                        assert!(bp == kbp);
                     });
                 leaf.points
-                    .iter()
-                    .zip(known_points.iter())
+                    .into_iter()
+                    .zip(known_points.into_iter())
                     .for_each(|(p, kp)| {
-                        p.data.iter().zip(kp.data.iter()).for_each(|(pp, kpp)| {
-                            assert!(*pp == *kpp);
+                        p.data.into_iter().zip(kp.data.into_iter()).for_each(|(pp, kpp)| {
+                            assert!(pp == kpp);
                         });
                     });
             }
@@ -333,20 +333,20 @@ mod kd_tree_tests {
             .shared
             .max_bounds
             .data
-            .iter()
-            .zip(known_max_bounds.data.iter())
+            .into_iter()
+            .zip(known_max_bounds.data.into_iter())
             .for_each(|(mb, kmb)| {
-                assert!(*mb == *kmb);
+                assert!(mb == kmb);
             });
 
         kd_tree
             .shared
             .min_bounds
             .data
-            .iter()
-            .zip(known_min_bounds.data.iter())
+            .into_iter()
+            .zip(known_min_bounds.data.into_iter())
             .for_each(|(mb, kmb)| {
-                assert!(*mb == *kmb);
+                assert!(mb == kmb);
             });
     }
 
@@ -364,17 +364,17 @@ mod kd_tree_tests {
         match kd_tree.node {
             KdNode::Leaf(leaf) => {
                 leaf.bucket
-                    .iter()
-                    .zip(known_buckets.iter())
+                    .into_iter()
+                    .zip(known_buckets.into_iter())
                     .for_each(|(bp, kbp)| {
-                        assert!(*bp == *kbp);
+                        assert!(bp == kbp);
                     });
                 leaf.points
-                    .iter()
-                    .zip(known_points.iter())
+                    .into_iter()
+                    .zip(known_points.into_iter())
                     .for_each(|(p, kp)| {
-                        p.data.iter().zip(kp.data.iter()).for_each(|(pp, kpp)| {
-                            assert!(*pp == *kpp);
+                        p.data.into_iter().zip(kp.data.into_iter()).for_each(|(pp, kpp)| {
+                            assert!(pp == kpp);
                         });
                     });
             }
@@ -385,20 +385,20 @@ mod kd_tree_tests {
             .shared
             .max_bounds
             .data
-            .iter()
-            .zip(known_max_bounds.data.iter())
+            .into_iter()
+            .zip(known_max_bounds.data.into_iter())
             .for_each(|(mb, kmb)| {
-                assert!(*mb == *kmb);
+                assert!(mb == kmb);
             });
 
         kd_tree
             .shared
             .min_bounds
             .data
-            .iter()
-            .zip(known_min_bounds.data.iter())
+            .into_iter()
+            .zip(known_min_bounds.data.into_iter())
             .for_each(|(mb, kmb)| {
-                assert!(*mb == *kmb);
+                assert!(mb == kmb);
             });
     }
 
@@ -419,20 +419,20 @@ mod kd_tree_tests {
                     .shared
                     .max_bounds
                     .data
-                    .iter()
-                    .zip(known_max_bounds.data.iter())
+                    .into_iter()
+                    .zip(known_max_bounds.data.into_iter())
                     .for_each(|(mb, kmb)| {
-                        assert!(*mb == *kmb);
+                        assert!(mb == kmb);
                     });
 
                 kd_tree
                     .shared
                     .min_bounds
                     .data
-                    .iter()
-                    .zip(known_min_bounds.data.iter())
+                    .into_iter()
+                    .zip(known_min_bounds.data.into_iter())
                     .for_each(|(mb, kmb)| {
-                        assert!(*mb == *kmb);
+                        assert!(mb == kmb);
                     });
                 assert!(branch.split_dimension == 0);
                 assert!(branch.split_value == -0.5);
@@ -447,10 +447,10 @@ mod kd_tree_tests {
                             vec![StaticPoint::new([-2.0, 3.0]), StaticPoint::new([-1.0, 3.0])];
 
                         leaf.bucket
-                            .iter()
-                            .zip(known_buckets.iter())
+                            .into_iter()
+                            .zip(known_buckets.into_iter())
                             .for_each(|(bp, kbp)| {
-                                assert!(*bp == *kbp);
+                                assert!(bp == kbp);
                             });
 
                         branch
@@ -458,10 +458,10 @@ mod kd_tree_tests {
                             .shared
                             .max_bounds
                             .data
-                            .iter()
-                            .zip(known_max_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_max_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         branch
@@ -469,18 +469,18 @@ mod kd_tree_tests {
                             .shared
                             .min_bounds
                             .data
-                            .iter()
-                            .zip(known_min_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_min_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         leaf.points
-                            .iter()
-                            .zip(known_points.iter())
+                            .into_iter()
+                            .zip(known_points.into_iter())
                             .for_each(|(p, kp)| {
-                                p.data.iter().zip(kp.data.iter()).for_each(|(pp, kpp)| {
-                                    assert!(*pp == *kpp);
+                                p.data.into_iter().zip(kp.data.into_iter()).for_each(|(pp, kpp)| {
+                                    assert!(pp == kpp);
                                 });
                             });
                     }
@@ -495,10 +495,10 @@ mod kd_tree_tests {
                         let known_points = vec![StaticPoint::new([1.0, 2.0])];
 
                         leaf.bucket
-                            .iter()
-                            .zip(known_buckets.iter())
+                            .into_iter()
+                            .zip(known_buckets.into_iter())
                             .for_each(|(bp, kbp)| {
-                                assert!(*bp == *kbp);
+                                assert!(bp == kbp);
                             });
 
                         branch
@@ -506,10 +506,10 @@ mod kd_tree_tests {
                             .shared
                             .max_bounds
                             .data
-                            .iter()
-                            .zip(known_max_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_max_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         branch
@@ -517,18 +517,18 @@ mod kd_tree_tests {
                             .shared
                             .min_bounds
                             .data
-                            .iter()
-                            .zip(known_min_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_min_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         leaf.points
-                            .iter()
-                            .zip(known_points.iter())
+                            .into_iter()
+                            .zip(known_points.into_iter())
                             .for_each(|(p, kp)| {
-                                p.data.iter().zip(kp.data.iter()).for_each(|(pp, kpp)| {
-                                    assert!(*pp == *kpp);
+                                p.data.into_iter().zip(kp.data.into_iter()).for_each(|(pp, kpp)| {
+                                    assert!(pp == kpp);
                                 });
                             });
                     }
@@ -555,20 +555,20 @@ mod kd_tree_tests {
                     .shared
                     .max_bounds
                     .data
-                    .iter()
-                    .zip(known_max_bounds.data.iter())
+                    .into_iter()
+                    .zip(known_max_bounds.data.into_iter())
                     .for_each(|(mb, kmb)| {
-                        assert!(*mb == *kmb);
+                        assert!(mb == kmb);
                     });
 
                 kd_tree
                     .shared
                     .min_bounds
                     .data
-                    .iter()
-                    .zip(known_min_bounds.data.iter())
+                    .into_iter()
+                    .zip(known_min_bounds.data.into_iter())
                     .for_each(|(mb, kmb)| {
-                        assert!(*mb == *kmb);
+                        assert!(mb == kmb);
                     });
                 assert!(branch.split_dimension == 0);
                 assert!(branch.split_value == -0.5);
@@ -583,10 +583,10 @@ mod kd_tree_tests {
                             vec![StaticPoint::new([-2.0, 3.0]), StaticPoint::new([-1.0, 3.0])];
 
                         leaf.bucket
-                            .iter()
-                            .zip(known_buckets.iter())
+                            .into_iter()
+                            .zip(known_buckets.into_iter())
                             .for_each(|(bp, kbp)| {
-                                assert!(*bp == *kbp);
+                                assert!(bp == kbp);
                             });
 
                         branch
@@ -594,10 +594,10 @@ mod kd_tree_tests {
                             .shared
                             .max_bounds
                             .data
-                            .iter()
-                            .zip(known_max_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_max_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         branch
@@ -605,18 +605,18 @@ mod kd_tree_tests {
                             .shared
                             .min_bounds
                             .data
-                            .iter()
-                            .zip(known_min_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_min_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         leaf.points
-                            .iter()
-                            .zip(known_points.iter())
+                            .into_iter()
+                            .zip(known_points.into_iter())
                             .for_each(|(p, kp)| {
-                                p.data.iter().zip(kp.data.iter()).for_each(|(pp, kpp)| {
-                                    assert!(*pp == *kpp);
+                                p.data.into_iter().zip(kp.data.into_iter()).for_each(|(pp, kpp)| {
+                                    assert!(pp == kpp);
                                 });
                             });
                     }
@@ -632,10 +632,10 @@ mod kd_tree_tests {
                             vec![StaticPoint::new([1.0, 2.0]), StaticPoint::new([2.0, 4.0])];
 
                         leaf.bucket
-                            .iter()
-                            .zip(known_buckets.iter())
+                            .into_iter()
+                            .zip(known_buckets.into_iter())
                             .for_each(|(bp, kbp)| {
-                                assert!(*bp == *kbp);
+                                assert!(bp == kbp);
                             });
 
                         branch
@@ -643,10 +643,10 @@ mod kd_tree_tests {
                             .shared
                             .max_bounds
                             .data
-                            .iter()
-                            .zip(known_max_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_max_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         branch
@@ -654,18 +654,18 @@ mod kd_tree_tests {
                             .shared
                             .min_bounds
                             .data
-                            .iter()
-                            .zip(known_min_bounds.data.iter())
+                            .into_iter()
+                            .zip(known_min_bounds.data.into_iter())
                             .for_each(|(mb, kmb)| {
-                                assert!(*mb == *kmb);
+                                assert!(mb == kmb);
                             });
 
                         leaf.points
-                            .iter()
-                            .zip(known_points.iter())
+                            .into_iter()
+                            .zip(known_points.into_iter())
                             .for_each(|(p, kp)| {
-                                p.data.iter().zip(kp.data.iter()).for_each(|(pp, kpp)| {
-                                    assert!(*pp == *kpp);
+                                p.data.into_iter().zip(kp.data.into_iter()).for_each(|(pp, kpp)| {
+                                    assert!(pp == kpp);
                                 });
                             });
                     }
@@ -688,12 +688,12 @@ mod kd_tree_tests {
 
         let known_dist = vec![0.5, 2.5, 3.5, 4.5];
         let known_index = vec![0, 4, 1, 2];
-        near.iter()
-            .zip(known_dist.iter())
-            .zip(known_index.iter())
+        near.into_iter()
+            .zip(known_dist.into_iter())
+            .zip(known_index.into_iter())
             .for_each(|((np, kd), ki)| {
-                assert!(np.0 == *kd);
-                assert!(np.1 == *ki);
+                assert!(np.0 == kd);
+                assert!(np.1 == ki);
             });
     }
 

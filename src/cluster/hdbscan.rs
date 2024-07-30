@@ -1,10 +1,8 @@
-use core::{cell::RefCell, marker::PhantomData};
-use std::collections::HashMap;
+use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec;
 use alloc::vec::Vec;
-use alloc::collections::{BTreeMap, VecDeque};
-
-
+use core::{cell::RefCell, marker::PhantomData};
+use std::collections::HashMap;
 
 use crate::{
     cluster::Classification::{Core, Noise},
@@ -51,14 +49,14 @@ impl<P: Point> Hdbscan<P> {
     fn kd_core_distances(&self, data: &[P]) -> Vec<P::Primitive> {
         let capacity = (data.len() as f32).sqrt() as usize;
         let mut kd_tree = KdTree::new(capacity);
-        data.iter()
+        data.into_iter()
             .enumerate()
             .for_each(|(i, point)| kd_tree.add(point.clone(), i));
-        data.iter()
+        data.into_iter()
             .map(|point| {
                 kd_tree
                     .nearest(point, self.min_samples)
-                    .iter()
+                    .into_iter()
                     .last()
                     .unwrap()
                     .0
@@ -76,7 +74,7 @@ impl<P: Point> Hdbscan<P> {
 
         let mut visited = vec![false; node_indices.len()];
         let mut condensed_tree = Vec::new();
-        node_indices.iter().for_each(|&node_idx| {
+        node_indices.into_iter().for_each(|node_idx| {
             if !visited[node_idx] && (node_idx >= size) {
                 let left_child_idx = sl_tree.sl_tree_vec[node_idx - size].left_node_idx;
                 let right_child_idx = sl_tree.sl_tree_vec[node_idx - size].right_node_idx;
@@ -98,13 +96,13 @@ impl<P: Point> Hdbscan<P> {
                 match (is_left_cluster, is_right_cluster) {
                     (true, true) => {
                         [left_child_idx, right_child_idx]
-                            .iter()
-                            .zip([left_child_size, right_child_size].iter())
-                            .for_each(|(child_idx, &child_size)| {
-                                new_node_indices[*child_idx] = next_parent_id;
+                            .into_iter()
+                            .zip([left_child_size, right_child_size].into_iter())
+                            .for_each(|(child_idx, child_size)| {
+                                new_node_indices[child_idx] = next_parent_id;
                                 next_parent_id += 1;
                                 condensed_tree.push(CondensedNode::new(
-                                    new_node_indices[*child_idx],
+                                    new_node_indices[child_idx],
                                     new_node_indices[node_idx],
                                     lambda,
                                     child_size,
@@ -194,8 +192,8 @@ impl<P: Point> Hdbscan<P> {
         size: usize,
     ) {
         Self::search_sl_tree(sl_tree, node_idx, size)
-            .iter()
-            .for_each(|&child_id| {
+            .into_iter()
+            .for_each(|child_id| {
                 if child_id < size {
                     condensed_tree.push(CondensedNode::new(child_id, new_node_idx, lambda, 1));
                 }
@@ -233,19 +231,19 @@ impl<P: Point> Hdbscan<P> {
             if *stability.borrow() > combined_child_stability
                 && self.get_cluster_size(*cluster_idx, condensed_tree, size) < self.max_points
             {
-                *selected_clusters.get_mut(cluster_idx).unwrap() = true;
+                *selected_clusters.get_mut(&cluster_idx).unwrap() = true;
 
-                Self::find_child_clusters(cluster_idx, condensed_tree, size)
-                    .iter()
+                Self::find_child_clusters(&cluster_idx, condensed_tree, size)
+                    .into_iter()
                     .for_each(|node_idx| {
-                        let is_selected = selected_clusters.get(node_idx);
+                        let is_selected = selected_clusters.get(&node_idx);
                         if let Some(true) = is_selected {
-                            *selected_clusters.get_mut(node_idx).unwrap() = false;
+                            *selected_clusters.get_mut(&node_idx).unwrap() = false;
                         }
                     });
             } else {
                 stabilities
-                    .get(cluster_idx)
+                    .get(&cluster_idx)
                     .unwrap()
                     .replace(combined_child_stability);
             }
@@ -266,14 +264,14 @@ impl<P: Point> Hdbscan<P> {
             P::Primitive::ZERO
         } else {
             condensed_tree
-                .iter()
+                .into_iter()
                 .find(|node| node.node_idx == cluster_idx)
                 .map(|node| node.lambda)
                 .unwrap_or(P::Primitive::ZERO)
         };
 
         condensed_tree
-            .iter()
+            .into_iter()
             .filter(|node| node.parent_node_idx == cluster_idx)
             .map(|node| (node.lambda - lambda) * P::Primitive::usize(node.size))
             .fold(P::Primitive::ZERO, |acc, n| acc + n)
@@ -285,7 +283,7 @@ impl<P: Point> Hdbscan<P> {
         size: usize,
     ) -> Vec<&CondensedNode<P>> {
         condensed_tree
-            .iter()
+            .into_iter()
             .filter(|node| node.parent_node_idx == cluster_idx)
             .filter(|node| node.node_idx >= size)
             .collect()
@@ -326,15 +324,15 @@ impl<P: Point> Hdbscan<P> {
     ) -> Vec<Classification> {
         let mut labels = vec![-1; size];
 
-        for (current_cluster_idx, cluster_idx) in wining_clusters.iter().enumerate() {
+        for (current_cluster_idx, cluster_idx) in wining_clusters.into_iter().enumerate() {
             let node_size = self.get_cluster_size(*cluster_idx, condensed_tree, size);
             self.find_child_samples(*cluster_idx, node_size, condensed_tree, size)
                 .into_iter()
                 .for_each(|id| labels[id] = current_cluster_idx as isize);
         }
         labels
-            .iter()
-            .map(|l| if *l == -1 { Noise } else { Core(*l as usize) })
+            .into_iter()
+            .map(|l| if l == -1 { Noise } else { Core(l as usize) })
             .collect()
     }
 
@@ -346,14 +344,14 @@ impl<P: Point> Hdbscan<P> {
     ) -> usize {
         if self.single_cluster && cluster_idx == size {
             condensed_tree
-                .iter()
+                .into_iter()
                 .filter(|node| node.node_idx >= size)
                 .filter(|node| node.parent_node_idx == cluster_idx)
                 .map(|node| node.size)
                 .sum()
         } else {
             condensed_tree
-                .iter()
+                .into_iter()
                 .find(|node| node.node_idx == cluster_idx)
                 .map(|node| node.size)
                 .unwrap_or(1)
@@ -411,7 +409,7 @@ impl<P: Point> CondensedNode<P> {
 }
 #[cfg(test)]
 mod hdbscan_tests {
-    use crate::shared::point::StaticPoint;
+    use crate::{random::pcg::PermutedCongruentialGenerator, shared::point::StaticPoint};
     use std::time::SystemTime;
 
     use super::*;
@@ -489,8 +487,8 @@ mod hdbscan_tests {
                 Core(0),
             ]
         };
-        mask.iter().zip(known_mask.iter()).for_each(|(m, k)| {
-            assert!(*m == *k);
+        mask.into_iter().zip(known_mask.into_iter()).for_each(|(m, k)| {
+            assert!(m == k);
         });
     }
 
@@ -529,8 +527,8 @@ mod hdbscan_tests {
 
         let hdbscan = Hdbscan::new(3, 20, true, 5);
         let mask = hdbscan.cluster(&data);
-        mask.iter().for_each(|m| {
-            assert!(*m == Core(0));
+        mask.into_iter().for_each(|m| {
+            assert!(m == Core(0));
         });
     }
     #[test]
@@ -599,8 +597,8 @@ mod hdbscan_tests {
             Core(0),
         ];
 
-        mask.iter().zip(known_mask.iter()).for_each(|(m, k)| {
-            assert!(*m == *k);
+        mask.into_iter().zip(known_mask.into_iter()).for_each(|(m, k)| {
+            assert!(m == k);
         });
     }
 
@@ -619,5 +617,28 @@ mod hdbscan_tests {
         let hdbscan = Hdbscan::new(2, 1000, false, 32);
         let _ = hdbscan.cluster(&data);
         let _ = dbg!(now.elapsed()); //faster, but not by much
+    }
+
+    #[test]
+    fn hdbscan_r_time() {
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let data = (0..2048 * 2)
+            .map(|_| pcg.next_u32() as f32 / u32::MAX as f32)
+            .collect::<Vec<_>>();
+        let points = data.chunks_exact(2).map(|chunk| StaticPoint::new([chunk[0],chunk[1]])).collect::<Vec<_>>();
+        let now = SystemTime::now();
+        let hdb = Hdbscan::new(16, 2048, true, 16);
+        let _ = hdb.cluster(&points);
+        let _ = println!("{:?}", now.elapsed());
+
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let data = (0..4096 * 3)
+            .map(|_| pcg.next_u32() as f32 / u32::MAX as f32)
+            .collect::<Vec<_>>();
+        let points = data.chunks_exact(3).map(|chunk| StaticPoint::new([chunk[0],chunk[1],chunk[2]])).collect::<Vec<_>>();
+        let now = SystemTime::now();
+        let hdb = Hdbscan::new(16, 2048, true, 16);
+        let _ = hdb.cluster(&points);
+        let _ = println!("{:?}", now.elapsed());
     }
 }

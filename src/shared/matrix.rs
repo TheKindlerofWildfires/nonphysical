@@ -11,46 +11,46 @@ use super::{float::Float,vector::Vector};
 
 pub struct Matrix<F: Float> {
     pub rows: usize,
-    pub columns: usize,
+    pub cols: usize,
     pub data: Vec<F>,
 }
 
 impl<F: Float> Matrix<F> {
     pub fn new(rows: usize, data: Vec<F>) -> Self {
         debug_assert!(rows > 0);
-        let columns = data.len() / rows;
+        let cols = data.len() / rows;
         Matrix {
             rows,
-            columns,
+            cols,
             data,
         }
     }
 
-    pub fn zero(rows: usize, columns: usize) -> Self {
+    pub fn zero(rows: usize, cols: usize) -> Self {
         debug_assert!(rows > 0);
-        let data = vec![F::ZERO; rows * columns];
+        let data = vec![F::ZERO; rows * cols];
         Matrix {
             rows,
-            columns,
+            cols,
             data,
         }
     }
 
-    pub fn single(rows: usize, columns: usize, c: F) -> Self {
+    pub fn single(rows: usize, cols: usize, c: F) -> Self {
         debug_assert!(rows > 0);
-        let data = vec![c; rows * columns];
+        let data = vec![c; rows * cols];
         Matrix {
             rows,
-            columns,
+            cols,
             data,
         }
     }
-    pub fn identity(rows: usize, columns: usize) -> Self {
+    pub fn identity(rows: usize, cols: usize) -> Self {
         debug_assert!(rows > 0);
-        let data = vec![F::ZERO; rows * columns];
+        let data = vec![F::ZERO; rows * cols];
         let mut id = Matrix {
             rows,
-            columns,
+            cols,
             data,
         };
         <Vec<&'_ F> as Vector<F>>::add(id.data_diag_ref(), F::IDENTITY);
@@ -63,18 +63,18 @@ impl<F: Float> Matrix<F> {
         Self::new(self.rows, new_data)
     }
     #[inline(always)]
-    pub fn index(&self, row: usize, column: usize) -> usize {
-        row * self.columns + column
+    pub fn index(&self, row: usize, col: usize) -> usize {
+        row * self.cols + col
     }
 
     #[inline(always)]
-    pub fn coeff(&self, row: usize, column: usize) -> F {
-        self.data[self.index(row, column)]
+    pub fn coeff(&self, row: usize, col: usize) -> F {
+        self.data[self.index(row, col)]
     }
 
     #[inline(always)]
-    pub fn coeff_ref(&mut self, row: usize, column: usize) -> &mut F {
-        let idx = self.index(row, column);
+    pub fn coeff_ref(&mut self, row: usize, col: usize) -> &mut F {
+        let idx = self.index(row, col);
         self.data[idx].borrow_mut()
     }
 
@@ -85,41 +85,41 @@ impl<F: Float> Matrix<F> {
 
     #[inline(always)]
     pub fn data_diag(&self) -> impl Iterator<Item = &F> {
-        self.data.iter().step_by(self.columns + 1)
+        self.data.iter().step_by(self.cols + 1)
     }
 
     #[inline(always)]
-    pub fn data_column(&self, row: usize) -> impl Iterator<Item = &F> {
-        self.data[row..].iter().step_by(self.columns)
+    pub fn data_col(&self, row: usize) -> impl Iterator<Item = &F> {
+        self.data[row..].into_iter().step_by(self.cols)
     }
 
     #[inline(always)]
     pub fn data_rows(&self) -> impl Iterator<Item = &[F]> {
-        self.data.chunks_exact(self.columns)
+        self.data.chunks_exact(self.cols)
     }
 
     #[inline(always)]
-    pub fn data_row(&self, column: usize) -> impl Iterator<Item = &F> {
-        self.data[column * self.columns..(column + 1) * self.columns].iter()
+    pub fn data_row(&self, col: usize) -> impl Iterator<Item = &F> {
+        self.data[col * self.cols..(col + 1) * self.cols].into_iter()
     }
 
     pub(crate) fn data_north(&self, north: usize) -> impl Iterator<Item = &F> {
-        self.data().take(north * self.columns)
+        self.data().take(north * self.cols)
     }
 
     pub(crate) fn data_south(&self, south: usize) -> impl Iterator<Item = &F> {
-        self.data().skip((self.rows - south) * self.columns)
+        self.data().skip((self.rows - south) * self.cols)
     }
     pub(crate) fn data_west(&self, west: usize) -> impl Iterator<Item = &F> {
         self.data()
             .enumerate()
-            .filter(move |(i, _)| i % self.columns < west)
+            .filter(move |(i, _)| i % self.cols < west)
             .map(|(_, c)| c)
     }
     pub(crate) fn data_east(&self, east: usize) -> impl Iterator<Item = &F> {
         self.data()
             .enumerate()
-            .filter(move |(i, _)| i % self.columns >= self.columns-east)
+            .filter(move |(i, _)| i % self.cols >= self.cols-east)
             .map(|(_, c)| c)
     }
 
@@ -130,7 +130,7 @@ impl<F: Float> Matrix<F> {
     ) -> impl Iterator<Item = &F> {
         self.data_north(north)
             .enumerate()
-            .filter(move |(i, _)| i % self.columns < west)
+            .filter(move |(i, _)| i % self.cols < west)
             .map(|(_, c)| c)
     }
     pub(crate) fn data_north_east(
@@ -140,7 +140,7 @@ impl<F: Float> Matrix<F> {
     ) -> impl Iterator<Item = &F> {
         self.data_north(north)
             .enumerate()
-            .filter(move |(i, _)| i % self.columns >= self.columns-east)
+            .filter(move |(i, _)| i % self.cols >= self.cols-east)
             .map(|(_, c)| c)
     }
 
@@ -151,7 +151,7 @@ impl<F: Float> Matrix<F> {
     ) -> impl Iterator<Item = &F> {
         self.data_south(south)
             .enumerate()
-            .filter(move |(i, _)| i % self.columns < west)
+            .filter(move |(i, _)| i % self.cols < west)
             .map(|(_, c)| c)
     }
     pub(crate) fn data_south_east(
@@ -161,7 +161,7 @@ impl<F: Float> Matrix<F> {
     ) -> impl Iterator<Item = &F> {
         self.data_south(south)
             .enumerate()
-            .filter(move |(i, _)| i % self.columns >= self.columns-east)
+            .filter(move |(i, _)| i % self.cols >= self.cols-east)
             .map(|(_, c)| c)
     }
 
@@ -172,46 +172,46 @@ impl<F: Float> Matrix<F> {
 
     #[inline(always)]
     pub fn data_diag_ref(&mut self) -> impl Iterator<Item = &mut F> {
-        self.data.iter_mut().step_by(self.columns + 1)
+        self.data.iter_mut().step_by(self.cols + 1)
     }
 
     #[inline(always)]
-    pub fn data_column_ref(&mut self, row: usize) -> impl Iterator<Item = &mut F> {
-        self.data[row..].iter_mut().step_by(self.columns)
+    pub fn data_col_ref(&mut self, row: usize) -> impl Iterator<Item = &mut F> {
+        self.data[row..].iter_mut().step_by(self.cols)
     }
 
     #[inline(always)]
     pub fn data_rows_ref(&mut self) -> impl Iterator<Item = &mut [F]> {
-        self.data.chunks_exact_mut(self.columns)
+        self.data.chunks_exact_mut(self.cols)
     }
 
     #[inline(always)]
-    pub fn data_row_ref(&mut self, column: usize) -> impl Iterator<Item = &mut F> {
-        self.data[column * self.columns..(column + 1) * self.columns].iter_mut()
+    pub fn data_row_ref(&mut self, col: usize) -> impl Iterator<Item = &mut F> {
+        self.data[col * self.cols..(col + 1) * self.cols].iter_mut()
     }
 
     pub(crate) fn data_north_ref(&mut self, north: usize) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
-        self.data_ref().take(north * columns)
+        let cols = self.cols;
+        self.data_ref().take(north * cols)
     }
 
     pub(crate) fn data_south_ref(&mut self, south: usize) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         let rows = self.rows;
-        self.data_ref().skip((rows - south) * columns)
+        self.data_ref().skip((rows - south) * cols)
     }
     pub(crate) fn data_west_ref(&mut self, west: usize) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         self.data_ref()
             .enumerate()
-            .filter(move |(i, _)| i % columns < west)
+            .filter(move |(i, _)| i % cols < west)
             .map(|(_, c)| c)
     }
     pub(crate) fn data_east_ref(&mut self, east: usize) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         self.data_ref()
             .enumerate()
-            .filter(move |(i, _)| i % columns >= columns-east)
+            .filter(move |(i, _)| i % cols >= cols-east)
             .map(|(_, c)| c)
     }
 
@@ -220,10 +220,10 @@ impl<F: Float> Matrix<F> {
         north: usize,
         west: usize,
     ) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         self.data_north_ref(north)
             .enumerate()
-            .filter(move |(i, _)| i % columns < west)
+            .filter(move |(i, _)| i % cols < west)
             .map(|(_, c)| c)
     }
     pub(crate) fn data_north_east_ref(
@@ -231,10 +231,10 @@ impl<F: Float> Matrix<F> {
         north: usize,
         east: usize,
     ) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         self.data_north_ref(north)
             .enumerate()
-            .filter(move |(i, _)| i % columns >= columns-east)
+            .filter(move |(i, _)| i % cols >= cols-east)
             .map(|(_, c)| c)
     }
 
@@ -243,10 +243,10 @@ impl<F: Float> Matrix<F> {
         south: usize,
         west: usize,
     ) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         self.data_south_ref(south)
             .enumerate()
-            .filter(move |(i, _)| i % columns < west)
+            .filter(move |(i, _)| i % cols < west)
             .map(|(_, c)| c)
     }
     pub(crate) fn data_south_east_ref(
@@ -254,26 +254,26 @@ impl<F: Float> Matrix<F> {
         south: usize,
         east: usize,
     ) -> impl Iterator<Item = &mut F> {
-        let columns = self.columns;
+        let cols = self.cols;
         self.data_south_ref(south)
             .enumerate()
-            .filter(move |(i, _)| i % columns >= columns-east)
+            .filter(move |(i, _)| i % cols >= cols-east)
             .map(|(_, c)| c)
     }
 
     pub fn transposed(&self) -> Self {
         let mut transposed_data = vec![F::ZERO; self.data.len()];
 
-        (0..self.columns).for_each(|i| {
+        (0..self.cols).for_each(|i| {
             (0..self.rows).for_each(|j| {
-                transposed_data[i * self.rows + j] = self.data[j * self.columns + i];
+                transposed_data[i * self.rows + j] = self.data[j * self.cols + i];
             })
         });
-        Matrix::new(self.columns, transposed_data)
+        Matrix::new(self.cols, transposed_data)
     }
 
     pub fn col_swap(&mut self, a: usize, b: usize) {
-        self.data.chunks_exact_mut(self.columns).for_each(|row| {
+        self.data.chunks_exact_mut(self.cols).for_each(|row| {
             row.swap(a, b);
         });
     }
@@ -338,7 +338,7 @@ impl<T: Float> Debug for Matrix<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Matrix")
             .field("rows", &self.rows)
-            .field("columns", &self.columns);
+            .field("cols", &self.cols);
         for row in self.data_rows() {
             write!(f, "{:?}", row).unwrap();
             writeln!(f).unwrap();
@@ -748,14 +748,14 @@ mod matrix_tests {
     }
 
     #[test]
-    fn data_column_static() {
+    fn data_col_static() {
         let m = Matrix::new(
             3,
             (0..9)
                 .map(|c| ComplexFloat::<f32>::new(c as f32, c as f32))
                 .collect(),
         );
-        let v = m.data_column(0);
+        let v = m.data_col(0);
         v.zip(vec![0.0, 3.0, 6.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32)).l2_norm() < f32::EPSILON);
         });
@@ -766,7 +766,7 @@ mod matrix_tests {
                 .map(|c| ComplexFloat::<f32>::new(c as f32, c as f32))
                 .collect(),
         );
-        let v = m.data_column(1);
+        let v = m.data_col(1);
         v.zip(vec![1.0, 5.0, 9.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32)).l2_norm() < f32::EPSILON);
         });
@@ -777,26 +777,26 @@ mod matrix_tests {
                 .map(|c| ComplexFloat::<f32>::new(c as f32, c as f32))
                 .collect(),
         );
-        let v = m.data_column(2);
+        let v = m.data_col(2);
         v.zip(vec![2.0, 5.0, 8.0, 11.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32)).l2_norm() < f32::EPSILON);
         });
     }
 
     #[test]
-    fn data_column_ref_static() {
+    fn data_col_ref_static() {
         let mut m = Matrix::new(
             3,
             (0..9)
                 .map(|c| ComplexFloat::<f32>::new(c as f32, c as f32))
                 .collect(),
         );
-        let v = m.data_column_ref(0);
+        let v = m.data_col_ref(0);
         v.zip(vec![0.0, 3.0, 6.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32)).l2_norm() < f32::EPSILON);
             c.real *= 2.0;
         });
-        let v = m.data_column_ref(0);
+        let v = m.data_col_ref(0);
         v.zip(vec![0.0, 3.0, 6.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32) * 2.0).l2_norm() < f32::EPSILON);
         });
@@ -807,12 +807,12 @@ mod matrix_tests {
                 .map(|c| ComplexFloat::<f32>::new(c as f32, c as f32))
                 .collect(),
         );
-        let v = m.data_column_ref(1);
+        let v = m.data_col_ref(1);
         v.zip(vec![1.0, 5.0, 9.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32)).l2_norm() < f32::EPSILON);
             c.real *= 3.0;
         });
-        let v = m.data_column_ref(1);
+        let v = m.data_col_ref(1);
         v.zip(vec![1.0, 5.0, 9.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32) * 3.0).l2_norm() < f32::EPSILON);
         });
@@ -823,13 +823,13 @@ mod matrix_tests {
                 .map(|c| ComplexFloat::<f32>::new(c as f32, c as f32))
                 .collect(),
         );
-        let v = m.data_column_ref(2);
+        let v = m.data_col_ref(2);
         v.zip(vec![2.0, 5.0, 8.0, 11.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32)).l2_norm() < f32::EPSILON);
             c.real *= 4.0;
         });
 
-        let v = m.data_column_ref(2);
+        let v = m.data_col_ref(2);
         v.zip(vec![2.0, 5.0, 8.0, 11.0]).for_each(|(c, i)| {
             assert!((c.real - (i as f32) * 4.0).l2_norm() < f32::EPSILON);
         });
@@ -992,8 +992,8 @@ mod matrix_tests {
         let mp = Matrix::new(
             3,
             [0.0, 3.0, 6.0, 1.0, 4.0, 7.0, 2.0, 5.0, 8.0]
-                .iter()
-                .map(|&r| ComplexFloat::<f32>::new(r, r))
+                .into_iter()
+                .map(|r| ComplexFloat::<f32>::new(r, r))
                 .collect(),
         );
         m.transposed().data().zip(mp.data()).for_each(|(c1, c2)| {
@@ -1009,8 +1009,8 @@ mod matrix_tests {
         let mp = Matrix::new(
             3,
             [0.0, 4.0, 8.0, 1.0, 5.0, 9.0, 2.0, 6.0, 10.0, 3.0, 7.0, 11.0]
-                .iter()
-                .map(|&r| ComplexFloat::<f32>::new(r, r))
+                .into_iter()
+                .map(|r| ComplexFloat::<f32>::new(r, r))
                 .collect(),
         );
         m.transposed().data().zip(mp.data()).for_each(|(c1, c2)| {
@@ -1026,74 +1026,14 @@ mod matrix_tests {
         let mp = Matrix::new(
             3,
             [0.0, 3.0, 6.0, 9.0, 1.0, 4.0, 7.0, 10.0, 2.0, 5.0, 8.0, 11.0]
-                .iter()
-                .map(|&r| ComplexFloat::<f32>::new(r, r))
+                .into_iter()
+                .map(|r| ComplexFloat::<f32>::new(r, r))
                 .collect(),
         );
         m.transposed().data().zip(mp.data()).for_each(|(c1, c2)| {
             assert!((c1.real - c2.real).l2_norm() < f32::EPSILON);
         });
     }
-
-    /*
-    #[test]
-    fn acc_static() {
-        let m33 = Matrix::new(
-            3,
-            (0..9).map(|c| ComplexFloat::<f32>::new(c as f32, 0.0)).collect(),
-        );
-        let m34 = Matrix::new(
-            3,
-            (0..12)
-                .map(|c| ComplexFloat::<f32>::new(c as f32, 0.0))
-                .collect(),
-        );
-        let m43 = Matrix::new(
-            4,
-            (0..12)
-                .map(|c| ComplexFloat::<f32>::new(c as f32, 0.0))
-                .collect(),
-        );
-        let r1 = m33.acc(&m33);
-        let r2 = m34.acc(&m34);
-        let r3 = m43.acc(&m43);
-
-        let k1 = Matrix::<f32>::new(
-            3,
-            [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0]
-                .iter()
-                .map(|&r| ComplexFloat::<f32>::new(r, 0.0))
-                .collect(),
-        );
-        r1.data().zip(k1.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
-        });
-
-        let k2 = Matrix::<f32>::new(
-            3,
-            [
-                0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0,
-            ]
-            .iter()
-            .map(|&r| ComplexFloat::<f32>::new(r, 0.0))
-            .collect(),
-        );
-        r2.data().zip(k2.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
-        });
-        let k3 = Matrix::<f32>::new(
-            4,
-            [
-                0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0,
-            ]
-            .iter()
-            .map(|&r| ComplexFloat::<f32>::new(r, 0.0))
-            .collect(),
-        );
-        r3.data().zip(k3.data()).for_each(|(r, k)| {
-            assert!((r.real - k.real).l2_norm() < f32::EPSILON);
-        });
-    }*/
 
     #[test]
     fn row_swap_static() {

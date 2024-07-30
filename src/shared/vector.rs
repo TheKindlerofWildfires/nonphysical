@@ -16,21 +16,6 @@ pub trait Vector<'a, F:Float+'a>{
         iter.zip(other).fold(F::IDENTITY, |acc, (x,y)| acc+ (*x * *y))
     }
 
-
-    fn l1_sum<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
-    }
-
-    fn l2_sum<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
-    }
-
     fn add<I>(iter: I, other: F)
     where
         I: Iterator<Item = &'a mut F>,
@@ -90,7 +75,19 @@ pub trait Vector<'a, F:Float+'a>{
     {
         iter.zip(other).for_each(|(i,j)| *i /= *j)
     }
+    fn l1_sum<I>(iter: I) -> F::Primitive
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
+    }
 
+    fn l2_sum<I>(iter: I) -> F::Primitive
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
+    }
     fn l1_min<I>(iter: I) -> F::Primitive
     where
         I: Iterator<Item = &'a F>,
@@ -119,6 +116,47 @@ pub trait Vector<'a, F:Float+'a>{
         iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
     }
 
+    fn l1_sum_ref<I>(iter: I) -> F::Primitive
+    where
+        I: Iterator<Item = &'a mut F>,
+    {
+        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
+    }
+
+    fn l2_sum_ref<I>(iter: I) -> F::Primitive
+    where
+        I: Iterator<Item = &'a mut F>,
+    {
+        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
+    }
+
+    fn l1_min_ref<I>(iter: I) -> F::Primitive
+    where
+        I: Iterator<Item = &'a mut F>,
+    {
+        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
+    }
+
+    fn l2_min_ref<I>(iter: I) ->  F::Primitive
+    where
+        I: Iterator<Item = &'a mut F>,
+    {
+        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
+    }
+    fn l1_max_ref<I>(iter: I) ->  F::Primitive
+    where
+        I: Iterator<Item = &'a mut F>,
+    {
+        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
+    }
+
+    fn l2_max_ref<I>(iter: I) ->  F::Primitive
+    where
+        I: Iterator<Item = &'a mut F>,
+    {
+        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
+    }
+
 }
 
 pub trait RealVector<'a, R:Real<Primitive = R>+'a>: Vector<'a,R>{
@@ -139,6 +177,36 @@ pub trait RealVector<'a, R:Real<Primitive = R>+'a>: Vector<'a,R>{
     fn variance<I>(iter: I) -> (R::Primitive,R::Primitive)
     where
         I: Iterator<Item = &'a R>,
+    {
+        let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
+            let (mut count, mut mean, mut square_distance) = acc;
+            count +=1;
+            let delta = *x-mean;
+            mean += delta/R::usize(count);
+            let delta2 = *x - mean;
+            square_distance+= delta*delta2;
+            (count,mean,square_distance)
+        });
+        (mean,square_distance/R::usize(count))
+    }
+
+    fn mean_ref<I>(iter: I) -> R::Primitive
+    where
+        I: Iterator<Item = &'a mut R>,
+    {
+        let (_, mean) = iter.fold((0,R::Primitive::ZERO), |acc, x| {
+            let (mut count, mut mean) = acc;
+            count +=1;
+            let delta = *x-mean;
+            mean += delta/R::usize(count);
+            (count,mean)
+        });
+        mean
+    }
+
+    fn variance_ref<I>(iter: I) -> (R::Primitive,R::Primitive)
+    where
+        I: Iterator<Item = &'a mut R>,
     {
         let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
             let (mut count, mut mean, mut square_distance) = acc;

@@ -51,17 +51,17 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
     #[inline(always)]
     fn l2_distance(&self, other: &Self) -> R {
         self.data
-            .iter()
-            .zip(other.data.iter())
-            .fold(R::ZERO, |acc, (p1, p2)| acc + (*p1 - *p2).l2_norm())
+            .into_iter()
+            .zip(other.data.into_iter())
+            .fold(R::ZERO, |acc, (p1, p2)| acc + (p1 - p2).l2_norm())
     }
 
     #[inline(always)]
     fn l1_distance(&self, other: &Self) -> R {
         self.data
-            .iter()
-            .zip(other.data.iter())
-            .fold(R::ZERO, |acc, (p1, p2)| acc + (*p1 - *p2).l1_norm())
+            .into_iter()
+            .zip(other.data.into_iter())
+            .fold(R::ZERO, |acc, (p1, p2)| acc + (p1 - p2).l1_norm())
     }
 
     #[inline(always)]
@@ -91,11 +91,11 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
     }
     #[inline(always)]
     fn ordered_farthest(&self, lesser: &Self) -> (Self::Primitive, usize) {
-        self.data.iter().zip(lesser.data.iter()).enumerate().fold(
+        self.data.into_iter().zip(lesser.data.into_iter()).enumerate().fold(
             (Self::Primitive::MIN, 0),
             |acc, (i, (s, o))| {
                 let (distance, _) = acc;
-                let new_distance = *s - *o;
+                let new_distance = s - o;
                 if new_distance > distance {
                     (new_distance, i)
                 } else {
@@ -107,11 +107,11 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
 
     #[inline(always)]
     fn l1_farthest(&self, other: &Self) -> (Self::Primitive, usize) {
-        self.data.iter().zip(other.data.iter()).enumerate().fold(
+        self.data.into_iter().zip(other.data.into_iter()).enumerate().fold(
             (Self::Primitive::MIN, 0),
             |acc, (i, (s, o))| {
                 let (distance, _) = acc;
-                let new_distance = s.l1_distance(o);
+                let new_distance = s.l1_distance(&o);
                 if new_distance > distance {
                     (distance, i)
                 } else {
@@ -123,11 +123,11 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
 
     #[inline(always)]
     fn l2_farthest(&self, other: &Self) -> (Self::Primitive, usize) {
-        self.data.iter().zip(other.data.iter()).enumerate().fold(
+        self.data.into_iter().zip(other.data.into_iter()).enumerate().fold(
             (Self::Primitive::MIN, 0),
             |acc, (i, (s, o))| {
                 let (distance, _) = acc;
-                let new_distance = s.l2_distance(o);
+                let new_distance = s.l2_distance(&o);
                 if new_distance > distance {
                     (distance, i)
                 } else {
@@ -145,14 +145,14 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
     #[inline(always)]
     fn distance_to_range(&self, lesser: &Self, greater: &Self) -> Self::Primitive {
         self.data
-            .iter()
-            .zip(lesser.data.iter())
-            .zip(greater.data.iter())
+            .into_iter()
+            .zip(lesser.data.into_iter())
+            .zip(greater.data.into_iter())
             .fold(Self::Primitive::ZERO, |acc, ((sp, lp), gp)| {
                 if sp > gp {
-                    acc + *sp - *gp
+                    acc + sp - gp
                 } else if sp < lp {
-                    acc + *lp - *sp
+                    acc + lp - sp
                 } else {
                     acc
                 }
@@ -160,11 +160,11 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
     }
     #[inline(always)]
     fn max_data(&self) -> Self::Primitive{
-        self.data.iter().fold(Self::Primitive::MIN, |acc, dp| dp.greater(acc))
+        self.data.into_iter().fold(Self::Primitive::MIN, |acc, dp| dp.greater(acc))
     }
     #[inline(always)]
     fn min_data(&self) -> Self::Primitive{
-        self.data.iter().fold(Self::Primitive::MAX, |acc, dp| dp.lesser(acc))
+        self.data.into_iter().fold(Self::Primitive::MAX, |acc, dp| dp.lesser(acc))
     }
     #[inline(always)]
     fn add(&self, other: &Self) -> Self {
@@ -197,8 +197,8 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
 
         let mut ret = Self::ZERO;
         let baseline = rng.interval::<Self::Primitive>(N);
-        ret.data.iter_mut().zip(baseline.iter()).zip(min.data.iter()).zip(max.data.iter()).for_each(|(((r,b),mn),mx)|{
-            *r = *b*(*mx-*mn)+*mn;
+        ret.data.iter_mut().zip(baseline.into_iter()).zip(min.data.into_iter()).zip(max.data.into_iter()).for_each(|(((r,b),mn),mx)|{
+            *r = b*(mx-mn)+mn;
 
         });
         ret
@@ -209,7 +209,7 @@ impl<R: Real<Primitive = R>, const N: usize> Point for StaticPoint<R, N> {
         let mut ret = Self::ZERO;
         let mut indices = (0..data.len()).collect::<Vec<_>>();
         rng.shuffle_usize(&mut indices);
-        let reordered = indices.iter().take(N).map(|i| data[*i]);
+        let reordered = indices.into_iter().take(N).map(|i| data[i]);
         ret.data.iter_mut().zip(reordered).for_each(|(rp,r)|{
             *rp = r;
         });
@@ -320,7 +320,7 @@ impl<R: Real<Primitive = R>> Point for R {
     fn partial_random(data:Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self {
         let mut indices = (0..data.len()).collect::<Vec<_>>();
         rng.shuffle_usize(&mut indices);
-        let mut reordered = indices.iter().take(1).map(|i| data[*i]);
+        let mut reordered = indices.into_iter().take(1).map(|i| data[i]);
         reordered.next().unwrap_or(Self::ZERO)
     }
 

@@ -337,9 +337,9 @@ mod jacobi_tests {
             3.40572e-7,
         ];
         known_data
-            .iter()
+            .into_iter()
             .zip(m.data())
-            .for_each(|(k, c)| assert!((*k - *c).l2_norm() < f32::EPSILON));
+            .for_each(|(k, c)| assert!((k-c).l2_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -388,9 +388,9 @@ mod jacobi_tests {
             3.40572e-7,
         ];
         known_data
-            .iter()
+            .into_iter()
             .zip(m.data())
-            .for_each(|(k, c)| assert!((*k - *c).l2_norm() < f32::EPSILON));
+            .for_each(|(k, c)| assert!((k-c).l2_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -439,9 +439,9 @@ mod jacobi_tests {
             ComplexFloat::new(3.40572e-7, 0.0),
         ];
         known_data
-            .iter()
+            .into_iter()
             .zip(m.data())
-            .for_each(|(k, c)| assert!((*k - *c).l2_norm() < f32::EPSILON));
+            .for_each(|(k, c)| assert!((k-*c).l2_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -490,8 +490,8 @@ mod jacobi_tests {
             ComplexFloat::new(3.40572e-7, 0.0),
         ];
         known_data
-            .iter()
+            .into_iter()
             .zip(m.data())
-            .for_each(|(k, c)| assert!((*k - *c).l2_norm() < f32::EPSILON));
+            .for_each(|(k, c)| assert!((k-*c).l2_norm() < f32::EPSILON));
     }
 }

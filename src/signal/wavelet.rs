@@ -157,9 +157,11 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWavelet<C> {
 
 #[cfg(test)]
 mod wavelet_tests {
+    use std::time::SystemTime;
+
     use alloc::vec;
 
-    use crate::shared::complex::ComplexFloat;
+    use crate::{random::pcg::PermutedCongruentialGenerator, shared::complex::ComplexFloat};
 
     use super::*;
 
@@ -359,5 +361,28 @@ mod wavelet_tests {
         reconstruction.iter().zip(signal.iter()).for_each(|(r, k)| {
             assert!((*r - *k).l2_norm() < f32::EPSILON);
         });
+    }
+
+    #[test]
+    fn daubechies_c_time() {
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let signal =
+            (0..2048*4096).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0)).collect::<Vec<_>>();
+        let dfw = DaubechiesFirstComplexWavelet::new();
+        let now = SystemTime::now();
+        let _ = dfw.forward(&signal);
+        let _ = println!("{:?}",now.elapsed());
+
+        let signal =
+            (0..1024*4096).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0)).collect::<Vec<_>>();
+        let now = SystemTime::now();
+        let _ = dfw.forward(&signal);
+        let _ = println!("{:?}",now.elapsed());
+
+        let signal =
+        (0..512*4096).map(|_| ComplexFloat::new(pcg.next_u32() as f32 / u32::MAX as f32, 0.0)).collect::<Vec<_>>();
+        let now = SystemTime::now();
+        let _ = dfw.forward(&signal);
+        let _ = println!("{:?}",now.elapsed());
     }
 }

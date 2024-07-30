@@ -52,7 +52,7 @@ impl<P: Point> IsoForest<P> {
                     .take(sub_tree_count)
                     .map(|index_chunk| {
                         let tree_data = index_chunk
-                            .iter()
+                            .into_iter()
                             .map(|i| seed_data[*i].clone())
                             .collect::<Vec<_>>();
 
@@ -74,11 +74,11 @@ impl<P: Point> IsoForest<P> {
 
     pub fn cluster(&self, data: &[P]) -> Vec<Classification> {
         self.score(data)
-            .iter()
+            .into_iter()
             .map(|score| {
-                if *score < self.core_threshold {
+                if score < self.core_threshold {
                     Core(0)
-                } else if *score < self.edge_threshold {
+                } else if score < self.edge_threshold {
                     Edge(0)
                 } else {
                     Noise
@@ -87,7 +87,7 @@ impl<P: Point> IsoForest<P> {
             .collect()
     }
     pub fn score(&self, data: &[P]) -> Vec<P::Primitive> {
-        data.iter()
+        data.into_iter()
             .map(|point| {
                 let path_length = self
                     .trees
@@ -184,9 +184,9 @@ mod iso_forest_tests {
             0.6713952, 0.6727004, 0.6713952,
         ];
         scores
-            .iter()
-            .zip(known_scores.iter())
-            .for_each(|(s, ks)| assert!((*s - *ks).l2_norm() < f32::EPSILON));
+            .into_iter()
+            .zip(known_scores.into_iter())
+            .for_each(|(s, ks)| assert!((s - ks).l2_norm() < f32::EPSILON));
     }
 
     #[test]
@@ -224,8 +224,8 @@ mod iso_forest_tests {
             IsoForest::new(&data, 60, 20, 1, 1, 0.0, 0.1);
         let scores = iso_forest.score(&noise_data);
         let known_scores = vec![0.6145915, 0.56156874, 0.6145915, 0.56156874];
-        scores.iter().zip(known_scores.iter()).for_each(|(s, ks)| {
-            assert!((*s - *ks).l2_norm() < f32::EPSILON);
+        scores.into_iter().zip(known_scores.into_iter()).for_each(|(s, ks)| {
+            assert!((s - ks).l2_norm() < f32::EPSILON);
         });
 
         let combined_data = data
@@ -241,8 +241,8 @@ mod iso_forest_tests {
             0.470897, 0.5175009, 0.4714252, 0.47527155, 0.45588937, 0.6145915, 0.56156874,
             0.6145915, 0.56156874,
         ];
-        scores.iter().zip(known_scores.iter()).for_each(|(s, ks)| {
-            assert!((*s - *ks).l2_norm() < f32::EPSILON);
+        scores.into_iter().zip(known_scores.into_iter()).for_each(|(s, ks)| {
+            assert!((s - ks).l2_norm() < f32::EPSILON);
         });
     }
 
@@ -250,7 +250,7 @@ mod iso_forest_tests {
     fn iso_forest_time_static1() {
         let mut rng = PermutedCongruentialGenerator::new(0, 1);
         let x: Vec<f32> = rng.interval(2048);
-        let data = x.iter().map(|x| StaticPoint::new([*x])).collect::<Vec<_>>();
+        let data = x.into_iter().map(|x| StaticPoint::new([x])).collect::<Vec<_>>();
         let now = SystemTime::now();
         let iso_forest: IsoForest<StaticPoint<f32, 1>> =
             IsoForest::new(&data, 128, 128, 0, 1, 0.0, 0.1);
@@ -264,9 +264,9 @@ mod iso_forest_tests {
         let x: Vec<f32> = rng.interval(2048);
         let y = rng.interval(2048);
         let data = x
-            .iter()
-            .zip(y.iter())
-            .map(|(x, y)| StaticPoint::new([*x, *y]))
+            .into_iter()
+            .zip(y.into_iter())
+            .map(|(x, y)| StaticPoint::new([x, y]))
             .collect::<Vec<_>>();
         let now = SystemTime::now();
         let iso_forest: IsoForest<StaticPoint<f32, 2>> =
@@ -284,5 +284,28 @@ mod iso_forest_tests {
         let iso_forest: IsoForest<f32> = IsoForest::new(&data, 128, 128, 0, 1, 0.0, 0.1);
         let _ = iso_forest.score(&data);
         let _ = dbg!(now.elapsed());
+    }
+
+    #[test]
+    fn iso_forest_time() {
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let data = (0..4096 * 2)
+            .map(|_| pcg.next_u32() as f32 / u32::MAX as f32)
+            .collect::<Vec<_>>();
+        let points = data.chunks_exact(2).map(|chunk| StaticPoint::new([chunk[0],chunk[1]])).collect::<Vec<_>>();
+        let now = SystemTime::now();
+        let iso = IsoForest::new(&points,128,128,1,1,0.4,0.5);
+        let _ = iso.cluster(&points);
+        let _ = println!("{:?}", now.elapsed());
+
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let data = (0..4096 * 2)
+            .map(|_| pcg.next_u32() as f32 / u32::MAX as f32)
+            .collect::<Vec<_>>();
+        let points = data.chunks_exact(3).map(|chunk| StaticPoint::new([chunk[0],chunk[1],chunk[2]])).collect::<Vec<_>>();
+        let now = SystemTime::now();
+        let iso = IsoForest::new(&points,256,256,1,1,0.4,0.5);
+        let _ = iso.cluster(&points);
+        let _ = println!("{:?}", now.elapsed());
     }
 }

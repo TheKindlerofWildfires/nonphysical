@@ -71,8 +71,8 @@ impl<P: Point> IsoTree<P> {
         } else {
             let split_point = {
 
-                let point_max = points.iter().fold(P::MIN, |acc,p|p.greater(&acc));
-                let point_min = points.iter().fold(P::MAX, |acc,p|p.lesser(&acc));
+                let point_max = points.into_iter().fold(P::MIN, |acc,p|p.greater(&acc));
+                let point_min = points.into_iter().fold(P::MAX, |acc,p|p.lesser(&acc));
                 P::uniform(&point_min, &point_max,rng)
 
             };
@@ -83,7 +83,7 @@ impl<P: Point> IsoTree<P> {
             let mut points_left = Vec::with_capacity(points.len()/2);
             let mut points_right = Vec::with_capacity(points.len()/2);
 
-            points.iter().for_each(|point| {
+            points.into_iter().for_each(|point| {
                 match Self::branch_left(point, &split_point, &split_vector) {
                     true => points_left.push(point.clone()),
                     false => points_right.push(point.clone()),

@@ -20,12 +20,12 @@ impl<P:Point> Kmeans<P>{
             let mut max_index = 0;
             let mut max_distance = P::Primitive::MIN;
 
-            seed_data.iter().enumerate().for_each(|(i, c)| {
+            seed_data.into_iter().enumerate().for_each(|(i, c)| {
                 if !taken[i] {
                     let mut min_distance = P::Primitive::MAX;
 
                     centroids.iter().for_each(|centroid| {
-                        let dx = c.l1_distance(centroid);
+                        let dx = c.l1_distance(&centroid);
                         if dx < min_distance {
                             min_distance = dx;
                         }
@@ -49,7 +49,7 @@ impl<P:Point> Kmeans<P>{
 
         let mut membership = vec![Core(0); data.len()];
         (0..self.iterations).for_each(|_| {
-            data.iter().enumerate().for_each(|(i, c)| {
+            data.into_iter().enumerate().for_each(|(i, c)| {
                 let old = membership[i];
                 match old {
                     Core(op) => {
@@ -73,7 +73,7 @@ impl<P:Point> Kmeans<P>{
             counts.iter_mut().for_each(|x| *x = 0);
             self.centroids.iter_mut().for_each(|c| *c = P::ZERO);
     
-            data.iter().zip(membership.iter()).for_each(|(c,m)|{
+            data.into_iter().zip(membership.iter()).for_each(|(c,m)|{
                 match m {
                     Core(mp) => {
                         counts[*mp] +=1;
@@ -137,17 +137,17 @@ mod kmeans_tests{
         let mask = kmeans.cluster(&data);
 
         let binding = vec![0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1];
-        let known_mask = binding.iter().map(|i| Core(*i));
+        let known_mask = binding.into_iter().map(|i| Core(i));
 
-        mask.iter().zip(known_mask).for_each(|(m,k)|{
-            assert!(*m==k);
+        mask.into_iter().zip(known_mask).for_each(|(m,k)|{
+            assert!(m==k);
         });
         
         let known_centroids = vec![vec![9.2515742, 3.38500524],vec![-8.2813197, -3.3291236]];
 
-        kmeans.centroids.iter().zip(known_centroids.iter()).for_each(|(c,k)|{
-            c.data.iter().zip(k.iter()).for_each(|(cp, kp)|{
-                assert!((*cp-*kp).l2_norm()<f32::EPSILON);
+        kmeans.centroids.into_iter().zip(known_centroids.into_iter()).for_each(|(c,k)|{
+            c.data.into_iter().zip(k.into_iter()).for_each(|(cp, kp)|{
+                assert!((cp-kp).l2_norm()<f32::EPSILON);
             })
         });
 

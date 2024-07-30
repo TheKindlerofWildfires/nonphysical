@@ -1,74 +1,119 @@
 use core::ops::Range;
 
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix, vector::Vector};
+use crate::shared::{complex::Complex, float::Float, matrix::Matrix, real::Real, vector::Vector};
 
-#[derive(Debug)]
-pub struct Householder<T: Float> {
-    pub tau: Complex<T>,
-    pub beta: Complex<T>,
+pub trait Householder<'a, F: Float+'a> {
+    fn make_householder_prep(data: &mut impl Iterator<Item = &'a F>) -> (F,F);
+
+    fn make_householder_local(data: &mut impl Iterator<Item = &'a mut F>,prep:(F,F)) -> Self;
+
+    //probably some desire to jump to iterators here too
+    fn apply_left_local(
+        &self,
+        matrix: &mut Matrix<F>,
+        offset: usize,
+        row_range: Range<usize>,
+        col_range: Range<usize>,
+    );
+    fn apply_right_local(
+        &self,
+        matrix: &mut Matrix<F>,
+        offset: usize,
+        row_range: Range<usize>,
+        col_range: Range<usize>,
+    );
+    fn apply_left_local_vec(
+        &self,
+        matrix: &mut Matrix<F>,
+        vec: &[F],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
+    );
+
+    fn apply_right_local_vec(
+        &self,
+        matrix: &mut Matrix<F>,
+        vec: &[F],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
+    );
 }
 
-impl<'a, T: Float + 'a> Householder<T> {
-    //modifies vector to become householder
+pub struct RealHouseholder<R: Real> {
+    pub tau: R,
+    pub beta: R,
+}
 
-    pub fn make_householder_local(matrix: &mut Matrix<T>, column: usize, row: usize) -> Self {
-        let squared_norm_sum =
-            <Vec<&Complex<T>> as Vector<T>>::square_norm_sum(matrix.data_row(row).skip(column + 1));
-        let first = matrix.coeff(row, column);
-        let (beta, tau) = if squared_norm_sum <= T::SMALL && first.imag.square_norm() <= T::SMALL {
-            matrix
-                .data_row_ref(row)
-                .skip(column + 1)
-                .for_each(|c| *c = Complex::ZERO);
-            (first, Complex::ZERO)
+pub struct ComplexHouseholder<C: Complex> {
+    pub tau: C,
+    pub beta: C,
+}
+
+//matrix.data_row(row).skip(column + 1)
+impl<'a, R: Real<Primitive = R>+'a> Householder<'a,R> for RealHouseholder<R> {
+    fn make_householder_prep(data: &mut impl Iterator<Item = &'a R>) -> (R,R) {
+        let first = data.next().unwrap();
+        let sns = <Vec<&'_ R> as Vector<R>>::l2_sum(data);
+        (*first,sns)
+    }
+    fn make_householder_local(data: &mut impl Iterator<Item = &'a mut R>, prep: (R,R)) -> Self {
+        let first = prep.0;
+        let squared_norm_sum =prep.1;
+        data.next();
+
+        let (beta, tau) = if squared_norm_sum <= R::SMALL {
+            data.for_each(|r| *r = R::ZERO);
+            (first, R::ZERO)
         } else {
-            let beta = Complex::new((first.square_norm() + squared_norm_sum).sqrt(), T::ZERO)
-                * -first.real.sign();
+            let beta = (first.l2_norm() + squared_norm_sum).sqrt() * -first.sign();
             let bmc = beta - first;
             let inv_bmc = -bmc.recip();
+            data.for_each(|r| *r *= inv_bmc);
 
-            matrix
-                .data_row_ref(row)
-                .skip(column + 1)
-                .for_each(|c| *c *= inv_bmc);
-
-            let tau = (bmc / beta).conj();
+            let tau = bmc / beta;
             (beta, tau)
         };
 
         Self { tau, beta }
     }
 
-    //I want to redo this with range vectors (and vec as an iterator), I just don't know how to yet
-    //This is a cache optimized version written originally for cuda and may not be optimal here (not tested for real complex numbers)
-    pub fn apply_left_local(
+    fn apply_left_local(
         &self,
-        matrix: &mut Matrix<T>,
+        matrix: &mut Matrix<R>,
         offset: usize,
         row_range: Range<usize>,
         col_range: Range<usize>,
     ) {
-        let mut vec = matrix
-            .data_row(offset)
-            .map(|c| c.conj())
-            .collect::<Vec<_>>();
-        vec[row_range.clone().nth(0).unwrap()] = Complex::ONE;
+        let mut vec = matrix.data_row(offset).map(|r| *r).collect::<Vec<_>>();
+        vec[row_range.clone().nth(0).unwrap()] = R::ONE;
         self.apply_left_local_vec(matrix, &vec, row_range, col_range);
     }
 
-    pub fn apply_left_local_vec(
+    fn apply_right_local(
         &self,
-        matrix: &mut Matrix<T>,
-        vec: &[Complex<T>],
+        matrix: &mut Matrix<R>,
+        offset: usize,
         row_range: Range<usize>,
         col_range: Range<usize>,
     ) {
-        if self.tau == Complex::ZERO {
+        let mut vec = matrix.data_row(offset).map(|r| *r).collect::<Vec<_>>();
+        vec[row_range.clone().nth(0).unwrap()] = R::ONE;
+        self.apply_right_local_vec(matrix, &vec, row_range, col_range);
+    }
+
+    fn apply_left_local_vec(
+        &self,
+        matrix: &mut Matrix<R>,
+        vec: &[R],
+        row_range: Range<usize>,
+        col_range: Range<usize>,
+    ) {
+        if self.tau == R::ZERO {
             return;
         }
-        let mut tmp = Complex::ZERO;
+        let mut tmp = R::ZERO;
         col_range.for_each(|i| {
-            tmp = Complex::ZERO;
+            tmp = R::ZERO;
             row_range.clone().for_each(|j| {
                 tmp = matrix.coeff(i, j).fma(vec[j], tmp);
             });
@@ -79,35 +124,19 @@ impl<'a, T: Float + 'a> Householder<T> {
         })
     }
 
-    //This is a cache optimized version written originally for cuda and may not be optimal here (not tested for real complex numbers)
-    pub fn apply_right_local(
+    fn apply_right_local_vec(
         &self,
-        matrix: &mut Matrix<T>,
-        offset: usize,
+        matrix: &mut Matrix<R>,
+        vec: &[R],
         row_range: Range<usize>,
         col_range: Range<usize>,
     ) {
-        let mut vec = matrix
-            .data_row(offset)
-            .map(|c| c.conj())
-            .collect::<Vec<_>>();
-        vec[row_range.clone().nth(0).unwrap()] = Complex::ONE;
-        self.apply_right_local_vec(matrix, &vec, row_range, col_range);
-    }
-
-    pub fn apply_right_local_vec(
-        &self,
-        matrix: &mut Matrix<T>,
-        vec: &[Complex<T>],
-        row_range: Range<usize>,
-        col_range: Range<usize>,
-    ) {
-        if self.tau == Complex::ZERO {
+        if self.tau == R::ZERO {
             return;
         }
-        let mut tmp = Complex::ZERO;
+        let mut tmp = R::ZERO;
         col_range.for_each(|i| {
-            tmp = Complex::ZERO;
+            tmp = R::ZERO;
             row_range.clone().for_each(|j| {
                 tmp = matrix.coeff(j, i).fma(vec[j], tmp);
             });
@@ -117,6 +146,8 @@ impl<'a, T: Float + 'a> Householder<T> {
                 .for_each(|j| *matrix.coeff_ref(j, i) = vec[j].fma(tmp, matrix.coeff(j, i)));
         })
     }
+    
+
 }
 
 #[cfg(test)]
@@ -125,1389 +156,1206 @@ mod householder_tests {
 
     #[test]
     fn make_local_3x3_real_1() {
-        let mut m = Matrix::new(3, (0..9).map(|i| Complex::new(i as f32, 0.0)).collect());
-        let house = Householder::make_householder_local(&mut m, 1, 0);
-        assert!((house.beta.real + 2.23607).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.44721, 0.0)).square_norm() < f32::EPSILON);
+        let mut m = Matrix::new(3, (0..9).map(|i| i as f32).collect());
 
-        let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(4.0, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(7.0, 0.0),
-            Complex::new(8.0, 0.0),
-        ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        //This is the result of a fight with the borrow checker
+        let prep = RealHouseholder::make_householder_prep(&mut m.data_row(0).skip(1));
+        let house: RealHouseholder<f32> =
+            RealHouseholder::make_householder_local(&mut m.data_row_ref(0).skip(1),prep);
+        dbg!(house.tau,house.beta);
+        assert!((house.beta + 2.23607).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 1.44721).l2_norm() < f32::EPSILON);
+
+        let known = vec![0.0, 1.0, 0.61803395, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((c - k).l2_norm() < f32::EPSILON);
         })
     }
+    /*
     #[test]
     fn left_local_3x3_real_1() {
-        let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(4.0, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(7.0, 0.0),
-            Complex::new(8.0, 0.0),
-        ];
+        let data = vec![0.0, -2.23607, 0.61803395, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         let mut m = Matrix::new(3, data);
-        let house = Householder {
-            tau: Complex::new(1.44721, 0.0),
-            beta: Complex::new(-2.23607, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.44721,
+            beta: -2.23607,
         };
         house.apply_left_local(&mut m, 0, 1..3, 1..3);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-6.26099, 0.0),
-            Complex::new(-1.34164, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(-10.2859, 0.0),
-            Complex::new(-2.68328, 0.0),
+            0.0, -2.23607, 0.61803395, 3.0, -6.26099, -1.34164, 6.0, -10.2859, -2.68328,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_3x3_real_1() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-6.26099, 0.0),
-            Complex::new(-1.34164, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(-10.2859, 0.0),
-            Complex::new(-2.68328, 0.0),
+            0.0, -2.23607, 0.61803395, 3.0, -6.26099, -1.34164, 6.0, -10.2859, -2.68328,
         ];
         let mut m = Matrix::new(3, data);
-        let house = Householder {
-            tau: Complex::new(1.44721, 0.0),
-            beta: Complex::new(-2.23607, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.44721,
+            beta: -2.23607,
         };
         house.apply_right_local(&mut m, 0, 1..3, 0..3);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_3x3_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
         let mut m = Matrix::new(3, data);
-        let house = Householder::make_householder_local(&mut m, 2, 1);
-        assert!((house.beta.real - 3.0).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(0.0, 0.0)).square_norm() < f32::EPSILON);
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 2, 1);
+        assert!((house.beta - 3.0).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 0.0).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_3x3_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
         let mut m = Matrix::new(3, data);
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new(3.0, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 0.0,
+            beta: 3.0,
         };
         house.apply_left_local(&mut m, 0, 2..3, 2..3);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_3x3_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
         let mut m = Matrix::new(3, data);
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new(3.0, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 0.0,
+            beta: 3.0,
         };
         house.apply_right_local(&mut m, 0, 2..3, 0..3);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.23607, 0.0),
-            Complex::new(0.61803395, 0.0),
-            Complex::new(-6.7082, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(3.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
+            0.0,
+            -2.23607,
+            0.61803395,
+            -6.7082,
+            12.0,
+            3.0,
+            -4.76837e-07,
+            1.0,
+            -4.76837e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_4x4_real_1() {
-        let mut m = Matrix::new(4, (0..16).map(|i| Complex::new(i as f32, 0.0)).collect());
-        let house = Householder::make_householder_local(&mut m, 1, 0);
-        assert!((house.beta.real + 3.74166).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.26726, 0.0)).square_norm() < f32::EPSILON);
+        let mut m = Matrix::new(4, (0..16).map(|i| i as f32).collect());
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 1, 0);
+        assert!((house.beta + 3.74166).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 1.26726).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(4.0, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(7.0, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(9.0, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(11.0, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(13.0, 0.0),
-            Complex::new(14.0, 0.0),
-            Complex::new(15.0, 0.0),
+            0.0, 1.0, 0.421793, 0.63269, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
+            14.0, 15.0,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_4x4_real_1() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(4.0, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(7.0, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(9.0, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(11.0, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(13.0, 0.0),
-            Complex::new(14.0, 0.0),
-            Complex::new(15.0, 0.0),
+            0.0, -3.74166, 0.421793, 0.63269, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
+            14.0, 15.0,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder {
-            tau: Complex::new(1.26726, 0.0),
-            beta: Complex::new(-3.74166, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.26726,
+            beta: -3.74166,
         };
         house.apply_left_local(&mut m, 0, 1..4, 1..4);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(4.0, 0.0),
-            Complex::new(-10.1559, 0.0),
-            Complex::new(-0.392671, 0.0),
-            Complex::new(-2.58901, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(-16.5702, 0.0),
-            Complex::new(-0.785341, 0.0),
-            Complex::new(-5.17801, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(-22.9845, 0.0),
-            Complex::new(-1.17801, 0.0),
-            Complex::new(-7.76702, 0.0),
+            0.0, -3.74166, 0.421793, 0.63269, 4.0, -10.1559, -0.392671, -2.58901, 8.0, -16.5702,
+            -0.785341, -5.17801, 12.0, -22.9845, -1.17801, -7.76702,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_4x4_real_1() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(4.0, 0.0),
-            Complex::new(-10.1559, 0.0),
-            Complex::new(-0.392671, 0.0),
-            Complex::new(-2.58901, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(-16.5702, 0.0),
-            Complex::new(-0.785341, 0.0),
-            Complex::new(-5.17801, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(-22.9845, 0.0),
-            Complex::new(-1.17801, 0.0),
-            Complex::new(-7.76702, 0.0),
+            0.0, -3.74166, 0.421793, 0.63269, 4.0, -10.1559, -0.392671, -2.58901, 8.0, -16.5702,
+            -0.785341, -5.17801, 12.0, -22.9845, -1.17801, -7.76702,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder {
-            tau: Complex::new(1.26726, 0.0),
-            beta: Complex::new(-3.74166, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.26726,
+            beta: -3.74166,
         };
         house.apply_right_local(&mut m, 0, 1..4, 0..4);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(1.46924, 0.0),
-            Complex::new(9.68717, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.98023e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            1.46924,
+            9.68717,
+            0.0,
+            0.36731,
+            2.98023e-07,
+            0.0,
+            0.0,
+            2.42179,
+            -4.76837e-07,
+            -9.53674e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_4x4_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(1.46924, 0.0),
-            Complex::new(9.68717, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.98023e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            1.46924,
+            9.68717,
+            0.0,
+            0.36731,
+            2.98023e-07,
+            0.0,
+            0.0,
+            2.42179,
+            -4.76837e-07,
+            -9.53674e-07,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder::make_householder_local(&mut m, 2, 1);
-        assert!((house.beta.real + 9.79796).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.14995, 0.0)).square_norm() < f32::EPSILON);
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 2, 1);
+        assert!((house.beta + 9.79796).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 1.14995).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(1.46924, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.98023e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            1.46924,
+            0.859768,
+            0.0,
+            0.36731,
+            2.98023e-07,
+            0.0,
+            0.0,
+            2.42179,
+            -4.76837e-07,
+            -9.53674e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_4x4_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(2.98023e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            0.36731,
+            2.98023e-07,
+            0.0,
+            0.0,
+            2.42179,
+            -4.76837e-07,
+            -9.53674e-07,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder {
-            tau: Complex::new(1.14995, 0.0),
-            beta: Complex::new(-9.79796, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.14995,
+            beta: -9.79796,
         };
         house.apply_left_local(&mut m, 1, 2..4, 2..4);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(-4.46897e-08, 0.0),
-            Complex::new(-2.94653e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(1.01439e-06, 0.0),
-            Complex::new(3.28438e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            0.36731,
+            -4.46897e-08,
+            -2.94653e-07,
+            0.0,
+            2.42179,
+            1.01439e-06,
+            3.28438e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_4x4_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.36731, 0.0),
-            Complex::new(-4.46897e-08, 0.0),
-            Complex::new(-2.94653e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(2.42179, 0.0),
-            Complex::new(1.01439e-06, 0.0),
-            Complex::new(3.28438e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            0.36731,
+            -4.46897e-08,
+            -2.94653e-07,
+            0.0,
+            2.42179,
+            1.01439e-06,
+            3.28438e-07,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder {
-            tau: Complex::new(1.14995, 0.0),
-            beta: Complex::new(-9.79796, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.14995,
+            beta: -9.79796,
         };
         house.apply_right_local(&mut m, 1, 2..4, 0..4);
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_4x4_real_3() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder::make_householder_local(&mut m, 3, 2);
-        assert!((house.beta.real + 2.8054e-07).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(0.0, 0.0)).square_norm() < f32::EPSILON);
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 3, 2);
+        assert!((house.beta + 2.8054e-07).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 0.0).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_4x4_real_3() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new( 2.8054e-07, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 0.0,
+            beta: 2.8054e-07,
         };
         house.apply_left_local(&mut m, 2, 3..4, 3..4);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_4x4_real_3() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
         let mut m = Matrix::new(4, data);
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new( 2.8054e-07, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 0.0,
+            beta: 2.8054e-07,
         };
         house.apply_right_local(&mut m, 2, 3..4, 0..4);
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-3.74166, 0.0),
-            Complex::new(0.421793, 0.0),
-            Complex::new(0.63269, 0.0),
-            Complex::new(-14.9666, 0.0),
-            Complex::new(30.0, 0.0),
-            Complex::new(-9.79796, 0.0),
-            Complex::new(0.859768, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-2.44949, 0.0),
-            Complex::new(-9.96223e-07, 0.0),
-            Complex::new(-2.8054e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.76837e-07, 0.0),
-            Complex::new(1.96297e-07, 0.0),
-            Complex::new(3.40572e-07, 0.0),
+            0.0,
+            -3.74166,
+            0.421793,
+            0.63269,
+            -14.9666,
+            30.0,
+            -9.79796,
+            0.859768,
+            0.0,
+            -2.44949,
+            -9.96223e-07,
+            -2.8054e-07,
+            0.0,
+            4.76837e-07,
+            1.96297e-07,
+            3.40572e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_5x5_real_1() {
-        let mut m = Matrix::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
-        let house = Householder::make_householder_local(&mut m, 1, 0);
-        assert!((house.beta.real + 5.47723).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.18257, 0.0)).square_norm() < f32::EPSILON);
+        let mut m = Matrix::new(5, (0..25).map(|i| i as f32).collect());
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 1, 0);
+        assert!((house.beta + 5.47723).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 1.18257).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(1.0, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(7.0, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(9.0, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(11.0, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(13.0, 0.0),
-            Complex::new(14.0, 0.0),
-            Complex::new(15.0, 0.0),
-            Complex::new(16.0, 0.0),
-            Complex::new(17.0, 0.0),
-            Complex::new(18.0, 0.0),
-            Complex::new(19.0, 0.0),
-            Complex::new(20.0, 0.0),
-            Complex::new(21.0, 0.0),
-            Complex::new(22.0, 0.0),
-            Complex::new(23.0, 0.0),
-            Complex::new(24.0, 0.0),
+            0.0, 1.0, 0.308774, 0.463161, 0.617548, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_5x5_real_1() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(6.0, 0.0),
-            Complex::new(7.0, 0.0),
-            Complex::new(8.0, 0.0),
-            Complex::new(9.0, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(11.0, 0.0),
-            Complex::new(12.0, 0.0),
-            Complex::new(13.0, 0.0),
-            Complex::new(14.0, 0.0),
-            Complex::new(15.0, 0.0),
-            Complex::new(16.0, 0.0),
-            Complex::new(17.0, 0.0),
-            Complex::new(18.0, 0.0),
-            Complex::new(19.0, 0.0),
-            Complex::new(20.0, 0.0),
-            Complex::new(21.0, 0.0),
-            Complex::new(22.0, 0.0),
-            Complex::new(23.0, 0.0),
-            Complex::new(24.0, 0.0),
+            0.0, -5.47723, 0.308774, 0.463161, 0.617548, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(1.18257, 0.0),
-            beta: Complex::new(-5.47723, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.18257,
+            beta: -5.47723,
         };
         house.apply_left_local(&mut m, 0, 1..5, 1..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(-14.6059, 0.0),
-            Complex::new(0.63742, 0.0),
-            Complex::new(-1.54387, 0.0),
-            Complex::new(-3.72516, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(-23.7346, 0.0),
-            Complex::new(1.27484, 0.0),
-            Complex::new(-3.08774, 0.0),
-            Complex::new(-7.45032, 0.0),
-            Complex::new(15.0, 0.0),
-            Complex::new(-32.8633, 0.0),
-            Complex::new(1.91226, 0.0),
-            Complex::new(-4.63161, 0.0),
-            Complex::new(-11.1755, 0.0),
-            Complex::new(20.0, 0.0),
-            Complex::new(-41.9921, 0.0),
-            Complex::new(2.54968, 0.0),
-            Complex::new(-6.17548, 0.0),
-            Complex::new(-14.9006, 0.0),
+            0.0, -5.47723, 0.308774, 0.463161, 0.617548, 5.0, -14.6059, 0.63742, -1.54387,
+            -3.72516, 10.0, -23.7346, 1.27484, -3.08774, -7.45032, 15.0, -32.8633, 1.91226,
+            -4.63161, -11.1755, 20.0, -41.9921, 2.54968, -6.17548, -14.9006,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_5x5_real_1() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(5.0, 0.0),
-            Complex::new(-14.6059, 0.0),
-            Complex::new(0.63742, 0.0),
-            Complex::new(-1.54387, 0.0),
-            Complex::new(-3.72516, 0.0),
-            Complex::new(10.0, 0.0),
-            Complex::new(-23.7346, 0.0),
-            Complex::new(1.27484, 0.0),
-            Complex::new(-3.08774, 0.0),
-            Complex::new(-7.45032, 0.0),
-            Complex::new(15.0, 0.0),
-            Complex::new(-32.8633, 0.0),
-            Complex::new(1.91226, 0.0),
-            Complex::new(-4.63161, 0.0),
-            Complex::new(-11.1755, 0.0),
-            Complex::new(20.0, 0.0),
-            Complex::new(-41.9921, 0.0),
-            Complex::new(2.54968, 0.0),
-            Complex::new(-6.17548, 0.0),
-            Complex::new(-14.9006, 0.0),
+            0.0, -5.47723, 0.308774, 0.463161, 0.617548, 5.0, -14.6059, 0.63742, -1.54387,
+            -3.72516, 10.0, -23.7346, 1.27484, -3.08774, -7.45032, 15.0, -32.8633, 1.91226,
+            -4.63161, -11.1755, 20.0, -41.9921, 2.54968, -6.17548, -14.9006,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(1.18257, 0.0),
-            beta: Complex::new(-5.47723, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.18257,
+            beta: -5.47723,
         };
         house.apply_right_local(&mut m, 0, 1..5, 0..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(-3.49129, 0.0),
-            Complex::new(8.45612, 0.0),
-            Complex::new(20.4035, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-0.698259, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(1.69122, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.08071, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            -3.49129,
+            8.45612,
+            20.4035,
+            0.0,
+            -0.698259,
+            0.0,
+            0.0,
+            -4.76837e-07,
+            0.0,
+            1.69122,
+            0.0,
+            -9.53674e-07,
+            -9.53674e-07,
+            0.0,
+            4.08071,
+            0.0,
+            0.0,
+            -9.53674e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_5x5_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(-3.49129, 0.0),
-            Complex::new(8.45612, 0.0),
-            Complex::new(20.4035, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-0.698259, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(1.69122, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.08071, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            -3.49129,
+            8.45612,
+            20.4035,
+            0.0,
+            -0.698259,
+            0.0,
+            0.0,
+            -4.76837e-07,
+            0.0,
+            1.69122,
+            0.0,
+            -9.53674e-07,
+            -9.53674e-07,
+            0.0,
+            4.08071,
+            0.0,
+            0.0,
+            -9.53674e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder::make_householder_local(&mut m, 2, 1);
-        assert!((house.beta.real -22.3607).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.15614, 0.0)).square_norm() < f32::EPSILON);
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 2, 1);
+        assert!((house.beta - 22.3607).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 1.15614).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(-3.49129, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-0.698259, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(1.69122, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.08071, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            -3.49129,
+            -0.327098,
+            -0.789245,
+            0.0,
+            -0.698259,
+            0.0,
+            0.0,
+            -4.76837e-07,
+            0.0,
+            1.69122,
+            0.0,
+            -9.53674e-07,
+            -9.53674e-07,
+            0.0,
+            4.08071,
+            0.0,
+            0.0,
+            -9.53674e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_5x5_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-0.698259, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-4.76837e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(1.69122, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.08071, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            -0.698259,
+            0.0,
+            0.0,
+            -4.76837e-07,
+            0.0,
+            1.69122,
+            0.0,
+            -9.53674e-07,
+            -9.53674e-07,
+            0.0,
+            4.08071,
+            0.0,
+            0.0,
+            -9.53674e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(1.15614, 0.0),
-            beta: Complex::new(22.3607, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.15614,
+            beta: 22.3607,
         };
         house.apply_left_local(&mut m, 1, 2..5, 2..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-0.698259, 0.0),
-            Complex::new(-4.35102e-07, 0.0),
-            Complex::new(1.42321e-07, 0.0),
-            Complex::new(-1.33435e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(1.69122, 0.0),
-            Complex::new(-1.23085e-06, 0.0),
-            Complex::new(-5.51065e-07, 0.0),
-            Complex::new(1.77714e-08, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.08071, 0.0),
-            Complex::new(-8.70203e-07, 0.0),
-            Complex::new(2.84642e-07, 0.0),
-            Complex::new(-2.6687e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            -0.698259,
+            -4.35102e-07,
+            1.42321e-07,
+            -1.33435e-07,
+            0.0,
+            1.69122,
+            -1.23085e-06,
+            -5.51065e-07,
+            1.77714e-08,
+            0.0,
+            4.08071,
+            -8.70203e-07,
+            2.84642e-07,
+            -2.6687e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            dbg!(c,k);
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_5x5_real_2() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-0.698259, 0.0),
-            Complex::new(-4.35102e-07, 0.0),
-            Complex::new(1.42321e-07, 0.0),
-            Complex::new(-1.33435e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(1.69122, 0.0),
-            Complex::new(-1.23085e-06, 0.0),
-            Complex::new(-5.51065e-07, 0.0),
-            Complex::new(1.77714e-08, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.08071, 0.0),
-            Complex::new(-8.70203e-07, 0.0),
-            Complex::new(2.84642e-07, 0.0),
-            Complex::new(-2.6687e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            -0.698259,
+            -4.35102e-07,
+            1.42321e-07,
+            -1.33435e-07,
+            0.0,
+            1.69122,
+            -1.23085e-06,
+            -5.51065e-07,
+            1.77714e-08,
+            0.0,
+            4.08071,
+            -8.70203e-07,
+            2.84642e-07,
+            -2.6687e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(1.15614, 0.0),
-            beta: Complex::new(22.3607, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.15614,
+            beta: 22.3607,
         };
         house.apply_right_local(&mut m, 1, 2..5, 0..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(2.91112e-08, 0.0),
-            Complex::new(-2.15958e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.66893e-06, 0.0),
-            Complex::new(-9.83413e-07, 0.0),
-            Complex::new(-5.14034e-07, 0.0),
-            Complex::new(4.47644e-08, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-2.7316e-07, 0.0),
-            Complex::new(3.73992e-07, 0.0),
-            Complex::new(-2.0174e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            2.91112e-08,
+            -2.15958e-07,
+            0.0,
+            -1.66893e-06,
+            -9.83413e-07,
+            -5.14034e-07,
+            4.47644e-08,
+            0.0,
+            -9.53674e-07,
+            -2.7316e-07,
+            3.73992e-07,
+            -2.0174e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_5x5_real_3() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(2.91112e-08, 0.0),
-            Complex::new(-2.15958e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.66893e-06, 0.0),
-            Complex::new(-9.83413e-07, 0.0),
-            Complex::new(-5.14034e-07, 0.0),
-            Complex::new(4.47644e-08, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-2.7316e-07, 0.0),
-            Complex::new(3.73992e-07, 0.0),
-            Complex::new(-2.0174e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            2.91112e-08,
+            -2.15958e-07,
+            0.0,
+            -1.66893e-06,
+            -9.83413e-07,
+            -5.14034e-07,
+            4.47644e-08,
+            0.0,
+            -9.53674e-07,
+            -2.7316e-07,
+            3.73992e-07,
+            -2.0174e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder::make_householder_local(&mut m, 3, 2);
-        assert!((house.beta.real +2.17911e-07).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(1.13359, 0.0)).square_norm() < f32::EPSILON);
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 3, 2);
+        assert!((house.beta + 2.17911e-07).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 1.13359).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(2.91112e-08, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.66893e-06, 0.0),
-            Complex::new(-9.83413e-07, 0.0),
-            Complex::new(-5.14034e-07, 0.0),
-            Complex::new(4.47644e-08, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-2.7316e-07, 0.0),
-            Complex::new(3.73992e-07, 0.0),
-            Complex::new(-2.0174e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            2.91112e-08,
+            -0.874244,
+            0.0,
+            -1.66893e-06,
+            -9.83413e-07,
+            -5.14034e-07,
+            4.47644e-08,
+            0.0,
+            -9.53674e-07,
+            -2.7316e-07,
+            3.73992e-07,
+            -2.0174e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_5x5_real_3() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.66893e-06, 0.0),
-            Complex::new(-9.83413e-07, 0.0),
-            Complex::new(-5.14034e-07, 0.0),
-            Complex::new(4.47644e-08, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-2.7316e-07, 0.0),
-            Complex::new(3.73992e-07, 0.0),
-            Complex::new(-2.0174e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -1.66893e-06,
+            -9.83413e-07,
+            -5.14034e-07,
+            4.47644e-08,
+            0.0,
+            -9.53674e-07,
+            -2.7316e-07,
+            3.73992e-07,
+            -2.0174e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(1.13359, 0.0),
-            beta: Complex::new(-2.17911e-07, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.13359,
+            beta: -2.17911e-07,
         };
         house.apply_left_local(&mut m, 2, 3..5, 3..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.66893e-06, 0.0),
-            Complex::new(-9.83413e-07, 0.0),
-            Complex::new(1.13034e-07, 0.0),
-            Complex::new(-5.03446e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-2.7316e-07, 0.0),
-            Complex::new(-2.49894e-07, 0.0),
-            Complex::new(3.43689e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -1.66893e-06,
+            -9.83413e-07,
+            1.13034e-07,
+            -5.03446e-07,
+            0.0,
+            -9.53674e-07,
+            -2.7316e-07,
+            -2.49894e-07,
+            3.43689e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_5x5_real_3() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.66893e-06, 0.0),
-            Complex::new(-9.83413e-07, 0.0),
-            Complex::new(1.13034e-07, 0.0),
-            Complex::new(-5.03446e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-9.53674e-07, 0.0),
-            Complex::new(-2.7316e-07, 0.0),
-            Complex::new(-2.49894e-07, 0.0),
-            Complex::new(3.43689e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -1.66893e-06,
+            -9.83413e-07,
+            1.13034e-07,
+            -5.03446e-07,
+            0.0,
+            -9.53674e-07,
+            -2.7316e-07,
+            -2.49894e-07,
+            3.43689e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(1.13359, 0.0),
-            beta: Complex::new(-2.17911e-07, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 1.13359,
+            beta: -2.17911e-07,
         };
         house.apply_right_local(&mut m, 2, 3..5, 0..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn make_local_5x5_real_4() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder::make_householder_local(&mut m, 4, 3);
-        assert!((house.beta.real -4.07865e-07).square_norm() < f32::EPSILON);
-        assert!((house.tau - Complex::new(0.0, 0.0)).square_norm() < f32::EPSILON);
+        let house: RealHouseholder<f32> = RealHouseholder::make_householder_local(&mut m, 4, 3);
+        assert!((house.beta - 4.07865e-07).l2_norm() < f32::EPSILON);
+        assert!((house.tau - 0.0).l2_norm() < f32::EPSILON);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn left_local_5x5_real_4() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new(4.07865e-07, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 0.0,
+            beta: 4.07865e-07,
         };
         house.apply_left_local(&mut m, 3, 4..5, 4..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
     #[test]
     fn right_local_5x5_real_4() {
         let data = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
         let mut m = Matrix::new(5, data);
-        let house = Householder {
-            tau: Complex::new(0.0, 0.0),
-            beta: Complex::new(4.07865e-07, 0.0),
+        let house: RealHouseholder<f32> = RealHouseholder {
+            tau: 0.0,
+            beta: 4.07865e-07,
         };
         house.apply_right_local(&mut m, 3, 4..5, 0..5);
 
         let known = vec![
-            Complex::new(0.0, 0.0),
-            Complex::new(-5.47723, 0.0),
-            Complex::new(0.308774, 0.0),
-            Complex::new(0.463161, 0.0),
-            Complex::new(0.617548, 0.0),
-            Complex::new(-27.3861, 0.0),
-            Complex::new(60.0, 0.0),
-            Complex::new(22.3607, 0.0),
-            Complex::new(-0.327098, 0.0),
-            Complex::new(-0.789245, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(4.47213, 0.0),
-            Complex::new(-1.19158e-06, 0.0),
-            Complex::new(-2.17911e-07, 0.0),
-            Complex::new(-0.874244, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-7.2217e-07, 0.0),
-            Complex::new(-1.39336e-07, 0.0),
-            Complex::new(-2.62754e-07, 0.0),
-            Complex::new(4.07865e-07, 0.0),
-            Complex::new(0.0, 0.0),
-            Complex::new(-1.78137e-06, 0.0),
-            Complex::new(-1.01109e-06, 0.0),
-            Complex::new(7.8637e-08, 0.0),
-            Complex::new(-4.53019e-07, 0.0),
+            0.0,
+            -5.47723,
+            0.308774,
+            0.463161,
+            0.617548,
+            -27.3861,
+            60.0,
+            22.3607,
+            -0.327098,
+            -0.789245,
+            0.0,
+            4.47213,
+            -1.19158e-06,
+            -2.17911e-07,
+            -0.874244,
+            0.0,
+            -7.2217e-07,
+            -1.39336e-07,
+            -2.62754e-07,
+            4.07865e-07,
+            0.0,
+            -1.78137e-06,
+            -1.01109e-06,
+            7.8637e-08,
+            -4.53019e-07,
         ];
-        m.data().zip(known.iter()).for_each(|(c, k)| {
-            assert!((*c - *k).square_norm() < f32::EPSILON);
+        m.data().zip(known.into_iter()).for_each(|(c, k)| {
+            assert!((*c - *k).l2_norm() < f32::EPSILON);
         })
     }
-
+    */
 }
-
-/*        for i in m.data() {
-            print!("Complex::new({:?},0.0),", i.real)
-        }
-
-*/

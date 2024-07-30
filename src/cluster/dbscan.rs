@@ -31,7 +31,7 @@ impl<P:Point> Dbscan<P>{
                 //expand the cluster
                 while let Some(idx) = queue.pop() {
                     let neighbors = data
-                        .iter()
+                        .into_iter()
                         .enumerate()
                         .filter(|(_, pt)| data[idx].l1_distance(pt) < self.epsilon)
                         .map(|(idx, _)| idx)
@@ -39,13 +39,13 @@ impl<P:Point> Dbscan<P>{
                     if neighbors.len() > self.min_points {
                         new_cluster = 1;
                         classifications[idx] = Core(cluster);
-                        neighbors.iter().for_each(|neighbor_idx| {
-                            if classifications[*neighbor_idx] == Noise {
-                                classifications[*neighbor_idx] = Edge(cluster)
+                        neighbors.into_iter().for_each(|neighbor_idx| {
+                            if classifications[neighbor_idx] == Noise {
+                                classifications[neighbor_idx] = Edge(cluster)
                             }
-                            if !visited[*neighbor_idx] {
-                                visited[*neighbor_idx] = true;
-                                queue.push(*neighbor_idx);
+                            if !visited[neighbor_idx] {
+                                visited[neighbor_idx] = true;
+                                queue.push(neighbor_idx);
                             }
                         });
                     }
@@ -93,8 +93,8 @@ mod dbscan_tests{
         let dbscan = Dbscan::new(9.0,5);
         let mask = dbscan.cluster(&data);
         let known_mask = vec![Core(0), Core(1), Core(1), Core(1), Core(0), Core(1), Core(0), Core(1), Core(1), Core(0), Core(1), Core(1), Core(0), Core(1), Core(0), Core(1), Core(0), Core(1), Core(1), Core(1)];
-        mask.iter().zip(known_mask.iter()).for_each(|(m,k)|{
-            assert!(*m==*k);
+        mask.into_iter().zip(known_mask.into_iter()).for_each(|(m,k)|{
+            assert!(m==k);
         });
         
 

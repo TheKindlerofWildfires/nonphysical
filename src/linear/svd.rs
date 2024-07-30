@@ -11,6 +11,8 @@ pub trait SingularValueDecomposition<F: Float, R: Real> {
     fn jacobi_svd_full(data: &mut Matrix<F>) -> (Matrix<F>, Vec<R>, Matrix<F>);
     fn jacobi_svd(data: &mut Matrix<F>) -> Vec<R>;
     fn jacobi_2x2(data: &mut Matrix<F>, p: usize, q: usize) -> (Self::J, Self::J);
+
+    fn bidiagonal_svd(data:&mut Matrix<F>)-> (Matrix<F>, Vec<R>, Matrix<F>);
 }
 
 impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularValueDecomposition {
@@ -18,17 +20,17 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
 
     fn jacobi_svd_full(data: &mut Matrix<R>) -> (Matrix<R>, Vec<R>, Matrix<R>) {
         //Doesn't handle different matrix sizes
-        assert!(data.rows == data.columns);
+        assert!(data.rows == data.cols);
         let precision = R::Primitive::EPSILON * R::Primitive::float(2.0);
         let small = R::Primitive::SMALL;
-        let diag_size = min(data.columns, data.rows);
+        let diag_size = min(data.cols, data.rows);
         let mut scale = <Vec<&'_ R> as Vector<R>>::l1_max(data.data());
         if scale == R::Primitive::ZERO {
             scale = R::Primitive::float(1.0);
         }
 
         let mut u = Matrix::<R>::identity(data.rows, data.rows);
-        let mut v = Matrix::<R>::identity(data.columns, data.columns);
+        let mut v = Matrix::<R>::identity(data.cols, data.cols);
 
         <Vec<&'_ R> as Vector<R>>::mul(data.data_ref(), scale.recip());
 
@@ -98,10 +100,10 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
 
     fn jacobi_svd(data: &mut Matrix<R>) -> Vec<R> {
         //Doesn't handle different matrix sizes
-        assert!(data.rows == data.columns);
+        assert!(data.rows == data.cols);
         let precision = R::Primitive::EPSILON * R::Primitive::float(2.0);
         let small = R::Primitive::SMALL;
-        let diag_size = min(data.columns, data.rows);
+        let diag_size = min(data.cols, data.rows);
         let mut scale = <Vec<&'_ R> as Vector<R>>::l1_max(data.data());
         if scale == R::Primitive::ZERO {
             scale = R::Primitive::float(1.0);
@@ -169,6 +171,15 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
         let j_left = rot1.dot(j_right.transpose());
         (j_left, j_right)
     }
+    
+    fn bidiagonal_svd(data:&mut Matrix<R>)-> (Matrix<R>, Vec<R>, Matrix<R>) {
+        let mut scale = <Vec<&'_ R> as Vector<R>>::l1_max(data.data());
+        if scale == R::Primitive::ZERO {
+            scale = R::Primitive::float(1.0);
+        }
+
+        todo!();
+    }
 }
 
 impl<R: Real<Primitive = R>, C: Complex<Primitive = R>> SingularValueDecomposition<C, R>
@@ -188,6 +199,10 @@ impl<R: Real<Primitive = R>, C: Complex<Primitive = R>> SingularValueDecompositi
     fn jacobi_2x2(_data: &mut Matrix<C>, _p: usize, _q: usize) -> (Self::J, Self::J) {
         todo!();
     }
+    
+    fn bidiagonal_svd(_data:&mut Matrix<C>)-> (Matrix<C>, Vec<R>, Matrix<C>) {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -201,7 +216,7 @@ pub mod svd_tests {
         let mut in_mat = Matrix::new(3, (0..9).map(|i| i as f32).collect());
         let s = RealSingularValueDecomposition::jacobi_svd(&mut in_mat);
 
-        s.iter()
+        s.into_iter()
             .zip([14.2267, 1.26523, 7.16572e-8])
             .for_each(|(si, ki)| {
                 assert!((si - ki).l2_norm() < f32::EPSILON);
@@ -211,7 +226,7 @@ pub mod svd_tests {
 
         let s = RealSingularValueDecomposition::jacobi_svd(&mut in_mat);
 
-        s.iter()
+        s.into_iter()
             .zip([69.9086, 3.5761, 1.4977e-6, 1.0282e-6, 2.22847e-7])
             .for_each(|(si, ki)| {
                 assert!((si - ki).l2_norm() < f32::EPSILON);
@@ -222,7 +237,7 @@ pub mod svd_tests {
     fn jacobi_svd_full_square_r() {
         let mut in_mat = Matrix::new(3, (0..9).map(|i| i as f32).collect());
         let (u, s, v) = RealSingularValueDecomposition::jacobi_svd_full(&mut in_mat);
-        s.iter()
+        s.into_iter()
             .zip([14.2267, 1.26523, 9.010921e-8])
             .for_each(|(si, ki)| {
                 assert!((si - ki).l2_norm() < f32::EPSILON);
@@ -240,7 +255,7 @@ pub mod svd_tests {
             -0.40824825,
         ];
         u.data()
-            .zip(kv.iter())
+            .zip(kv.into_iter())
             .for_each(|(up, k)| assert!((up - k).l2_norm() < f32::EPSILON));
 
         let ku = vec![
@@ -256,7 +271,7 @@ pub mod svd_tests {
         ];
 
         v.data()
-            .zip(ku.iter())
+            .zip(ku.into_iter())
             .for_each(|(up, k)| assert!((up - k).l2_norm() < f32::EPSILON));
     }
     #[test]
@@ -266,7 +281,7 @@ pub mod svd_tests {
         in_mat.data_row_ref(2).for_each(|rp| *rp = 3.0);
 
         let (u, s, v) = RealSingularValueDecomposition::jacobi_svd_full(&mut in_mat);
-        s.iter().zip([7.348469, 0.0, 0.0]).for_each(|(si, ki)| {
+        s.into_iter().zip([7.348469, 0.0, 0.0]).for_each(|(si, ki)| {
             assert!((si - ki).l2_norm() < f32::EPSILON);
         });
 
@@ -294,11 +309,11 @@ pub mod svd_tests {
         ];
 
         u.data()
-            .zip(ku.iter())
+            .zip(ku.into_iter())
             .for_each(|(up, k)| assert!((up - k).l2_norm() < f32::EPSILON));
 
         v.data()
-            .zip(kv.iter())
+            .zip(kv.into_iter())
             .for_each(|(up, k)| assert!((up - k).l2_norm() < f32::EPSILON));
     }
 
@@ -310,7 +325,7 @@ pub mod svd_tests {
         in_mat = in_mat.transposed();
 
         let (u, s, v) = RealSingularValueDecomposition::jacobi_svd_full(&mut in_mat);
-        s.iter().zip([7.348469, 0.0, 0.0]).for_each(|(si, ki)| {
+        s.into_iter().zip([7.348469, 0.0, 0.0]).for_each(|(si, ki)| {
             assert!((si - ki).l2_norm() < f32::EPSILON);
         });
 
@@ -337,11 +352,11 @@ pub mod svd_tests {
             0.0,
         ];
         u.data()
-            .zip(ku.iter())
+            .zip(ku.into_iter())
             .for_each(|(up, k)| assert!((up - k).l2_norm() < f32::EPSILON));
 
         v.data()
-            .zip(kv.iter())
+            .zip(kv.into_iter())
             .for_each(|(up, k)| assert!((up - k).l2_norm() < f32::EPSILON));
     }
     #[test]

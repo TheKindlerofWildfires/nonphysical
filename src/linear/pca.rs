@@ -26,7 +26,7 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
             .data_rows()
             .map(|row| {
                 let (_, sign) = row
-                    .iter()
+                    .into_iter()
                     .fold((R::ZERO, R::ONE), |acc,  rp| {
                         if rp.l1_norm() > acc.0 {
                             (rp.l1_norm(), rp.sign())
@@ -37,12 +37,12 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
                 sign
             })
             .collect::<Vec<_>>();
-        u.data_rows_ref().zip(signs.iter()).for_each(|(row, sign)| {
-            <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), *sign);
+        u.data_rows_ref().zip(signs.into_iter()).for_each(|(row, sign)| {
+            <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), sign);
         });
 
         /*
-        v.data_rows_ref().zip(signs.iter()).for_each(|(row,sign)|{
+        v.data_rows_ref().zip(signs.into_iter()).for_each(|(row,sign)|{
             <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), *sign);
         });*/
 
@@ -53,15 +53,15 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
                 .map(|r| *r)
                 .collect::<Vec<_>>(),
         );
-        ret.data_rows_ref().zip(s.iter()).for_each(|(row, sp)| {
-            <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), *sp);
+        ret.data_rows_ref().zip(s.into_iter()).for_each(|(row, sp)| {
+            <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), sp);
         });
         ret
     }
 
     fn normalize(data: &mut Matrix<R>) {
         data.data_rows_ref().for_each(|row| {
-            let mean = <Vec<&'_ R> as RealVector<R>>::mean(row.iter());
+            let mean = <Vec<&'_ R> as RealVector<R>>::mean_ref(row.into_iter());
             row.iter_mut().for_each(|c| *c = *c - mean);
         });
     }
@@ -69,6 +69,8 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
 
 #[cfg(test)]
 mod pca_tests {
+    use crate::random::pcg::PermutedCongruentialGenerator;
+
     use super::*;
     use std::time::SystemTime;
 
@@ -86,9 +88,9 @@ mod pca_tests {
         ];
         transformed
             .data()
-            .zip(known_values.iter())
+            .zip(known_values.into_iter())
             .for_each(|(c, k)| {
-                assert!((*c - *k).l2_norm() < f32::EPSILON);
+                assert!((*c - k).l2_norm() < f32::EPSILON);
             });
     }
 
@@ -108,9 +110,9 @@ mod pca_tests {
         ];
         transformed
             .data()
-            .zip(known_values.iter())
+            .zip(known_values.into_iter())
             .for_each(|(c, k)| {
-                assert!((*c - *k).l2_norm() < f32::EPSILON);
+                assert!((*c - k).l2_norm() < f32::EPSILON);
             });
     }
 
@@ -132,9 +134,9 @@ mod pca_tests {
         ];
         transformed
             .data()
-            .zip(known_values.iter())
+            .zip(known_values.into_iter())
             .for_each(|(c, k)| {
-                assert!((*c - *k).l2_norm() < f32::EPSILON);
+                assert!((*c -k).l2_norm() < f32::EPSILON);
             });
     }
 
@@ -146,4 +148,25 @@ mod pca_tests {
 
         let _ = println!("{:?}", now.elapsed());
     }
+    /* 
+    #[test]
+    fn longer_pca_time() {
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let data = (0..2048 * 2048)
+            .map(|_| pcg.next_u32() as f32 / u32::MAX as f32)
+            .collect::<Vec<_>>();
+        let mut m = Matrix::new(2048, data);
+        let now = SystemTime::now();
+        let _ = RealPrincipleComponentAnalysis::pca(&mut m, 2);
+        let _ = println!("{:?}", now.elapsed());
+        
+        let mut pcg = PermutedCongruentialGenerator::new(3, 0);
+        let data = (0..2048 * 2048)
+            .map(|_| pcg.next_u32() as f32 / u32::MAX as f32)
+            .collect::<Vec<_>>();
+        let mut m = Matrix::new(2048, data);
+        let now = SystemTime::now();
+        let _ = RealPrincipleComponentAnalysis::pca(&mut m, 3);
+        let _ = println!("{:?}", now.elapsed());
+    }*/
 }
