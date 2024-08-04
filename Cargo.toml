@@ -2,7 +2,16 @@
 resolver = "2"
 
 members = [
-    "baseless",
-    "contrived",
-    "inane",
+    "nonphysical_core",
+    "nonphysical_ptx", "nonphysical_cuda",
+    "nonphysical_std", "nonphysical_tests","playground"
 ]
+
+[profile.release]
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.lto]
+inherits = "release"
+lto="fat"

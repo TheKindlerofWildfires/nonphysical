@@ -1,0 +1,9 @@
+[package]
+name = "nonphysical_ptx"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nonphysical_core = {path="../nonphysical_core"}
+[lib]
+

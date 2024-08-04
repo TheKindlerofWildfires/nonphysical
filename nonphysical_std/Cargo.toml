@@ -1,0 +1,7 @@
+[package]
+name = "nonphysical_std"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nonphysical_core = {path="../nonphysical_core"}
