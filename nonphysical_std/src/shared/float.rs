@@ -2,7 +2,6 @@ use nonphysical_core::shared::float::Float;
 
 use super::primitive::{F32, F64};
 
-
 impl Float for F32 {
     const ZERO: Self = F32(0.0);
     const IDENTITY: Self = F32(1.0);
@@ -49,12 +48,12 @@ impl Float for F32 {
 
     #[inline(always)]
     fn exp(self) -> Self {
-        F32( self.0.exp())
+        F32(self.0.exp())
     }
 
     #[inline(always)]
     fn exp2(self) -> Self {
-        F32( self.0.exp2())
+        F32(self.0.exp2())
     }
 
     #[inline(always)]
@@ -179,12 +178,12 @@ impl Float for F64 {
 
     #[inline(always)]
     fn exp(self) -> Self {
-        F64( self.0.exp())
+        F64(self.0.exp())
     }
 
     #[inline(always)]
     fn exp2(self) -> Self {
-        F64( self.0.exp2())
+        F64(self.0.exp2())
     }
 
     #[inline(always)]
@@ -262,3 +261,4 @@ impl Float for F64 {
         Box::new(self.0.to_le_bytes())
     }
 }
+

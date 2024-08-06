@@ -1,11 +1,10 @@
-use alloc::string::String;
-use alloc::format;
-use alloc::vec::Vec;
+use std::format;
 use std::fs;
 use std::fs::File;
 use std::dbg;
 use std::borrow::ToOwned;
 use std::io::Write;
+use std::vec::Vec;
 
 //This is a hack that replaces the extern panics with visible traps in the compiled ptx
 //This is a bad approach because it breaks 'real' linking 

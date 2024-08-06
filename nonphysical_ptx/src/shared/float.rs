@@ -1,7 +1,7 @@
 use core::{arch::asm, intrinsics};
 
 use alloc::boxed::Box;
-use nonphysical_core::shared::{float::Float,primitive::Primitive};
+use nonphysical_core::shared::float::Float;
 use super::primitive::F32;
 
 impl Float for F32 {
@@ -23,14 +23,20 @@ impl Float for F32 {
 
     #[inline(always)]
     fn l2_norm(self) -> Self::Primitive {
-        //Keeps it from jumping to float registers
-        self*self
+        let mut ret: F32 = F32(0.0);
+        unsafe {
+            asm!(
+                "mul.rn.ftz.f32 {r}, {i}, {i};",
+                i = in(reg32) self.0,
+                r = out(reg32) ret.0,
+            );
+        }
+        ret  
+
     }
 
     #[inline(always)]
-    fn fma(self, mul: Self, add: Self) -> Self {
-        //F32(unsafe {core::intrinsics::fmaf32(self.0, mul.0, add.0)})
-        
+    fn fma(self, mul: Self, add: Self) -> Self {        
         let mut ret: F32 = F32(0.0);
         unsafe {
             asm!(
@@ -46,9 +52,24 @@ impl Float for F32 {
 
     #[inline(always)]
     fn powf(self, other: Self) -> Self {
-        F32(unsafe { intrinsics::powf32(self.0, other.0) })
+        let mut ret: F32 = F32(0.0);
+        unsafe {
+            asm!(
+                "lg2.approx.ftz.f32 {r}, {i};",
+                "    mul.rn.ftz.f32 {r}, {r}, {o};",
+                "    ex2.approx.ftz.f32 {r}, {r};",
+                i = in(reg32) self.0,
+                o = in(reg32) other.0,
+                r = out(reg32) ret.0,
+                
+            );
+        }
+        ret
     }
 
+
+    //The intrinsic worked here, but put it in the wrong registers
+    //I think it's faster/more accurate to do the moves than to do the floating point exp, but I'm not sure
     #[inline(always)]
     fn powi(self, other: i32) -> Self {
         F32(unsafe { intrinsics::powif32(self.0, other) })
@@ -73,7 +94,7 @@ impl Float for F32 {
         unsafe {
             asm!(
                 "lg2.approx.ftz.f32 {r}, {i};",
-                "    mul.ftz.f32 {r}, {r}, 0f3F317218;",
+                "    mul.rn.ftz.f32 {r}, {r}, 0f3F317218;",
                 i = in(reg32) self.0,
                 r = out(reg32) ret.0,
             );
@@ -99,7 +120,7 @@ impl Float for F32 {
         let mut ret: F32 = F32(0.0);
         unsafe {
             asm!(
-                "mul.ftz.f32 {r}, {i}, 0f3FB8AA3B;",
+                "mul.rn.ftz.f32 {r}, {i}, 0f3FB8AA3B;",
                 "    ex2.approx.ftz.f32 {r}, {r};",
                 i = in(reg32) self.0,
                 r = out(reg32) ret.0,
@@ -177,44 +198,65 @@ impl Float for F32 {
         ret
     }
 
+    //Note: Not good for values much less than 1
     #[inline(always)]
     fn asin(self) -> Self {
-        todo!();
-        //lib c port
-        let mut y = Self::ZERO;
-        loop {
-            let (ys, yc) = y.sin_cos();
-            if y > Self::FRAC_PI_2 || y < -Self::FRAC_PI_2 {
-                y %= Self::PI;
-            }
-            if ys + Self::EPSILON >= self && ys - Self::EPSILON <= self {
-                break;
-            }
-            y -= (ys - self) / yc
-        }
-        y
+        todo!()
     }
 
     #[inline(always)]
     fn acos(self) -> Self {
-        Self::FRAC_PI_2 - self.asin()
+        todo!()
     }
 
     #[inline(always)]
     fn atan(self) -> Self {
-        (self / (self * self + F32::ONE).sqrt()).asin()
+        todo!()
     }
 
+
+    //precision is bad, but speed is good
     #[inline(always)]
     fn sinh(self) -> Self {
-        let tmp = self.exp();
-        (tmp - tmp.recip()) / F32::usize(2)
+        let mut ret: F32 = F32(0.0);
+        let mut tmp: F32 = F32(0.0);
+        unsafe {
+            asm!(
+                "mul.rn.ftz.f32 {r}, {i}, 0f3FB8AA3B;",
+                "    ex2.approx.ftz.f32 {r}, {r};",
+                "    neg.ftz.f32 {t}, {i};",
+                "    mul.rn.ftz.f32 {t}, {t}, 0f3FB8AA3B;",
+                "    ex2.approx.ftz.f32 {t}, {t};",
+                "    sub.rn.ftz.f32 {r}, {r}, {t};",
+                "    div.approx.ftz.f32 {r}, {r}, 0f40000000;",
+                i = in(reg32) self.0,
+                t = out(reg32) tmp.0,
+                r = out(reg32) ret.0,
+            );
+        }
+        ret
     }
 
+    //precision is bad, but speed/registers is good
     #[inline(always)]
     fn cosh(self) -> Self {
-        let tmp = self.exp();
-        (tmp + tmp.recip()) / F32::usize(2)
+        let mut ret: F32 = F32(0.0);
+        let mut tmp: F32 = F32(0.0);
+        unsafe {
+            asm!(
+                "mul.rn.ftz.f32 {r}, {i}, 0f3FB8AA3B;",
+                "    ex2.approx.ftz.f32 {r}, {r};",
+                "    neg.ftz.f32 {t}, {i};",
+                "    mul.rn.ftz.f32 {t}, {t}, 0f3FB8AA3B;",
+                "    ex2.approx.ftz.f32 {t}, {t};",
+                "    add.rn.ftz.f32 {r}, {r}, {t};",
+                "    div.approx.ftz.f32 {r}, {r}, 0f40000000;",
+                i = in(reg32) self.0,
+                t = out(reg32) tmp.0,
+                r = out(reg32) ret.0,
+            );
+        }
+        ret
     }
 
     #[inline(always)]

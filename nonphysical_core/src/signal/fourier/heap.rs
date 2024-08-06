@@ -3,11 +3,12 @@ use crate::shared::{complex::Complex, float::Float,primitive::Primitive};
 use super::FourierTransform;
 
 pub struct ComplexFourierTransformHeap<C: Complex> {
-    twiddles: Vec<C>,
+    pub twiddles: Vec<C>,
 }
 impl<C: Complex> FourierTransform<C> for ComplexFourierTransformHeap <C> {
-    fn new(len: usize) -> Self {
-        let twiddles = Self::generate_twiddles(len >> 1);
+    type FourierInit = usize;
+    fn new(init: Self::FourierInit) -> Self {
+        let twiddles = Self::generate_twiddles(init >> 1);
         Self { twiddles }
     }
 

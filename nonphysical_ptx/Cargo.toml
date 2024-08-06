@@ -5,5 +5,9 @@ edition = "2021"
 
 [dependencies]
 nonphysical_core = {path="../nonphysical_core"}
+
+[target.'cfg(not(target_arch = "nvptx64"))'.dependencies]
+nonphysical_std = {path="../nonphysical_std"}
+
 [lib]
 

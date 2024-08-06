@@ -1,4 +1,4 @@
-use core::{arch::asm, intrinsics, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign}};
+use core::{arch::asm, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign}};
 
 use nonphysical_core::shared::{float::Float, primitive::Primitive};
 
@@ -138,17 +138,35 @@ impl Primitive for F32 {
 
     #[inline(always)]
     fn floor(self) -> Self {
-        F32(unsafe { intrinsics::floorf32(self.0) })
+        let mut ret: F32 = F32(0.0);
+        unsafe {
+            asm!(
+                "cvt.rmi.f32.f32 {r}, {i};",
+                i = in(reg32) self.0,
+                r = out(reg32) ret.0,
+            );
+        }
+        ret   
     }
 
     #[inline(always)]
     fn ceil(self) -> Self {
-        F32(unsafe { intrinsics::ceilf32(self.0) })
+        let mut ret: F32 = F32(0.0);
+        unsafe {
+            asm!(
+                "cvt.rpi.f32.f32 {r}, {i};",
+                i = in(reg32) self.0,
+                r = out(reg32) ret.0,
+            );
+        }
+        ret   
     }
 
+
+    //intrinsic worked here, but was questionable
     #[inline(always)]
     fn round(self) -> Self {
-        F32( unsafe { intrinsics::roundf32(self.0) })
+        todo!()
     }
     
     #[inline(always)]
@@ -185,7 +203,7 @@ impl Primitive for F32 {
             }else{
                 Self::PI+(self/other).atan()
             }
-        }
+        }  
     }
 
     #[inline(always)]
@@ -331,7 +349,7 @@ impl Neg for F32{
         let mut ret: F32 = F32(0.0);
         unsafe {
             asm!(
-                "neg.ftz {r}, {i};",
+                "neg.ftz.f32 {r}, {i};",
                 i = in(reg32) self.0,
                 r = out(reg32) ret.0,
             );

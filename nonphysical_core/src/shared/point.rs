@@ -169,7 +169,7 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
     #[inline(always)]
     fn add(&self, other: &Self) -> Self {
         let mut ret = self.clone();
-        <Vec<&Self::Primitive> as Vector<Self::Primitive>>::add_vec(
+        Vector::<P>::add_vec(
             ret.data.iter_mut(),
             other.data.iter(),
         );
@@ -178,7 +178,7 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
     #[inline(always)]
     fn sub(&self, other: &Self) -> Self {
         let mut ret = self.clone();
-        <Vec<&Self::Primitive> as Vector<Self::Primitive>>::sub_vec(
+        Vector::<P>::sub_vec(
             ret.data.iter_mut(),
             other.data.iter(),
         );
@@ -186,7 +186,7 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
     }
     #[inline(always)]
     fn dot(&self, other: &Self) -> Self::Primitive{
-        <Vec<&Self::Primitive> as Vector<Self::Primitive>>::dot(
+        Vector::<P>::dot(
             self.data.iter(),
             other.data.iter(),
         )
@@ -219,7 +219,7 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
 
     #[inline(always)]
     fn scale(&mut self, other: Self::Primitive) {
-        <Vec<&Self::Primitive> as Vector<Self::Primitive>>::mul(
+        Vector::<P>::mul(
             self.data.iter_mut(),other
         );
     }

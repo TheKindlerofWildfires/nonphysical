@@ -1,13 +1,28 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign};
+use std::fmt::Debug;
 
 use nonphysical_core::shared::primitive::Primitive;
 
-#[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone)]
 pub struct F32(pub f32);
 
-#[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone)]
 
 pub struct F64(pub f64);
+
+impl Debug for F32 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0).unwrap();
+        Ok(())
+    }
+}
+
+impl Debug for F64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0).unwrap();
+        Ok(())
+    }
+}
 
 impl Primitive for F32 {
     const PI: Self = F32(core::f32::consts::PI);

@@ -3,7 +3,7 @@ resolver = "2"
 
 members = [
     "nonphysical_core",
-    "nonphysical_ptx", "nonphysical_cuda",
+    "nonphysical_ptx",
     "nonphysical_std", "nonphysical_tests","playground"
 ]
 

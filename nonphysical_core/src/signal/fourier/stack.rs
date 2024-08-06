@@ -4,9 +4,9 @@ pub struct ComplexFourierTransformStack<C: Complex, const N: usize> {
     pub twiddles: [C;N],
 }
 impl<C: Complex,const N: usize> FourierTransform<C> for ComplexFourierTransformStack <C,N> {
-    fn new(len: usize) -> Self {
-        //debug_assert!(len==N<<1);
-        let twiddles = Self::generate_twiddles(len >> 1);
+    type FourierInit = ();
+    fn new(_: Self::FourierInit) -> Self {
+        let twiddles = Self::generate_twiddles();
         Self { twiddles }
     }
 
@@ -38,8 +38,8 @@ impl<C: Complex,const N: usize> FourierTransform<C> for ComplexFourierTransformS
 }
 impl<C:Complex,const N: usize> ComplexFourierTransformStack<C,N>{
     #[inline]
-    pub fn generate_twiddles(dist: usize) -> [C;N] {
-        let angle = -C::Primitive::PI / C::Primitive::usize(dist);
+    pub fn generate_twiddles() -> [C;N] {
+        let angle = -C::Primitive::PI / C::Primitive::usize(N);
         let mut twiddles = [C::ZERO;N];
         twiddles.iter_mut().enumerate().for_each(|(i,twiddle)|{
             let phase = angle * C::Primitive::usize(i);
@@ -63,6 +63,7 @@ impl<C:Complex,const N: usize> ComplexFourierTransformStack<C,N>{
                     *c_s0 += *c_s1;
                     *c_s1 = temp * *w;
                 });
+                
         });
     }
 
@@ -90,7 +91,8 @@ impl<C:Complex,const N: usize> ComplexFourierTransformStack<C,N>{
         });
     }
     #[inline]
-    fn reverse(buf: &mut [C], log_n: usize) {
+    pub fn reverse(buf: &mut [C], log_n: usize) {
+        return;
         let big_n = 1 << log_n;
         let half_n = big_n >> 1;
         let quart_n = big_n >> 2;

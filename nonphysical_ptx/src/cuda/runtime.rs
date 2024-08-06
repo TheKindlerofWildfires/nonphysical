@@ -1,15 +1,14 @@
 
 use super::{ffi, ffi::DevicePtr, cu_box::*, cu_slice::*};
 
-use std::{collections::BTreeMap,string::{ToString,String}};
-use alloc::vec;
+use std::string::String;
+use std::vec;
 use std::dbg;
 use std::time::SystemTime;
 static mut CUDA_INITIALIZED: bool = false;
 pub struct Runtime {
     context: ffi::CUcontext,
     module: ffi::CUmodule,
-    function_names: BTreeMap<*mut core::ffi::c_void, String>,
 }
 
 impl Runtime {
@@ -62,7 +61,6 @@ impl Runtime {
         let res = Runtime {
             context,
             module,
-            function_names: BTreeMap::new(),
         };
         Ok(res)
     }
@@ -77,10 +75,6 @@ impl Runtime {
         block_dim_y: usize,
         block_dim_z: usize,
     ) -> Result<(), CuError> {
-        let now = SystemTime::now();
-        unsafe{ffi::cuCtxSynchronize();}
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
         // function
 
         let mut function: ffi::CUfunction =
@@ -95,20 +89,13 @@ impl Runtime {
         };
         if result != ffi::CUresult::CUDA_SUCCESS {
             return Err(CuError::new(result));
-        }
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
-
+        }        
         // launch
         let args_d = self.alloc(args).unwrap();
-        dbg!(now.elapsed());
 
         let mut args_d_ptr = args_d.get();
         let mut launch_args = vec![&mut args_d_ptr as *mut &Args as *mut std::ffi::c_void];
-        let now = SystemTime::now();
         unsafe{ffi::cuCtxSynchronize();}
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
         unsafe {
             use std::os::raw::c_uint;
             use std::ptr;
@@ -130,10 +117,7 @@ impl Runtime {
                 return Err(CuError::new(result));
             }
             unsafe{ffi::cuCtxSynchronize();}
-            dbg!(now.elapsed());
-            let now = SystemTime::now();
         }
-        dbg!(now.elapsed());
 
         Ok(())
     }

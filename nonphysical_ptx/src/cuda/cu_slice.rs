@@ -2,10 +2,9 @@
 use super::{ffi,runtime::CuError};
 
 #[cfg(not(target_arch = "nvptx64"))]
-use alloc::vec;
-
+use std::vec;
 #[cfg(not(target_arch = "nvptx64"))]
-use alloc::vec::Vec;
+use std::vec::Vec;
 
 #[cfg(target_arch = "nvptx64")]
 use core::ops::{Deref,DerefMut};
@@ -104,18 +103,14 @@ impl<'a, T> CuSliceRef<'a, T> {
     // get host T
     #[cfg(not(target_arch = "nvptx64"))]
     pub fn to_host(&self) -> Result<Vec<T>, CuError> {
-        let now = SystemTime::now();
         unsafe{ffi::cuCtxSynchronize();}
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
         let mut res = Vec::with_capacity(self.ptr.len());
         unsafe {
             for _ in 0..self.ptr.len() {
                 res.push(core::mem::MaybeUninit::zeroed().assume_init());
             }
         }
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
+
 
         let result = unsafe {
             ffi::cuMemcpyDtoH_v2(
@@ -127,7 +122,6 @@ impl<'a, T> CuSliceRef<'a, T> {
         if result != ffi::CUresult::CUDA_SUCCESS {
             return Err(CuError::new(result));
         }
-        dbg!(now.elapsed());
         Ok(res)
     }
 }
