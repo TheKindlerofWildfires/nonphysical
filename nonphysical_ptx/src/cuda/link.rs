@@ -8,7 +8,8 @@ use std::vec::Vec;
 
 //This is a hack that replaces the extern panics with visible traps in the compiled ptx
 //This is a bad approach because it breaks 'real' linking 
-//So when I figure that would I'll need to write these panic functions to a link file
+//So when I figure that out I'll need to write these panic functions to a link file
+//I will note that trap/exit is doing a very good job of catching bugs correctly, so go rust
 pub fn link_fix() {
     for entry in fs::read_dir("../target/nvptx64-nvidia-cuda/release/deps/").unwrap() {
         let path = entry.unwrap().path();

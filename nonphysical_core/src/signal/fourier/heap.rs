@@ -120,6 +120,7 @@ impl<C:Complex> ComplexFourierTransformHeap<C>{
             rev ^= quart_n >> zeros;
 
             if forward < rev {
+                
                 buf.swap(forward, rev);
                 buf.swap(min ^ forward, min ^ rev);
             }

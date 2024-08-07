@@ -92,7 +92,6 @@ impl<C:Complex,const N: usize> ComplexFourierTransformStack<C,N>{
     }
     #[inline]
     pub fn reverse(buf: &mut [C], log_n: usize) {
-        return;
         let big_n = 1 << log_n;
         let half_n = big_n >> 1;
         let quart_n = big_n >> 2;
