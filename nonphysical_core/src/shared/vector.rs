@@ -1,5 +1,5 @@
 use core::marker::PhantomData;
-use super::{complex::Complex, float::Float, primitive::Primitive, real::{self, Real}};
+use super::{complex::Complex, float::Float, primitive::Primitive, real::Real};
 
 pub struct Vector<F:Float>{
     phantom_data: PhantomData<F>

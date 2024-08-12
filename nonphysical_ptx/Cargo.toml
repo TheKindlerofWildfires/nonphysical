@@ -11,3 +11,5 @@ nonphysical_std = {path="../nonphysical_std"}
 
 [lib]
 
+[rust]
+llvm-bitcode-linker = false

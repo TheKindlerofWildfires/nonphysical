@@ -1,49 +1,48 @@
 use core::cmp::min;
 
-use crate::shared::{float::Float, matrix::Matrix, real::Real};
+use crate::shared::{float::Float, matrix::{heap::MatrixHeap, Matrix}, real::Real};
 
 use super::householder::{Householder, RealHouseholder};
 
-pub trait Bidiagonal<'a,F:Float+'a>{
+pub trait Bidiagonal<F:Float>{
     const MBS: usize = 32;
-    type H: Householder<'a,F>;
-    fn new(matrix: &mut Matrix<F>) -> Self;
-    fn blocked(matrix: &mut Matrix<F>, k: usize, brows: usize, bcols: usize, bs: usize);
-    fn unblocked(matrix:&mut Matrix<F>, k: usize, brows: usize, bcols: usize);
-    fn bidiagonal() -> Matrix<F>;
+    type Matrix: Matrix<F>;
+    type H: Householder<F>;
+    fn new(matrix: &mut Self::Matrix) -> Self;
+    fn blocked(matrix: &mut Self::Matrix, k: usize, brows: usize, bcols: usize, bs: usize);
+    fn unblocked(matrix:&mut Self::Matrix, bidiagonal:&mut Self::Matrix, k: usize, brows: usize, bcols: usize);
+    fn bidiagonal() -> Self::Matrix;
     fn householder() -> Self::H;
     fn householder_u() -> Self::H;
     fn householder_v() -> Self::H;
 }
 
-pub struct RealBidiagonal{
-
+pub struct RealBidiagonal<R:Real>{
+    pub bidiagonal: MatrixHeap<R>,
 }
 
-pub struct ComplexBidiagonal{
-
-}
-
-impl<'a,R: Real<Primitive = R>+'a>Bidiagonal<'a,R> for RealBidiagonal {
+impl<R: Real<Primitive = R>>Bidiagonal<R> for RealBidiagonal<R> {
     type H = RealHouseholder<R>;
+    type Matrix = MatrixHeap<R>;
 
-    fn new(matrix: &mut Matrix<R>) -> Self {
+    fn new(matrix: &mut Self::Matrix) -> Self {
+        let mut bidiagonal = Self::Matrix::zero(matrix.rows, matrix.cols);
         let size= min(matrix.rows, matrix.cols);
         let block_size = min(size,<Self as Bidiagonal<R>>::MBS);
         (0..size).step_by(block_size).for_each(|k|{
             let bs = min(size-k, block_size);
             let brows = matrix.rows-k;
             let bcols = matrix.cols-k;
-            if (k+bs == matrix.cols || bcols<48){
-                Self::unblocked(matrix,k,brows, bcols);
+            if k+bs == matrix.cols || bcols<48{
+                Self::unblocked(matrix,&mut bidiagonal, k,brows, bcols);
             }else{
-                todo!();
+                Self::blocked(matrix, k, brows, bcols, bs)
             }
         });
-        todo!()
+        Self{bidiagonal}
     }
 
-    fn bidiagonal() -> Matrix<R> {
+    fn bidiagonal() -> Self::Matrix {
         todo!()
     }
 
@@ -59,46 +58,56 @@ impl<'a,R: Real<Primitive = R>+'a>Bidiagonal<'a,R> for RealBidiagonal {
         todo!()
     }
     
-    fn blocked(matrix: &mut Matrix<R>, k: usize, brows: usize, bcols: usize, bs: usize) {
-        todo!()
+    fn blocked(matrix: &mut Self::Matrix, k: usize, brows: usize, bcols: usize, bs: usize) {
+        //figure out how big
+        //iterate up to block size
+        //get a sub block around x/a which I don't know
+        //get a column from A and adjust it
+        //make a householder with the column of a
+        //when k is less than the columns
+        /*
+            get two new submats from y/a
+            do a little fixing to them
+
+            do soome more fixing
+
+            make a householder in uk
+            do some more fixing
+            even more fixing
+            update a loop variable
+         */
+        //alternative just update A a little
+        //update A a little
+        //if the blocksize is smaller than the cols update A again
+        /*
+            update A22
+            set up A11-A11-A01
+            Update them a little
+         */
+
     }
     
-    fn unblocked(matrix:&mut Matrix<R>, k: usize, brows: usize, bcols: usize) {
+    fn unblocked(matrix:&mut Self::Matrix,bidiagonal:&mut Self::Matrix, k: usize, brows: usize, bcols: usize) {
         let mut kk = 0; 
-        dbg!(&matrix);
         loop{
-            dbg!(kk);
-            let remaining_rows = brows-kk;
-            let remaining_cols = bcols-kk-1;
-            //kinda feel like it's time to break out the matrix left/east/etc
-            let prep = Self::H::make_householder_prep(&mut matrix.data_row(k+kk).skip(k+kk));
-            let house = Self::H::make_householder_local(&mut matrix.data_row_ref(k+kk).skip(k+kk),prep);
+            let house = Self::H::make_householder_col(matrix, k+kk, k+kk);
+            *bidiagonal.coeff_ref(k+kk, k+kk)=house.beta;
             *matrix.coeff_ref(k+kk, k+kk) = house.tau;
-            dbg!(&matrix);
 
-            house.apply_left_local(matrix, k, k+kk..kk+brows, k+kk+1..kk+bcols);
-            dbg!(&matrix);
-
-            if k==bcols-1{
+            let essential = matrix.data_row(k+kk).skip(k+kk+1).cloned().collect::<Vec<_>>();
+            house.apply_left(matrix, &essential, [k+kk,k+bcols], [k+kk+1,k+brows]);
+            
+            if kk==bcols-1{
                 break;
             }
-            let prep = Self::H::make_householder_prep(&mut matrix.data_col(k+kk).skip(k+kk+1));
-            dbg!(&prep);
-            let house = Self::H::make_householder_local(&mut matrix.data_col_ref(k+kk).skip(k+kk+1),prep);
-            dbg!(house.tau,house.beta);
-            dbg!(&matrix);
+            let house = Self::H::make_householder_row(matrix, k+kk+1, k+kk);
+            *bidiagonal.coeff_ref(k+kk, k+kk+1)=house.beta;
             *matrix.coeff_ref(k+kk+1, k+kk) = house.tau;
-            dbg!(&matrix);
-
-            //problem here is that I assumed that it would invoke with col and that was foolish
-            //I think I need to go back and reconsider householder 
-            house.apply_right_local(matrix, k, k+kk+1..kk+brows, k+kk+1..kk+bcols);
-            dbg!(&matrix);
+            let essential = matrix.data_col(k+kk).skip(k+kk+2).cloned().collect::<Vec<_>>();
+            house.apply_right(matrix, &essential, [k+kk+1,k+brows], [k+kk+1,k+bcols]);
 
             kk+=1;
-            if kk==1{
-                todo!();
-            }
         }
+        dbg!(bidiagonal);
     }
 }

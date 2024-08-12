@@ -7,7 +7,7 @@ pub mod ptx;
 #[cfg(not(target_arch = "nvptx64"))]
 pub mod cuda;
 
-pub struct FourierArguments<'a, C: Complex> {
+pub struct WaveletArguments<'a, C: Complex> {
     pub x: CuSliceRef<'a, C>,
-    pub twiddles: CuSlice<'a, C>,
+    pub ndwt: CuSlice<'a,usize>,
 }

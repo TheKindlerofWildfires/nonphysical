@@ -1,42 +1,73 @@
-use core::cmp::min;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::cmp::min;
+use std::time::SystemTime;
 
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix, real::Real, vector::Vector};
+use crate::
+    shared::{
+        float::Float,
+        matrix::{heap::MatrixHeap, Matrix},
+        real::Real,
+        vector::Vector,
+    }
+;
 
-use super::jacobi::{ComplexJacobi, Jacobian, RealJacobi};
+use super::{
+    jacobi::{Jacobian, RealJacobi},
+    qr_decomposition::{QRDecomposition, RealQRDecomposition},
+};
 
 pub struct RealSingularValueDecomposition {}
-pub struct ComplexSingularValueDecomposition {}
 pub trait SingularValueDecomposition<F: Float, R: Real> {
     type J: Jacobian<F>;
-    fn jacobi_svd_full(data: &mut Matrix<F>) -> (Matrix<F>, Vec<R>, Matrix<F>);
-    fn jacobi_svd(data: &mut Matrix<F>) -> Vec<R>;
-    fn jacobi_2x2(data: &mut Matrix<F>, p: usize, q: usize) -> (Self::J, Self::J);
+    type Matrix: Matrix<F>;
+    type QRDecomposition: QRDecomposition<F>;
+    fn jacobi_svd_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Vec<R>, Self::Matrix);
+    fn jacobi_svd(matrix: &mut Self::Matrix) -> Vec<R>;
+    fn jacobi_2x2(matrix: &mut Self::Matrix, p: usize, q: usize) -> (Self::J, Self::J);
 
-    fn bidiagonal_svd(data:&mut Matrix<F>)-> (Matrix<F>, Vec<R>, Matrix<F>);
+    fn col_precondition(matrix: &mut Self::Matrix);
+    fn row_precondition(matrix: &mut Self::Matrix);
+    fn col_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix);
+    fn row_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix);
+
+    //fn bidiagonal_svd(data:&mut Self::Matrix)-> (Self::Matrix, Vec<R>, Self::Matrix);
 }
 
 impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularValueDecomposition {
     type J = RealJacobi<R>;
+    type Matrix = MatrixHeap<R>;
+    type QRDecomposition = RealQRDecomposition<R>;
 
-    fn jacobi_svd_full(data: &mut Matrix<R>) -> (Matrix<R>, Vec<R>, Matrix<R>) {
-        //Doesn't handle different matrix sizes
-        assert!(data.rows == data.cols);
+    fn jacobi_svd_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Vec<R>, Self::Matrix) {
         let precision = R::Primitive::EPSILON * R::Primitive::float(2.0);
         let small = R::Primitive::SMALL;
-        let diag_size = min(data.cols, data.rows);
-        let mut scale = <Vec<&'_ R> as Vector<R>>::l1_max(data.data());
+        let diag_size = min(matrix.cols, matrix.rows);
+        let mut scale = Vector::l1_max(matrix.data());
         if scale == R::Primitive::ZERO {
             scale = R::Primitive::float(1.0);
         }
 
-        let mut u = Matrix::<R>::identity(data.rows, data.rows);
-        let mut v = Matrix::<R>::identity(data.cols, data.cols);
+        Vector::mul(matrix.data_ref(), scale.recip());
+        //There is unresolved disagreement between the U/V matrices between square and non square
+        //Best guess is one of them is tilted, but I don't know which
+        //I'm guessing it happened in the adjoint call
+        let (mut u, mut v) = if matrix.n_cols() > matrix.n_rows() {
+            dbg!("A");
+            Self::col_precondition_full(matrix)
+        } else if matrix.n_rows()>matrix.n_cols(){
+            dbg!("B");
+            Self::row_precondition_full(matrix)
+        }else {
+            (
+                
+                Matrix::<R>::identity(matrix.rows, matrix.rows),
+                Matrix::<R>::identity(matrix.cols, matrix.cols),
+            )
+        };
 
-        <Vec<&'_ R> as Vector<R>>::mul(data.data_ref(), scale.recip());
-
-        let mut max_diag = <Vec<&'_ R> as Vector<R>>::l1_max(data.data_diag());
+        
+        let mut max_diag = Vector::l1_max(matrix.data_diag());
         //step 2. with improvement options
         let mut finished = false;
 
@@ -46,33 +77,43 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
             (1..diag_size).for_each(|p| {
                 (0..p).for_each(|q| {
                     let threshold = small.greater(precision * max_diag);
-                    if data.coeff(q, p).l1_norm() > threshold
-                        || data.coeff(p, q).l1_norm() > threshold
+                    if matrix.coeff(q, p).l1_norm() > threshold
+                        || matrix.coeff(p, q).l1_norm() > threshold
                     {
                         finished = false;
-                        let (j_left, j_right) = Self::jacobi_2x2(data, p, q);
-                        j_left.apply_left(data, p, q, 0..data.rows);
-                        j_left.apply_right(&mut u, p, q, 0..data.rows);
-                        j_right.transpose().apply_right(data, p, q, 0..data.rows);
-                        j_right.transpose().apply_right(&mut v, p, q, 0..data.rows);
+                        let (j_left, j_right) = Self::jacobi_2x2(matrix, p, q);
+                        j_left.apply_left(matrix, p, q, 0..matrix.rows);
+                        j_left.apply_right(&mut u, p, q, 0..matrix.rows);
+                        j_right
+                            .transpose()
+                            .apply_right(matrix, p, q, 0..matrix.rows);
+
+                        j_right
+                            .transpose()
+                            .apply_right(&mut v, p, q, 0..matrix.rows);
                         max_diag = max_diag.greater(
-                            data.coeff(p, p)
+                            matrix
+                                .coeff(p, p)
                                 .l1_norm()
-                                .greater(data.coeff(q, q).l1_norm()),
+                                .greater(matrix.coeff(q, q).l1_norm()),
                         );
                     }
                 })
             });
         }
         //step3 recover the singular values -> essentially get the positive real numbers
-        let mut singular = data.data_diag().enumerate().map(|(i,r)|{
-            if *r<R::Primitive::ZERO{
-                <Vec<&'_ R> as Vector<R>>::mul(u.data_row_ref(i), -R::Primitive::ONE);
-                -*r
-            }else{
-                *r
-            } 
-        }).collect::<Vec<_>>();
+        let mut singular = matrix
+            .data_diag()
+            .enumerate()
+            .map(|(i, r)| {
+                if *r < R::Primitive::ZERO {
+                    Vector::mul(u.data_row_ref(i), -R::Primitive::ONE);
+                    -*r
+                } else {
+                    *r
+                }
+            })
+            .collect::<Vec<_>>();
 
         singular.iter_mut().for_each(|s| *s *= scale);
         let mut indices = (0..singular.len()).collect::<Vec<_>>();
@@ -100,20 +141,23 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
         (u, singular, v)
     }
 
-    fn jacobi_svd(data: &mut Matrix<R>) -> Vec<R> {
-        //Doesn't handle different matrix sizes
-        assert!(data.rows == data.cols);
+    fn jacobi_svd(matrix: &mut Self::Matrix) -> Vec<R> {
         let precision = R::Primitive::EPSILON * R::Primitive::float(2.0);
         let small = R::Primitive::SMALL;
-        let diag_size = min(data.cols, data.rows);
-        let mut scale = <Vec<&'_ R> as Vector<R>>::l1_max(data.data());
+        let diag_size = min(matrix.cols, matrix.rows);
+        let mut scale = Vector::l1_max(matrix.data());
         if scale == R::Primitive::ZERO {
             scale = R::Primitive::float(1.0);
         }
 
-        <Vec<&'_ R> as Vector<R>>::mul(data.data_ref(), scale.recip());
+        Vector::mul(matrix.data_ref(), scale.recip());
+        if matrix.n_cols() > matrix.n_rows() {
+            Self::col_precondition(matrix);
+        }else if matrix.n_rows()>matrix.n_cols(){
+            Self::row_precondition(matrix);
+        }
 
-        let mut max_diag = <Vec<&'_ R> as Vector<R>>::l1_max(data.data_diag());
+        let mut max_diag = Vector::l1_max(matrix.data_diag());
         //step 2. with improvement options
         let mut finished = false;
 
@@ -123,42 +167,47 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
             (1..diag_size).for_each(|p| {
                 (0..p).for_each(|q| {
                     let threshold = small.greater(precision * max_diag);
-                    if data.coeff(q, p).l1_norm() > threshold
-                        || data.coeff(p, q).l1_norm() > threshold
+                    if matrix.coeff(q, p).l1_norm() > threshold
+                        || matrix.coeff(p, q).l1_norm() > threshold
                     {
                         finished = false;
-                        let (j_left, j_right) = Self::jacobi_2x2(data, p, q);
-                        j_left.apply_left(data, p, q, 0..data.rows);
-                        j_right.transpose().apply_right(data, p, q, 0..data.rows);
+                        let (j_left, j_right) = Self::jacobi_2x2(matrix, p, q);
+                        j_left.apply_left(matrix, p, q, 0..matrix.rows);
+
+                        j_right
+                            .transpose()
+                            .apply_right(matrix, p, q, 0..matrix.rows);
                         max_diag = max_diag.greater(
-                            data.coeff(p, p)
+                            matrix
+                                .coeff(p, p)
                                 .l1_norm()
-                                .greater(data.coeff(q, q).l1_norm()),
+                                .greater(matrix.coeff(q, q).l1_norm()),
                         );
                     }
                 })
             });
         }
         //step3 recover the singular values -> essentially get the positive real numbers
-        let mut singular = data.data_diag().map(|r|{
-            r.l1_norm()*scale
-        }).collect::<Vec<_>>();
+        let mut singular = matrix
+            .data_diag()
+            .map(|r| r.l1_norm() * scale)
+            .collect::<Vec<_>>();
         //step 4 sort the singular values
         singular.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
         singular
     }
 
     //under tested
-    fn jacobi_2x2(data: &mut Matrix<R>, p: usize, q: usize) -> (Self::J, Self::J) {
+    fn jacobi_2x2(matrix: &mut Self::Matrix, p: usize, q: usize) -> (Self::J, Self::J) {
         let sub_data = vec![
-            data.coeff(p, p),
-            data.coeff(p, q),
-            data.coeff(q, p),
-            data.coeff(q, q),
+            matrix.coeff(p, p),
+            matrix.coeff(p, q),
+            matrix.coeff(q, p),
+            matrix.coeff(q, q),
         ];
-        let mut sub_matrix = Matrix::new(2, sub_data);
+        let mut sub_matrix = Self::Matrix::new((2, sub_data));
         let t = sub_matrix.coeff(0, 0) + sub_matrix.coeff(1, 1);
-        let d = sub_matrix.coeff(0, 1) - sub_matrix.coeff(1, 0);
+        let d = sub_matrix.coeff(0, 1)-sub_matrix.coeff(1, 0);
 
         let rot1 = match d.l1_norm() < R::Primitive::EPSILON {
             true => Self::J::new(R::ZERO, R::ONE),
@@ -168,41 +217,110 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
                 Self::J::new(tmp.recip(), u / tmp)
             }
         };
+
         rot1.apply_left(&mut sub_matrix, 0, 1, 0..2);
         let j_right = Self::J::make_jacobi(&mut sub_matrix, 0, 1);
+
         let j_left = rot1.dot(j_right.transpose());
+
         (j_left, j_right)
     }
-    
-    fn bidiagonal_svd(data:&mut Matrix<R>)-> (Matrix<R>, Vec<R>, Matrix<R>) {
-        let mut _scale = <Vec<&'_ R> as Vector<R>>::l1_max(data.data());
-        if _scale == R::Primitive::ZERO {
-            _scale = R::Primitive::float(1.0);
+
+    fn col_precondition(matrix: &mut Self::Matrix) {
+        Self::QRDecomposition::row_pivot(matrix);
+        //could have done this in place, but did a lazy malloc
+        let new_matrix = Self::Matrix::new((
+            matrix.n_rows(),
+            matrix
+                .data_north_west(matrix.n_rows(), matrix.n_rows())
+                .cloned()
+                .collect::<Vec<_>>(),
+        ));
+        *matrix = new_matrix.transposed();
+
+        matrix
+            .data_lower_triangular_ref()
+            .for_each(|mp| *mp = R::ZERO);
+    }
+
+    fn row_precondition(matrix: &mut Self::Matrix) {
+        Self::QRDecomposition::row_pivot(matrix);
+        let new_matrix = Self::Matrix::new((
+            matrix.n_rows(),
+            matrix
+                .data_north_west(matrix.n_cols(), matrix.n_cols())
+                .cloned()
+                .collect::<Vec<_>>(),
+        ));
+
+
+        *matrix = new_matrix.transposed();
+
+        matrix
+            .data_lower_triangular_ref()
+            .for_each(|mp| *mp = R::ZERO);
+    }
+
+    fn col_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix) {
+        let qr = Self::QRDecomposition::row_pivot(matrix);
+        let u = qr.householder_sequence(matrix);
+        let v = qr.row_permutations();
+        dbg!(&matrix, &qr.tau);
+        //could have done this in place, but did a lazy malloc
+        let new_matrix = Self::Matrix::new((
+            matrix.n_rows(),
+            matrix
+                .data_north_west(matrix.n_rows(), matrix.n_rows())
+                .cloned()
+                .collect::<Vec<_>>(),
+        ));
+        *matrix = new_matrix.transposed();
+
+        matrix
+            .data_lower_triangular_ref()
+            .for_each(|mp| *mp = R::ZERO);
+        dbg!(&u,&v);
+        (u, v)
+    }
+
+    fn row_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix) {
+        let qr = Self::QRDecomposition::row_pivot(matrix);
+        dbg!(&matrix, &qr.tau);
+        let u = qr.row_permutations();
+        let v = qr.householder_sequence(matrix);
+        let new_matrix = Self::Matrix::new((
+            matrix.n_rows(),
+            matrix
+                .data_north_west(matrix.n_cols(), matrix.n_cols())
+                .cloned()
+                .collect::<Vec<_>>(),
+        ));
+
+
+        *matrix = new_matrix.transposed();
+
+        matrix
+            .data_lower_triangular_ref()
+            .for_each(|mp| *mp = R::ZERO);
+        dbg!(&u,&v);
+        (u,v)
+    }
+
+    /*
+    fn bidiagonal_svd(matrix:&mut Self::Matrix)-> (Self::Matrix, Vec<R>, Self::Matrix) {
+        let diag = min(matrix.rows, matrix.cols);
+        let mut scale = Vector::l1_max(matrix.data());
+        if scale == R::Primitive::ZERO {
+            scale = R::Primitive::float(1.0);
         }
+        Vector::mul(matrix.data_ref(), scale);
+        dbg!(&matrix);
+        let bidiagonal = RealBidiagonal::new(matrix);
+        let mut computed = MatrixHeap::zero(diag+1, diag);
+        computed.data_ref().zip(bidiagonal.bidiagonal.data()).for_each(|(cp,bp)|{
+            *cp=*bp
+        });
 
-        todo!();
-    }
-}
-
-impl<R: Real<Primitive = R>, C: Complex<Primitive = R>> SingularValueDecomposition<C, R>
-    for ComplexSingularValueDecomposition
-{
-    type J = ComplexJacobi<C>;
-
-    fn jacobi_svd_full(_data: &mut Matrix<C>) -> (Matrix<C>, Vec<R>, Matrix<C>) {
-        todo!();
-    }
-
-    fn jacobi_svd(_data: &mut Matrix<C>) -> Vec<R> {
-        todo!();
-    }
-
-    //under tested
-    fn jacobi_2x2(_data: &mut Matrix<C>, _p: usize, _q: usize) -> (Self::J, Self::J) {
-        todo!();
-    }
-    
-    fn bidiagonal_svd(_data:&mut Matrix<C>)-> (Matrix<C>, Vec<R>, Matrix<C>) {
         todo!()
-    }
+    }*/
 }

@@ -9,18 +9,22 @@
 #![no_std]
 #![allow(internal_features,improper_ctypes_definitions,dead_code)]
 #![feature(abi_ptx,core_intrinsics)]
-
+#![feature(link_llvm_intrinsics)]
 #![cfg_attr(target_arch="nvptx64", feature(stdarch_nvptx))]
 #![cfg_attr(target_arch="nvptx64", feature(asm_experimental_arch))]
-
+#![cfg_attr(target_arch="nvptx64", feature(asm_const))]
+#![feature(extern_types)]
 #[cfg(not(target_arch = "nvptx64"))]
 extern crate std;
 
 #[cfg(target_arch = "nvptx64")]
 extern crate alloc;
 
-pub mod signal;
+//pub mod signal;
+pub mod cluster;
+pub mod graph;
 pub mod cuda;
+
 
 #[cfg(target_arch = "nvptx64")]
 pub mod shared;

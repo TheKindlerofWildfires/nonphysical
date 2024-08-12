@@ -11,7 +11,6 @@
 .address_size 64
 
 	// .globl	test
-.const .align 4 .b8 abc[12];
 
 .visible .func test(
 	.param .b64 test_param_0,
@@ -19,17 +18,16 @@
 	.param .b32 test_param_2
 )
 {
-	.reg .f32 	%f<4>;
-	.reg .b64 	%rd<2>;
+	.reg .f32 	%f<2>;
+	.reg .b32 	%r<2>;
+	.reg .b64 	%rd<3>;
 
 
-	ld.param.u64 	%rd1, [test_param_0];
-	ld.const.f32 	%f1, [abc];
-	st.f32 	[%rd1], %f1;
-	ld.const.f32 	%f2, [abc+4];
-	st.f32 	[%rd1+4], %f2;
-	ld.const.f32 	%f3, [abc+8];
-	st.f32 	[%rd1+8], %f3;
+	ld.param.u64 	%rd1, [test_param_1];
+	ld.param.s32 	%rd2, [test_param_2];
+	clz.b64 	%r1, %rd2;
+	cvt.rn.f32.s32 	%f1, %r1;
+	st.f32 	[%rd1+12], %f1;
 	ret;
 
 }

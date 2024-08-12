@@ -5,7 +5,7 @@ mod jacobi_tests {
         shared::{
             complex::{Complex, ComplexScaler},
             float::Float,
-            matrix::Matrix,
+            matrix::{heap::MatrixHeap, Matrix},
             primitive::Primitive,
         },
     };
@@ -31,7 +31,7 @@ mod jacobi_tests {
             F32(1.96297e-7),
             F32(3.40572e-7),
         ];
-        let mut m = Matrix::new(4, data);
+        let mut m = MatrixHeap::new((4, data));
 
         let jacobi = RealJacobi {
             c: F32(-7.964988e-8),
@@ -82,7 +82,7 @@ mod jacobi_tests {
             F32(1.96297e-7),
             F32(3.40572e-7),
         ];
-        let mut m = Matrix::new(4, data);
+        let mut m = MatrixHeap::new((4, data));
 
         let jacobi = RealJacobi {
             c: F32(-7.964988e-8),
@@ -133,7 +133,7 @@ mod jacobi_tests {
             ComplexScaler::new(F32(1.96297e-7), F32(0.0)),
             ComplexScaler::new(F32(3.40572e-7), F32(0.0)),
         ];
-        let mut m = Matrix::new(4, data);
+        let mut m = MatrixHeap::new((4, data));
 
         let jacobi = ComplexJacobi {
             c: ComplexScaler::new(F32(-7.964988e-8), F32(0.0)),
@@ -184,7 +184,7 @@ mod jacobi_tests {
             ComplexScaler::new(F32(1.96297e-7), F32(0.0)),
             ComplexScaler::new(F32(3.40572e-7), F32(0.0)),
         ];
-        let mut m = Matrix::new(4, data);
+        let mut m = MatrixHeap::new((4, data));
 
         let jacobi = ComplexJacobi {
             c: ComplexScaler::new(F32(-7.964988e-8), F32(0.0)),

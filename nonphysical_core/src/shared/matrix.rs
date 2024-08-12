@@ -19,9 +19,11 @@ pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized {
     fn direct_ref(&mut self,idx: usize) -> &mut F;
     fn data<'a>(&'a self) -> impl Iterator<Item = &'a F> where F: 'a;
     fn data_diag<'a>(&'a self) -> impl Iterator<Item = &'a F> where F: 'a;
-    fn data_col<'a>(&'a self, row: usize) -> impl Iterator<Item = &'a F> where F: 'a;
+    fn data_upper_triangular<'a>(&'a self) -> impl Iterator<Item = &'a F> where F: 'a;
+    fn data_lower_triangular<'a>(&'a self) -> impl Iterator<Item = &'a F> where F: 'a;
+    fn data_col<'a>(&'a self, col: usize) -> impl Iterator<Item = &'a F> where F: 'a;
     fn data_rows<'a>(&'a self) -> impl Iterator<Item = &'a [F]> where F: 'a;
-    fn data_row<'a>(&'a self, col: usize) -> impl Iterator<Item = &'a F> where F: 'a;
+    fn data_row<'a>(&'a self, row: usize) -> impl Iterator<Item = &'a F> where F: 'a;
     fn data_north<'a>(&'a self, north: usize) -> impl Iterator<Item = &'a F> where F: 'a;
     fn data_south<'a>(&'a self, south: usize) -> impl Iterator<Item = &'a F> where F: 'a;
     fn data_west<'a>(&'a self, west: usize) -> impl Iterator<Item = &'a F> where F: 'a;
@@ -32,9 +34,11 @@ pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized {
     fn data_south_east<'a>(&'a self, south: usize, east: usize) -> impl Iterator<Item = &'a F> where F: 'a;
     fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut F> where F: 'a;
     fn data_diag_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut F> where F: 'a;
-    fn data_col_ref<'a>(&'a mut self, row: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;
+    fn data_upper_triangular_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut F> where F: 'a;
+    fn data_lower_triangular_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut F> where F: 'a;
+    fn data_col_ref<'a>(&'a mut self, col: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;
     fn data_rows_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut[F]> where F: 'a;
-    fn data_row_ref<'a>(&'a mut self, col: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;
+    fn data_row_ref<'a>(&'a mut self, row: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;
     fn data_north_ref<'a>(&'a mut self, north: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;
     fn data_south_ref<'a>(&'a mut self, south: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;
     fn data_west_ref<'a>(&'a mut self, west: usize) -> impl Iterator<Item = &'a mut F> where F: 'a;

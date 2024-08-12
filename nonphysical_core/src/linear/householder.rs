@@ -1,43 +1,51 @@
-use core::ops::Range;
+use crate::shared::{
+    complex::Complex,
+    float::Float,
+    matrix::{heap::MatrixHeap, Matrix},
+    real::Real,
+    vector::Vector,
+};
 
-use alloc::vec::Vec;
+pub trait Householder<F: Float> {
+    type Matrix: Matrix<F>;
+    fn make_householder_row(matrix: &mut Self::Matrix, row: usize, col: usize) -> Self
+    where
+        Self: Sized,
+    {
+        let prep = Self::make_householder_prep(&mut matrix.data_col(col).skip(row));
+        Self::make_householder_local(&mut matrix.data_col_ref(col).skip(row), prep)
+    }
 
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix, real::Real, vector::Vector};
+    fn make_householder_col(matrix: &mut Self::Matrix, row: usize, col: usize) -> Self
+    where
+        Self: Sized,
+    {
+        let prep = Self::make_householder_prep(&mut matrix.data_row(row).skip(col));
+        Self::make_householder_local(&mut matrix.data_row_ref(row).skip(col), prep)
+    }
 
-pub trait Householder<'a, F: Float+'a> {
-    fn make_householder_prep(data: &mut impl Iterator<Item = &'a F>) -> (F,F);
+    fn make_householder_prep<'a>(data: &mut impl Iterator<Item = &'a F>) -> (F, F)
+    where
+        F: 'a;
 
-    fn make_householder_local(data: &mut impl Iterator<Item = &'a mut F>,prep:(F,F)) -> Self;
+    fn make_householder_local<'a>(data: &mut impl Iterator<Item = &'a mut F>, prep: (F, F)) -> Self
+    where
+        F: 'a;
 
-    //probably some desire to jump to iterators here too
-    fn apply_left_local(
+    fn apply_left(
         &self,
-        matrix: &mut Matrix<F>,
-        offset: usize,
-        row_range: Range<usize>,
-        col_range: Range<usize>,
+        data: &mut Self::Matrix,
+        essential: &[F],
+        columns: [usize; 2],
+        rows: [usize; 2],
     );
-    fn apply_right_local(
-        &self,
-        matrix: &mut Matrix<F>,
-        offset: usize,
-        row_range: Range<usize>,
-        col_range: Range<usize>,
-    );
-    fn apply_left_local_vec(
-        &self,
-        matrix: &mut Matrix<F>,
-        vec: &[F],
-        row_range: Range<usize>,
-        col_range: Range<usize>,
-    );
 
-    fn apply_right_local_vec(
+    fn apply_right(
         &self,
-        matrix: &mut Matrix<F>,
-        vec: &[F],
-        row_range: Range<usize>,
-        col_range: Range<usize>,
+        data: &mut Self::Matrix,
+        essential: &[F],
+        columns: [usize; 2],
+        rows: [usize; 2],
     );
 }
 
@@ -52,15 +60,22 @@ pub struct ComplexHouseholder<C: Complex> {
 }
 
 //matrix.data_row(row).skip(column + 1)
-impl<'a, R: Real<Primitive = R>+'a> Householder<'a,R> for RealHouseholder<R> {
-    fn make_householder_prep(data: &mut impl Iterator<Item = &'a R>) -> (R,R) {
+impl<R: Real<Primitive = R>> Householder<R> for RealHouseholder<R> {
+    type Matrix = MatrixHeap<R>;
+    fn make_householder_prep<'a>(data: &mut impl Iterator<Item = &'a R>) -> (R, R)
+    where
+        R: 'a,
+    {
         let first = data.next().unwrap();
-        let sns = <Vec<&'_ R> as Vector<R>>::l2_sum(data);
-        (*first,sns)
+        let sns = Vector::l2_sum(data);
+        (*first, sns)
     }
-    fn make_householder_local(data: &mut impl Iterator<Item = &'a mut R>, prep: (R,R)) -> Self {
+    fn make_householder_local<'a>(data: &mut impl Iterator<Item = &'a mut R>, prep: (R, R)) -> Self
+    where
+        R: 'a,
+    {
         let first = prep.0;
-        let squared_norm_sum =prep.1;
+        let squared_norm_sum = prep.1;
         data.next();
 
         let (beta, tau) = if squared_norm_sum <= R::SMALL {
@@ -79,75 +94,64 @@ impl<'a, R: Real<Primitive = R>+'a> Householder<'a,R> for RealHouseholder<R> {
         Self { tau, beta }
     }
 
-    fn apply_left_local(
+    fn apply_left(
         &self,
-        matrix: &mut Matrix<R>,
-        offset: usize,
-        row_range: Range<usize>,
-        col_range: Range<usize>,
-    ) {
-        let mut vec = matrix.data_row(offset).copied().collect::<Vec<_>>();
-        vec[row_range.clone().nth(0).unwrap()] = R::ONE;
-        self.apply_left_local_vec(matrix, &vec, row_range, col_range);
-    }
-
-    fn apply_right_local(
-        &self,
-        matrix: &mut Matrix<R>,
-        offset: usize,
-        row_range: Range<usize>,
-        col_range: Range<usize>,
-    ) {
-        let mut vec = matrix.data_row(offset).copied().collect::<Vec<_>>();
-        vec[row_range.clone().nth(0).unwrap()] = R::ONE;
-        self.apply_right_local_vec(matrix, &vec, row_range, col_range);
-    }
-
-    fn apply_left_local_vec(
-        &self,
-        matrix: &mut Matrix<R>,
-        vec: &[R],
-        row_range: Range<usize>,
-        col_range: Range<usize>,
+        data: &mut Self::Matrix,
+        essential: &[R],
+        cols: [usize; 2],
+        rows: [usize; 2],
     ) {
         if self.tau == R::ZERO {
             return;
         }
-        let mut tmp = R::ZERO;
-        col_range.for_each(|i| {
-            tmp = R::ZERO;
-            row_range.clone().for_each(|j| {
-                tmp = matrix.coeff(i, j).fma(vec[j], tmp);
-            });
-            tmp *= -self.tau;
-            row_range
-                .clone()
-                .for_each(|j| *matrix.coeff_ref(i, j) = vec[j].fma(tmp, matrix.coeff(i, j)));
+        let mut pre_essential = Vec::with_capacity(1 + essential.len());
+        pre_essential.push(R::ONE);
+        pre_essential.extend_from_slice(&essential);
+        (rows[0]..rows[1]).for_each(|i| {
+            let tmp = data
+                .data_row(i)
+                .skip(cols[0])
+                .zip(pre_essential.iter())
+                .map(|(mp, ep)| *mp * *ep)
+                .fold(R::ZERO, |acc, p| acc + p)
+                * -self.tau;
+
+            data.data_row_ref(i)
+                .skip(cols[0])
+                .zip(pre_essential.iter())
+                .for_each(|(mp, ep)| {
+                    *mp = tmp.fma(*ep, *mp);
+                });
         })
     }
 
-    fn apply_right_local_vec(
+    fn apply_right(
         &self,
-        matrix: &mut Matrix<R>,
-        vec: &[R],
-        row_range: Range<usize>,
-        col_range: Range<usize>,
+        data: &mut Self::Matrix,
+        essential: &[R],
+        cols: [usize; 2],
+        rows: [usize; 2],
     ) {
         if self.tau == R::ZERO {
             return;
         }
-        let mut tmp = R::ZERO;
-        col_range.for_each(|i| {
-            tmp = R::ZERO;
-            row_range.clone().for_each(|j| {
-                tmp = matrix.coeff(j, i).fma(vec[j], tmp);
-            });
-            tmp *= -self.tau;
-            row_range
-                .clone()
-                .for_each(|j| *matrix.coeff_ref(j, i) = vec[j].fma(tmp, matrix.coeff(j, i)));
+        let mut pre_essential = Vec::with_capacity(1 + essential.len());
+        pre_essential.push(R::ONE);
+        pre_essential.extend_from_slice(&essential);
+        (cols[0]..cols[1]).for_each(|i| {
+            let tmp = data
+                .data_col(i)
+                .skip(rows[0])
+                .zip(pre_essential.iter())
+                .map(|(mp, ep)| *mp * *ep)
+                .fold(R::ZERO, |acc, p| acc + p)
+                * -self.tau;
+            data.data_col_ref(i)
+                .skip(rows[0])
+                .zip(pre_essential.iter())
+                .for_each(|(mp, ep)| {
+                    *mp = ep.fma(tmp, *mp);
+                });
         })
     }
-    
-
 }

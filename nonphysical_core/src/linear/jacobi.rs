@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use crate::shared::{complex::Complex, float::Float, matrix::Matrix, real::Real};
+use crate::shared::{complex::Complex, float::Float, matrix::{heap::MatrixHeap, Matrix}, real::Real};
 
 pub struct RealJacobi<R: Real> {
     pub s: R,
@@ -12,11 +12,12 @@ pub struct ComplexJacobi<C:Complex>{
 }
 
 pub trait Jacobian<F:Float>{
+    type Matrix: Matrix<F>;
     fn new(s: F, c: F) -> Self;
-    fn make_jacobi(matrix: &mut Matrix<F>, p: usize, q: usize) -> Self;
+    fn make_jacobi(matrix: &mut Self::Matrix, p: usize, q: usize) -> Self;
     fn make_givens(p: F, q: F, r: &mut F) -> Self;
-    fn apply_left(&self, matrix: &mut Matrix<F>, p: usize, q: usize, range: Range<usize>);
-    fn apply_right(&self, matrix: &mut Matrix<F>, p: usize, q: usize, range: Range<usize>);
+    fn apply_left(&self, matrix: &mut Self::Matrix, p: usize, q: usize, range: Range<usize>);
+    fn apply_right(&self, matrix: &mut Self::Matrix, p: usize, q: usize, range: Range<usize>);
     fn transpose(&self) -> Self;
     fn adjoint(&self) -> Self;
     fn dot(&self, other:Self)->Self;
@@ -24,11 +25,12 @@ pub trait Jacobian<F:Float>{
 }
 
 impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
+    type Matrix = MatrixHeap<R>;
     fn new(s: R, c: R) -> Self {
         Self{s,c}
     }
 
-    fn make_jacobi(matrix: &mut Matrix<R>, p: usize, q: usize) -> Self {
+    fn make_jacobi(matrix: &mut Self::Matrix, p: usize, q: usize) -> Self {
         let x = matrix.coeff(p, p);
         let y = matrix.coeff(p, q);
         let z = matrix.coeff(q, q);
@@ -106,7 +108,7 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
         Self { s, c }
     }
 
-    fn apply_left(&self, matrix: &mut Matrix<R>, p: usize, q: usize, range: Range<usize>) {
+    fn apply_left(&self, matrix: &mut Self::Matrix, p: usize, q: usize, range: Range<usize>) {
         if self.c == R::ONE && self.s == R::ZERO {
             return;
         }
@@ -118,7 +120,7 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
         });
     }
 
-    fn apply_right(&self, matrix: &mut Matrix<R>, p: usize, q: usize, range: Range<usize>) {
+    fn apply_right(&self, matrix: &mut Self::Matrix, p: usize, q: usize, range: Range<usize>) {
         if self.c == R::ONE && self.s == R::ZERO {
             return;
         }
@@ -153,11 +155,12 @@ impl<R:Real<Primitive=R>> Jacobian<R> for RealJacobi<R>{
 }
 
 impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi<C>{
+    type Matrix = MatrixHeap<C>;
     fn new(s: C, c: C) -> Self {
         Self{s,c}
     }
 
-    fn make_jacobi(matrix: &mut Matrix<C>, p: usize, q: usize) -> Self {
+    fn make_jacobi(matrix: &mut Self::Matrix, p: usize, q: usize) -> Self {
         let x = matrix.coeff(p, p).real();
         let y = matrix.coeff(p, q);
         let z = matrix.coeff(q, q).real();
@@ -237,7 +240,7 @@ impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi
     }
     
 
-    fn apply_left(&self, matrix: &mut Matrix<C>, p: usize, q: usize, range: Range<usize>) {
+    fn apply_left(&self, matrix: &mut Self::Matrix, p: usize, q: usize, range: Range<usize>) {
         if self.c == C::ONE && self.s == C::ZERO {
             return;
         }
@@ -249,7 +252,7 @@ impl<R:Real<Primitive = R>,C:Complex<Primitive=R>> Jacobian<C> for ComplexJacobi
         });
     }
 
-    fn apply_right(&self, matrix: &mut Matrix<C>, p: usize, q: usize, range: Range<usize>) {
+    fn apply_right(&self, matrix: &mut Self::Matrix, p: usize, q: usize, range: Range<usize>) {
         if self.c == C::ONE && self.s == C::ZERO {
             return;
         }

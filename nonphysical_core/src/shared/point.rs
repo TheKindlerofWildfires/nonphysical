@@ -1,3 +1,5 @@
+use core::iter;
+
 use crate::random::pcg::PermutedCongruentialGenerator;
 use alloc::vec::Vec;
 
@@ -30,9 +32,14 @@ pub trait Point: Clone {
     fn sub(&self, other: &Self) -> Self;
     fn dot(&self, other: &Self) -> Self::Primitive;
     fn scale(&mut self, other: Self::Primitive);
-    fn data(&self, index: usize) -> Self::Primitive;
+    fn coeff(&self, index: usize) -> Self::Primitive;
+    fn coeff_ref(&mut self, _index: usize) -> &mut Self::Primitive;
     fn uniform(min: &Self, max: &Self, rng: &mut PermutedCongruentialGenerator) -> Self;
     fn partial_random(data:Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self;
+    fn dimension(&self) -> usize;
+    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive> where Self::Primitive: 'a;
+    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive> where Self::Primitive: 'a;
+
 }
 
 impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
@@ -138,8 +145,12 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
     }
 
     #[inline(always)]
-    fn data(&self, index: usize) -> Self::Primitive {
+    fn coeff(&self, index: usize) -> Self::Primitive {
         self.data[index]
+    }
+    #[inline(always)]
+    fn coeff_ref(&mut self, index: usize) -> &mut Self::Primitive {
+        &mut self.data[index]
     }
 
     #[inline(always)]
@@ -223,6 +234,17 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
             self.data.iter_mut(),other
         );
     }
+    #[inline(always)]
+    fn dimension(&self) -> usize {
+        N
+    }
+    
+    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive> where Self::Primitive: 'a {
+        self.data.iter()
+    }
+    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive> where Self::Primitive: 'a {
+        self.data.iter_mut()
+    }
 }
 
 impl<P: Real<Primitive = P>> Point for P {
@@ -273,8 +295,13 @@ impl<P: Real<Primitive = P>> Point for P {
     }
 
     #[inline(always)]
-    fn data(&self, _index: usize) -> Self::Primitive {
+    fn coeff(&self, _index: usize) -> Self::Primitive {
         *self
+    }
+
+    #[inline(always)]
+    fn coeff_ref(&mut self, _index: usize) -> &mut Self::Primitive {
+        self
     }
 
     #[inline(always)]
@@ -327,5 +354,16 @@ impl<P: Real<Primitive = P>> Point for P {
     #[inline(always)]
     fn scale(&mut self, other: Self::Primitive) {
        *self /=other;
+    }
+    #[inline(always)]
+    fn dimension(&self) -> usize {
+        1
+    }
+    
+    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive> where Self::Primitive: 'a {
+        iter::once(self)
+    }
+    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive> where Self::Primitive: 'a {
+        iter::once(self)
     }
 }

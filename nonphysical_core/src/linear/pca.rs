@@ -4,25 +4,29 @@ use crate::{
     linear::svd::{RealSingularValueDecomposition, SingularValueDecomposition},
     shared::{
         float::Float,
-        matrix::Matrix,
+        matrix::{heap::MatrixHeap, Matrix},
         real::Real,
         vector::{RealVector, Vector},
     },
 };
 
 pub trait PrincipleComponentAnalysis<F: Float> {
-    fn pca(data: &mut Matrix<F>, components: usize) -> Matrix<F>;
-    fn normalize(data: &mut Matrix<F>);
+    type Matrix: Matrix<F>;
+    fn pca(data: &mut Self::Matrix, components: usize) -> Self::Matrix;
+    fn normalize(data: &mut Self::Matrix);
 }
 
 pub struct RealPrincipleComponentAnalysis {}
 pub struct ComplexPrincipleComponentAnalysis {}
 
 impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComponentAnalysis {
-    fn pca(data: &mut Matrix<R>, components: usize) -> Matrix<R> {
+    type Matrix = MatrixHeap<R>;
+    fn pca(data: &mut Self::Matrix, components: usize) -> Self::Matrix {
         Self::normalize(data);
+        dbg!(&data);
 
         let (mut u, s, v) = RealSingularValueDecomposition::jacobi_svd_full(data);
+        dbg!(&u,&s,&v);
 
         let signs = v
             .data_rows()
@@ -40,7 +44,7 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
             })
             .collect::<Vec<_>>();
         u.data_rows_ref().zip(signs).for_each(|(row, sign)| {
-            <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), sign);
+            Vector::mul(row.iter_mut(), sign);
         });
 
         /*
@@ -48,23 +52,29 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
             <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), *sign);
         });*/
 
-        let mut ret = Matrix::<R>::new(
+        let mut ret = Self::Matrix::new((
             components,
             u.data()
                 .take(u.rows * components)
                 .copied()
-                .collect::<Vec<_>>(),
+                .collect::<Vec<_>>()),
         );
         ret.data_rows_ref().zip(s).for_each(|(row, sp)| {
-            <Vec<&'_ R> as Vector<R>>::mul(row.iter_mut(), sp);
+            Vector::mul(row.iter_mut(), sp);
         });
         ret
     }
 
-    fn normalize(data: &mut Matrix<R>) {
+    fn normalize(data: &mut Self::Matrix) {
+        
+        /*(0..data.cols).for_each(|i|{
+            let mean = RealVector::mean(data.data_col(i));
+            Vector::sub(data.data_col_ref(i), mean);
+        });*/
+        
         data.data_rows_ref().for_each(|row| {
-            let mean = <Vec<&'_ R> as RealVector<R>>::mean_ref(row.iter_mut());
-            row.iter_mut().for_each(|c| *c -= mean);
+            let mean = RealVector::mean(row.iter());
+            Vector::sub(row.iter_mut(), mean);
         });
     }
 }

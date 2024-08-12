@@ -11,10 +11,8 @@ use nonphysical_core::{
     signal::fourier::FourierTransform,
 };
 use super::FourierArguments;
-
 #[no_mangle]
 pub extern "ptx-kernel" fn fft_forward_kernel(args: &mut FourierArguments<ComplexScaler<F32>>) {
-    let fft = ComplexFourierTransformPtx::new(&args.twiddles);
     let block_idx = unsafe { _block_idx_x() } as usize;
     //Get the section I'm supposed to work on
     let sub_data = &mut args
@@ -23,6 +21,7 @@ pub extern "ptx-kernel" fn fft_forward_kernel(args: &mut FourierArguments<Comple
         .nth(block_idx)
         .unwrap();
 
+    let fft = ComplexFourierTransformPtx::new(&args.twiddles);
     fft.fft(sub_data);
 }
 
@@ -69,9 +68,9 @@ impl<'a, C: Complex + 'a> FourierTransform<C> for ComplexFourierTransformPtx<'a,
                 Self::fft_chunk_2(x, responsible_idx);
             });
         unsafe { _syncthreads() };
-        //this will overflow if NFFT/threads>8, which starts at nfft 16384 (I think shared memory will make this 'better')
-        assert!(x.len() / block_dim <= 8);
-        let mut local = [C::ZERO; 16];
+        //this will overflow if NFFT/threads>4, which starts at nfft 8192, this is also where shared memory ends
+        assert!(x.len() / block_dim <= 4);
+        let mut local = [C::ZERO; 8];
         (0..x.len())
             .skip(idx)
             .step_by(block_dim)

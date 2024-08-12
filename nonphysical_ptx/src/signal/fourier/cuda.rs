@@ -4,14 +4,12 @@ use nonphysical_core::{shared::complex::Complex,signal::fourier::{FourierTransfo
 use std::{rc::Rc, marker::PhantomData,cmp::min, borrow::ToOwned};
 use super::FourierArguments;
 
-#[cfg(not(target_arch = "nvptx64"))]
 pub struct ComplexFourierTransformCuda<C: Complex> {
     runtime: Rc<Runtime>,
     phantom_data: PhantomData<C>,
     nfft: usize,
 }
 
-#[cfg(not(target_arch = "nvptx64"))]
 impl<C: Complex> FourierTransform<C> for ComplexFourierTransformCuda<C> {
     type FourierInit = (Rc<Runtime>, usize);
     fn new(init: Self::FourierInit) -> Self {

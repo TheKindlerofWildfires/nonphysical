@@ -18,7 +18,7 @@ pub struct KdBranch<P: Point> {
 
 pub struct KdShared<P: Point> {
     pub size: usize,
-    pub  min_bounds: P,
+    pub min_bounds: P,
     pub max_bounds: P,
 }
 
@@ -61,8 +61,8 @@ impl<P: Point> KdLeaf<P> {
     fn split(&mut self, shared: &KdShared<P>) -> KdBranch<P> {
         let (_, split_dimension) = shared.max_bounds.ordered_farthest(&shared.min_bounds);
 
-        let min = shared.min_bounds.data(split_dimension);
-        let max = shared.max_bounds.data(split_dimension);
+        let min = shared.min_bounds.coeff(split_dimension);
+        let max = shared.max_bounds.coeff(split_dimension);
         let split_value = min + (max - min) / P::Primitive::usize(2);
 
         let left = Box::new(KdTree::<P>::new(self.capacity));
@@ -101,12 +101,12 @@ impl<P: Point> KdBranch<P> {
 
     fn branch_left(&self, shared: &KdShared<P>, point: &P, size: usize) -> bool {
         
-        if point.data(self.split_dimension) == self.split_value {
+        if point.coeff(self.split_dimension) == self.split_value {
             size%2 == 0 //Handle the repeated collision case
-        } else if shared.min_bounds.data(self.split_dimension) == self.split_value {
-            point.data(self.split_dimension) <= self.split_value
+        } else if shared.min_bounds.coeff(self.split_dimension) == self.split_value {
+            point.coeff(self.split_dimension) <= self.split_value
         } else {
-            point.data(self.split_dimension) < self.split_value
+            point.coeff(self.split_dimension) < self.split_value
         }
     }
 }

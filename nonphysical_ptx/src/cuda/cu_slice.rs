@@ -62,16 +62,10 @@ impl<'a, T> CuSlice<'a, T> {
 
     // get host T
     #[cfg(not(target_arch = "nvptx64"))]
-    pub fn to_host(&self) -> Result<Vec<T>, CuError> {
-        let mut res = vec![];
-        unsafe {
-            for _ in 0..self.ptr.len() {
-                res.push(core::mem::MaybeUninit::zeroed().assume_init());
-            }
-        }
+    pub fn to_host(&self, dest: &mut [T]) -> Result<(),CuError> {
         let result = unsafe {
             ffi::cuMemcpyDtoH_v2(
-                res.as_mut_ptr() as *mut std::os::raw::c_void,
+                dest.as_mut_ptr() as *mut std::os::raw::c_void,
                 self.ptr.as_ptr() as ffi::DevicePtr,
                 std::mem::size_of::<T>() * self.ptr.len(),
             )
@@ -79,7 +73,7 @@ impl<'a, T> CuSlice<'a, T> {
         if result != ffi::CUresult::CUDA_SUCCESS {
             return Err(CuError::new(result));
         }
-        Ok(res)
+        Ok(())
     }
 }
 
