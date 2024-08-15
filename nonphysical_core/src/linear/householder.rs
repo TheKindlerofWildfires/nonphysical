@@ -94,7 +94,7 @@ impl<R: Real<Primitive = R>> Householder<R> for RealHouseholder<R> {
         Self { tau, beta }
     }
 
-    fn apply_left(
+    fn apply_right(
         &self,
         data: &mut Self::Matrix,
         essential: &[R],
@@ -120,12 +120,12 @@ impl<R: Real<Primitive = R>> Householder<R> for RealHouseholder<R> {
                 .skip(cols[0])
                 .zip(pre_essential.iter())
                 .for_each(|(mp, ep)| {
-                    *mp = tmp.fma(*ep, *mp);
+                    *mp += *ep*tmp;
                 });
         })
     }
 
-    fn apply_right(
+    fn apply_left(
         &self,
         data: &mut Self::Matrix,
         essential: &[R],
@@ -150,7 +150,7 @@ impl<R: Real<Primitive = R>> Householder<R> for RealHouseholder<R> {
                 .skip(rows[0])
                 .zip(pre_essential.iter())
                 .for_each(|(mp, ep)| {
-                    *mp = ep.fma(tmp, *mp);
+                    *mp += *ep*tmp;
                 });
         })
     }

@@ -67,14 +67,14 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
 
     fn normalize(data: &mut Self::Matrix) {
         
-        /*(0..data.cols).for_each(|i|{
+        (0..data.cols).for_each(|i|{
             let mean = RealVector::mean(data.data_col(i));
             Vector::sub(data.data_col_ref(i), mean);
-        });*/
-        
+        });
+        /* 
         data.data_rows_ref().for_each(|row| {
             let mean = RealVector::mean(row.iter());
             Vector::sub(row.iter_mut(), mean);
-        });
+        });*/
     }
 }

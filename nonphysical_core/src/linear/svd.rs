@@ -227,7 +227,7 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
     }
 
     fn col_precondition(matrix: &mut Self::Matrix) {
-        Self::QRDecomposition::row_pivot(matrix);
+        Self::QRDecomposition::col_pivot(matrix);
         //could have done this in place, but did a lazy malloc
         let new_matrix = Self::Matrix::new((
             matrix.n_rows(),
@@ -244,7 +244,7 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
     }
 
     fn row_precondition(matrix: &mut Self::Matrix) {
-        Self::QRDecomposition::row_pivot(matrix);
+        Self::QRDecomposition::col_pivot(matrix);
         let new_matrix = Self::Matrix::new((
             matrix.n_rows(),
             matrix
@@ -262,9 +262,9 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
     }
 
     fn col_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix) {
-        let qr = Self::QRDecomposition::row_pivot(matrix);
+        let qr = Self::QRDecomposition::col_pivot(matrix);
         let u = qr.householder_sequence(matrix);
-        let v = qr.row_permutations();
+        let v = qr.col_permutations();
         dbg!(&matrix, &qr.tau);
         //could have done this in place, but did a lazy malloc
         let new_matrix = Self::Matrix::new((
@@ -284,9 +284,9 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
     }
 
     fn row_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix) {
-        let qr = Self::QRDecomposition::row_pivot(matrix);
+        let qr = Self::QRDecomposition::col_pivot(matrix);
         dbg!(&matrix, &qr.tau);
-        let u = qr.row_permutations();
+        let u = qr.col_permutations();
         let v = qr.householder_sequence(matrix);
         let new_matrix = Self::Matrix::new((
             matrix.n_rows(),

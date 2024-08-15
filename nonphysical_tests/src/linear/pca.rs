@@ -131,7 +131,7 @@ mod pca_tests {
     #[test]
     fn pca_3x4() {
         //bugged in svd
-        let mut m = MatrixHeap::new((4, (0..12).map(|i| F32(i as f32)).collect()));
+        let mut m = MatrixHeap::new((3, (0..12).map(|i| F32(i as f32)).collect())).transposed();
         dbg!(&m);
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
         dbg!(&transformed);

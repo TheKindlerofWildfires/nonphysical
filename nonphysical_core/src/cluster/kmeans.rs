@@ -77,7 +77,7 @@ impl<P:Point> Kmeans<P>{
                 match m {
                     Core(mp) => {
                         counts[*mp] +=1;
-                        self.centroids[*mp] = self.centroids[*mp].add(c);
+                        self.centroids[*mp] = self.centroids[*mp].clone().add(c.clone());
                     },
                     _ => {unreachable!()}
 

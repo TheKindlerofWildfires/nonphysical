@@ -113,7 +113,7 @@ impl<P: Point> IsoTree<P> {
         split_point: &P,
         split_vector: &P,
     ) -> bool {
-        point.sub(split_point).dot(split_vector) <= P::Primitive::ZERO
+        (point.clone()-split_point.clone()).dot(split_vector) <= P::Primitive::ZERO
         
     }
 

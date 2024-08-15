@@ -1,16 +1,21 @@
 use core::iter;
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::fmt::Debug;
 
 use crate::random::pcg::PermutedCongruentialGenerator;
 use alloc::vec::Vec;
 
 use super::{primitive::Primitive, real::Real, vector::Vector};
 
-#[derive(Clone, Debug)]
+#[derive(Clone,Copy, Debug)]
 pub struct StaticPoint<P: Primitive, const N: usize> {
     pub data: [P; N],
 }
 
-pub trait Point: Clone {
+pub trait Point:
+    Clone + Copy+Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self>
+    + AddAssign+SubAssign+ MulAssign+ DivAssign+Debug
+{
     type Primitive: Primitive;
     type Precursor;
     const ORIGIN: Self;
@@ -28,21 +33,23 @@ pub trait Point: Clone {
 
     fn max_data(&self) -> Self::Primitive;
     fn min_data(&self) -> Self::Primitive;
-    fn add(&self, other: &Self) -> Self;
-    fn sub(&self, other: &Self) -> Self;
     fn dot(&self, other: &Self) -> Self::Primitive;
     fn scale(&mut self, other: Self::Primitive);
     fn coeff(&self, index: usize) -> Self::Primitive;
     fn coeff_ref(&mut self, _index: usize) -> &mut Self::Primitive;
     fn uniform(min: &Self, max: &Self, rng: &mut PermutedCongruentialGenerator) -> Self;
-    fn partial_random(data:Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self;
+    fn random_uniform(min: &Self, max: &Self, rng: &mut PermutedCongruentialGenerator) -> Self;
+    fn partial_random(data: Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self;
     fn dimension(&self) -> usize;
-    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive> where Self::Primitive: 'a;
-    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive> where Self::Primitive: 'a;
-
+    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive>
+    where
+        Self::Primitive: 'a;
+    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive>
+    where
+        Self::Primitive: 'a;
 }
 
-impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
+impl<P: Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
     type Primitive = P;
     type Precursor = [P; N];
 
@@ -170,58 +177,45 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
             })
     }
     #[inline(always)]
-    fn max_data(&self) -> Self::Primitive{
-        self.data.into_iter().fold(Self::Primitive::MIN, |acc, dp| dp.greater(acc))
+    fn max_data(&self) -> Self::Primitive {
+        self.data
+            .into_iter()
+            .fold(Self::Primitive::MIN, |acc, dp| dp.greater(acc))
     }
     #[inline(always)]
-    fn min_data(&self) -> Self::Primitive{
-        self.data.into_iter().fold(Self::Primitive::MAX, |acc, dp| dp.lesser(acc))
+    fn min_data(&self) -> Self::Primitive {
+        self.data
+            .into_iter()
+            .fold(Self::Primitive::MAX, |acc, dp| dp.lesser(acc))
     }
+
     #[inline(always)]
-    fn add(&self, other: &Self) -> Self {
-        let mut ret = self.clone();
-        Vector::<P>::add_vec(
-            ret.data.iter_mut(),
-            other.data.iter(),
-        );
-        ret
-    }
-    #[inline(always)]
-    fn sub(&self, other: &Self) -> Self {
-        let mut ret = self.clone();
-        Vector::<P>::sub_vec(
-            ret.data.iter_mut(),
-            other.data.iter(),
-        );
-        ret
-    }
-    #[inline(always)]
-    fn dot(&self, other: &Self) -> Self::Primitive{
-        Vector::<P>::dot(
-            self.data.iter(),
-            other.data.iter(),
-        )
+    fn dot(&self, other: &Self) -> Self::Primitive {
+        Vector::<P>::dot(self.data.iter(), other.data.iter())
     }
 
     #[inline(always)]
     fn uniform(min: &Self, max: &Self, rng: &mut PermutedCongruentialGenerator) -> Self {
-
         let mut ret = Self::ORIGIN;
         let baseline = rng.interval::<Self::Primitive>(N);
-        ret.data.iter_mut().zip(baseline).zip(min.data).zip(max.data).for_each(|(((r,b),mn),mx)|{
-            *r = b*(mx-mn)+mn;
-
-        });
+        ret.data
+            .iter_mut()
+            .zip(baseline)
+            .zip(min.data)
+            .zip(max.data)
+            .for_each(|(((r, b), mn), mx)| {
+                *r = b * (mx - mn) + mn;
+            });
         ret
     }
 
     #[inline(always)]
-    fn partial_random(data:Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self {
+    fn partial_random(data: Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self {
         let mut ret = Self::ORIGIN;
         let mut indices = (0..data.len()).collect::<Vec<_>>();
         rng.shuffle_usize(&mut indices);
         let reordered = indices.into_iter().take(N).map(|i| data[i]);
-        ret.data.iter_mut().zip(reordered).for_each(|(rp,r)|{
+        ret.data.iter_mut().zip(reordered).for_each(|(rp, r)| {
             *rp = r;
         });
 
@@ -230,22 +224,113 @@ impl<P:Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
 
     #[inline(always)]
     fn scale(&mut self, other: Self::Primitive) {
-        Vector::<P>::mul(
-            self.data.iter_mut(),other
-        );
+        Vector::<P>::mul(self.data.iter_mut(), other);
     }
     #[inline(always)]
     fn dimension(&self) -> usize {
         N
     }
-    
-    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive> where Self::Primitive: 'a {
+
+    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive>
+    where
+        Self::Primitive: 'a,
+    {
         self.data.iter()
     }
-    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive> where Self::Primitive: 'a {
+    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive>
+    where
+        Self::Primitive: 'a,
+    {
         self.data.iter_mut()
     }
+
+    fn random_uniform(min: &Self, max: &Self, rng: &mut PermutedCongruentialGenerator) -> Self {
+        let mut ret = Self::ORIGIN;
+        ret.data
+            .iter_mut()
+            .zip(min.data.iter())
+            .zip(max.data.iter())
+            .for_each(|((r, n), x)| {
+                *r = rng.uniform_singular(*n, *x);
+            });
+        ret
+    }
 }
+impl<P: Primitive<Primitive = P>, const N: usize> Add for StaticPoint<P,N> {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        let mut ret = Self::ORIGIN;
+        ret.data.iter_mut().zip(self.data).zip(other.data).for_each(|((r,s),o)|{
+            *r = s+o
+        });
+        ret
+    }
+}
+
+impl<P: Primitive<Primitive = P>, const N: usize> Sub for StaticPoint<P,N> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        let mut ret = Self::ORIGIN;
+        ret.data.iter_mut().zip(self.data).zip(other.data).for_each(|((r,s),o)|{
+            *r = s-o
+        });
+        ret
+    }
+}
+impl<P: Primitive<Primitive = P>, const N: usize> Mul for StaticPoint<P,N> {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self::Output {
+        let mut ret = Self::ORIGIN;
+        ret.data.iter_mut().zip(self.data).zip(other.data).for_each(|((r,s),o)|{
+            *r = s*o
+        });
+        ret
+    }
+}
+impl<P: Primitive<Primitive = P>, const N: usize> Div for StaticPoint<P,N> {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self::Output {
+        let mut ret = Self::ORIGIN;
+        ret.data.iter_mut().zip(self.data).zip(other.data).for_each(|((r,s),o)|{
+            *r = s/o
+        });
+        ret
+    }
+}
+
+impl<P: Primitive<Primitive = P>, const N: usize> AddAssign for StaticPoint<P,N> {
+    fn add_assign(&mut self, other: Self) {
+        self.data.iter_mut().zip(other.data).for_each(|(s,o)|{
+            *s+=o
+        });
+    }
+}
+impl<P: Primitive<Primitive = P>, const N: usize> SubAssign for StaticPoint<P,N> {
+    fn sub_assign(&mut self, other: Self) {
+        self.data.iter_mut().zip(other.data).for_each(|(s,o)|{
+            *s-=o
+        });
+    }
+}
+impl<P: Primitive<Primitive = P>, const N: usize> MulAssign for StaticPoint<P,N> {
+    fn mul_assign(&mut self, other: Self) {
+        self.data.iter_mut().zip(other.data).for_each(|(s,o)|{
+            *s*=o
+        });
+    }
+}
+impl<P: Primitive<Primitive = P>, const N: usize> DivAssign for StaticPoint<P,N> {
+    fn div_assign(&mut self, other: Self) {
+        self.data.iter_mut().zip(other.data).for_each(|(s,o)|{
+            *s/=o
+        });
+    }
+}
+
 
 impl<P: Real<Primitive = P>> Point for P {
     type Primitive = Self;
@@ -316,20 +401,11 @@ impl<P: Real<Primitive = P>> Point for P {
     }
 
     #[inline(always)]
-    fn add(&self, other: &Self) -> Self {
-        *self + *other
-    }
-    #[inline(always)]
-    fn sub(&self, other: &Self) -> Self {
-        *self - *other
-    }
-
-    #[inline(always)]
-    fn max_data(&self) -> Self::Primitive{
+    fn max_data(&self) -> Self::Primitive {
         *self
     }
     #[inline(always)]
-    fn min_data(&self) -> Self::Primitive{
+    fn min_data(&self) -> Self::Primitive {
         *self
     }
 
@@ -344,7 +420,7 @@ impl<P: Real<Primitive = P>> Point for P {
     }
 
     #[inline(always)]
-    fn partial_random(data:Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self {
+    fn partial_random(data: Vec<Self::Primitive>, rng: &mut PermutedCongruentialGenerator) -> Self {
         let mut indices = (0..data.len()).collect::<Vec<_>>();
         rng.shuffle_usize(&mut indices);
         let mut reordered = indices.into_iter().take(1).map(|i| data[i]);
@@ -353,17 +429,27 @@ impl<P: Real<Primitive = P>> Point for P {
 
     #[inline(always)]
     fn scale(&mut self, other: Self::Primitive) {
-       *self /=other;
+        *self /= other;
     }
     #[inline(always)]
     fn dimension(&self) -> usize {
         1
     }
-    
-    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive> where Self::Primitive: 'a {
+
+    fn data<'a>(&'a self) -> impl Iterator<Item = &'a Self::Primitive>
+    where
+        Self::Primitive: 'a,
+    {
         iter::once(self)
     }
-    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive> where Self::Primitive: 'a {
+    fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive>
+    where
+        Self::Primitive: 'a,
+    {
         iter::once(self)
+    }
+
+    fn random_uniform(min: &Self, max: &Self, rng: &mut PermutedCongruentialGenerator) -> Self {
+        rng.uniform_singular(*min, *max)
     }
 }
