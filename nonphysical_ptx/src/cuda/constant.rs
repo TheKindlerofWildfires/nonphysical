@@ -1,6 +1,6 @@
 /*
     To use constant memory it needs to be defined at the top of the file like
-        .const .align $data_type_size .b8 $name[size]  
+        .const .align $data_type_size .b8 $name[size]
     Then it's loaded like
     ld.const.$data_type $register [name+offset]
 
@@ -8,7 +8,7 @@
     however there's the small issue of getting the .const to compile in correctly
     also copying data to the symbol is a little more fun, I think I use cucopytodevice and I need a symbol pointer
 
-    maybe 
+    maybe
     float *dcoeffs;
 cudaGetSymbolAddress((void **)&dcoeffs, coeffs);
 cudaMemcpy(dcoeffs, hostData, 8*sizeof(float), cudaMemcpyHostToDevice);

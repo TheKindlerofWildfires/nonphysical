@@ -18,7 +18,7 @@ pub trait Shared<T> {
 impl<const N: usize> Shared<F32> for CuShared<F32, N> {
     fn new() -> Self {
         let mut ptr;
-        const ALIGN:usize = size_of::<F32>();
+        const ALIGN: usize = size_of::<F32>();
         unsafe {
             asm!(
                 ".shared .align {a} .b8 nonphysical[{b}];",
@@ -35,7 +35,7 @@ impl<const N: usize> Shared<F32> for CuShared<F32, N> {
     }
 
     fn load(&mut self, index: usize) -> F32 {
-        assert!(index<N);
+        assert!(index < N);
         let offset = index * 4;
         let index = self.ptr + offset as u32;
         let mut out = F32(0.0);
@@ -51,7 +51,7 @@ impl<const N: usize> Shared<F32> for CuShared<F32, N> {
 
     //this function might as well be called 'shoot yourself in the foot v2'
     fn store(&mut self, index: usize, data: F32) {
-        assert!(index<N);
+        assert!(index < N);
         let offset = index * 4;
         let index = self.ptr + offset as u32;
         unsafe {
@@ -64,10 +64,10 @@ impl<const N: usize> Shared<F32> for CuShared<F32, N> {
     }
 }
 
-impl<const N: usize> Shared<u32> for CuShared<u32,N> {
+impl<const N: usize> Shared<u32> for CuShared<u32, N> {
     fn new() -> Self {
         let mut ptr;
-        const ALIGN:usize = size_of::<u32>();
+        const ALIGN: usize = size_of::<u32>();
         unsafe {
             asm!(
                 ".shared .align {a} .b8 nonphysical[{b}];",
@@ -84,10 +84,10 @@ impl<const N: usize> Shared<u32> for CuShared<u32,N> {
     }
 
     fn load(&mut self, index: usize) -> u32 {
-        assert!(index<N);
+        assert!(index < N);
         let offset = index * 4;
         let index = self.ptr + offset as u32;
-        let mut out:u32;
+        let mut out: u32;
         unsafe {
             asm!(
                 "ld.shared.u32 {o}, [{idx}];",
@@ -99,7 +99,7 @@ impl<const N: usize> Shared<u32> for CuShared<u32,N> {
     }
 
     fn store(&mut self, index: usize, data: u32) {
-        assert!(index<N);
+        assert!(index < N);
         let offset = index * 4;
         let index = self.ptr + offset as u32;
         unsafe {

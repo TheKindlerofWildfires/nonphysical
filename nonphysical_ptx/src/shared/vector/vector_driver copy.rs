@@ -61,8 +61,16 @@ pub struct CudaVectorDevice<F: Float> {
 }
 
 impl<F: Float> CudaVectorHost<F> {
-    pub fn sum(runtime: Arc<Runtime>, host_data: &[F]) -> F {        
+    pub fn sum(runtime: Arc<Runtime>, host_data: &[F]) -> F {
+        dbg!("Started host side");
+        
         let mut out = [F::ZERO];
+        let stream = CuStream::non_blocking();
+
+
+        let device_data = CuGlobalSlice::<F>::alloc_async(&host_data, &stream);
+        let device_acc = CuGlobalSliceRef::alloc_async(&out, &stream);
+        let mut device_memory = VectorArgumentsReduce { data:device_data, acc:device_acc };
 
         let mut pinned_data = CuPinnedSlice::alloc(&host_data);
         let mut pinned_acc = CuPinnedSliceRef::alloc(&out);
@@ -70,26 +78,24 @@ impl<F: Float> CudaVectorHost<F> {
         pinned_acc.store(&out);
 
         let mut pinned_memory = VectorArgumentsPinnedReduce{data: pinned_data, acc: pinned_acc};
+        dbg!("Did device and pinned memory");
 
-        CudaVectorMixed::sum(runtime.clone(), &mut pinned_memory);
-        
-        runtime.sync();
+        CudaVectorMixed::sum(runtime, stream, &mut device_memory, &mut pinned_memory);
+        Runtime::sync();
         pinned_memory.acc.load(&mut out);
-        dbg!(out);
         out[0]
-
     }
 }
 
 impl<F: Float> CudaVectorMixed<F> {
     pub fn sum(
-        runtime: Arc<Runtime>, pinned_memory: &mut VectorArgumentsPinnedReduce<F>
+        runtime: Arc<Runtime>, stream: CuStream, device_memory: &mut VectorArgumentsReduce<F>, pinned_memory: &mut VectorArgumentsPinnedReduce<F>
     ) {
-        let mut device_memory = VectorArgumentsReduce{
-            data: pinned_memory.data.to_global(),
-            acc: pinned_memory.acc.to_global(),
-        };
-        CudaVectorDevice::sum(runtime, &mut device_memory);
+        device_memory.data.store_async(&mut pinned_memory.data,&stream);
+        device_memory.acc.store_async(&mut pinned_memory.acc,&stream);
+
+        CudaVectorDevice::sum(runtime, device_memory);
+        device_memory.acc.load_async(&mut pinned_memory.acc,&stream);
     }
 }
 
@@ -100,8 +106,13 @@ impl<F: Float> CudaVectorDevice<F> {
         let grid = Dim3{x:block_size, y:1, z: 1};
         let block = Dim3{x:threads, y:1, z:1};
         let kernel = format!("vector_sum_{}", F::type_id());
+        let mut pointers = vec![
+            args.data.ptr as *mut [F] as *mut c_void,
+            args.acc.ptr as *mut [F] as *mut c_void
+        ];
+
         //should be able to avoid the lookup by cache
         runtime
-            .launch_name(kernel, args, grid, block);
+            .launch_name(kernel, &mut pointers, grid, block);
     }
 }

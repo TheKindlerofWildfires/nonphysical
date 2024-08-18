@@ -1,12 +1,10 @@
 [package]
-name = "nonphysical_ptx"
+name = "nonphysical_test_cuda"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 nonphysical_core = {path="../nonphysical_core"}
-
-[target.'cfg(not(target_arch = "nvptx64"))'.dependencies]
-nonphysical_cuda = {path="../nonphysical_cuda"}
 nonphysical_std = {path="../nonphysical_std"}
-[lib]
+nonphysical_cuda = {path="../nonphysical_cuda"}
+nonphysical_ptx = {path="../nonphysical_ptx"}

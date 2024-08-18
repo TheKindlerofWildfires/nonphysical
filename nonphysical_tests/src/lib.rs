@@ -9,7 +9,6 @@ pub mod signal;
 pub mod linear;
 */
 
-pub mod linear;
 pub mod shared;
 pub mod cluster;
 pub mod graph;

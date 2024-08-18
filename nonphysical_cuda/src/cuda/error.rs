@@ -1,9 +1,8 @@
-use crate::cuda::ffi::{CUresult,cudaError_enum};
 use crate::cuda::error::CuError::*;
-use std::result::Result;
+use crate::cuda::ffi::{cudaError_enum, CUresult};
+use core::result::Result;
 
-
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum CuError {
     CuSuccess,
     CuInvalidValue,
@@ -98,11 +97,11 @@ pub enum CuError {
     CuGraphExecUpdateFailure,
     CuExternalDevice,
     CuInvalidClusterSize,
-    CuUnknown
+    CuUnknown,
 }
 
 impl CuError {
-    pub fn check(result: CUresult) -> Result<(),CuError> {
+    pub fn check(result: CUresult) -> Result<(), CuError> {
         match result {
             cudaError_enum::CUDA_SUCCESS => Ok(()),
             cudaError_enum::CUDA_ERROR_INVALID_VALUE => Err(CuInvalidValue),
@@ -144,7 +143,9 @@ impl CuError {
             cudaError_enum::CUDA_ERROR_UNSUPPORTED_DEVSIDE_SYNC => Err(CuUnsupportedDevSideSync),
             cudaError_enum::CUDA_ERROR_INVALID_SOURCE => Err(CuInvalidSource),
             cudaError_enum::CUDA_ERROR_FILE_NOT_FOUND => Err(CuFileNotFound),
-            cudaError_enum::CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND => Err(CuSharedObjectSymbolNotFound),
+            cudaError_enum::CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND => {
+                Err(CuSharedObjectSymbolNotFound)
+            }
             cudaError_enum::CUDA_ERROR_SHARED_OBJECT_INIT_FAILED => Err(CuSharedObjectInitFailed),
             cudaError_enum::CUDA_ERROR_OPERATING_SYSTEM => Err(CuOperatingSystem),
             cudaError_enum::CUDA_ERROR_INVALID_HANDLE => Err(CuInvalidHandle),
@@ -155,14 +156,20 @@ impl CuError {
             cudaError_enum::CUDA_ERROR_ILLEGAL_ADDRESS => Err(CuIllegalAddress),
             cudaError_enum::CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES => Err(CuLaunchOutOfResources),
             cudaError_enum::CUDA_ERROR_LAUNCH_TIMEOUT => Err(CuLaunchTimeout),
-            cudaError_enum::CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING => Err(CuLaunchIncompatibleTexturing),
-            cudaError_enum::CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED => Err(CuPeerAccessAlreadyEnabled),
+            cudaError_enum::CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING => {
+                Err(CuLaunchIncompatibleTexturing)
+            }
+            cudaError_enum::CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED => {
+                Err(CuPeerAccessAlreadyEnabled)
+            }
             cudaError_enum::CUDA_ERROR_PEER_ACCESS_NOT_ENABLED => Err(CuPeerAccessNotEnabled),
             cudaError_enum::CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE => Err(CuPrimaryContextActive),
             cudaError_enum::CUDA_ERROR_CONTEXT_IS_DESTROYED => Err(CuContextIsDestroyed),
             cudaError_enum::CUDA_ERROR_ASSERT => Err(CuAssert),
             cudaError_enum::CUDA_ERROR_TOO_MANY_PEERS => Err(CuTooManyPeers),
-            cudaError_enum::CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED => Err(CuHostMemoryAlreadyRegistered),
+            cudaError_enum::CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED => {
+                Err(CuHostMemoryAlreadyRegistered)
+            }
             cudaError_enum::CUDA_ERROR_HOST_MEMORY_NOT_REGISTERED => Err(CuHostMemoryNotRegistered),
             cudaError_enum::CUDA_ERROR_HARDWARE_STACK_ERROR => Err(CuHardwareStackError),
             cudaError_enum::CUDA_ERROR_ILLEGAL_INSTRUCTION => Err(CuIllegalInstruction),
@@ -170,35 +177,46 @@ impl CuError {
             cudaError_enum::CUDA_ERROR_INVALID_ADDRESS_SPACE => Err(CuInvalidAddressSpace),
             cudaError_enum::CUDA_ERROR_INVALID_PC => Err(CuInvalidPc),
             cudaError_enum::CUDA_ERROR_LAUNCH_FAILED => Err(CuLaunchFailed),
-            cudaError_enum::CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE => Err(CuCooperativeLaunchTooLarge),
+            cudaError_enum::CUDA_ERROR_COOPERATIVE_LAUNCH_TOO_LARGE => {
+                Err(CuCooperativeLaunchTooLarge)
+            }
             cudaError_enum::CUDA_ERROR_NOT_PERMITTED => Err(CuNotPermitted),
             cudaError_enum::CUDA_ERROR_NOT_SUPPORTED => Err(CuNotSupported),
             cudaError_enum::CUDA_ERROR_SYSTEM_NOT_READY => Err(CuSystemNotReady),
             cudaError_enum::CUDA_ERROR_SYSTEM_DRIVER_MISMATCH => Err(CuSystemDriverMismatch),
-            cudaError_enum::CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE => Err(CuCompatNotSupportedOnDevice),
+            cudaError_enum::CUDA_ERROR_COMPAT_NOT_SUPPORTED_ON_DEVICE => {
+                Err(CuCompatNotSupportedOnDevice)
+            }
             cudaError_enum::CUDA_ERROR_MPS_CONNECTION_FAILED => Err(CuMpsConnectionFailed),
             cudaError_enum::CUDA_ERROR_MPS_RPC_FAILURE => Err(CuMpsRpcFailure),
             cudaError_enum::CUDA_ERROR_MPS_SERVER_NOT_READY => Err(CuMpsServerNotReady),
             cudaError_enum::CUDA_ERROR_MPS_MAX_CLIENTS_REACHED => Err(CuMpsMaxClientsReached),
-            cudaError_enum::CUDA_ERROR_MPS_MAX_CONNECTIONS_REACHED => Err(CuMpsMaxConnectionsReached),
+            cudaError_enum::CUDA_ERROR_MPS_MAX_CONNECTIONS_REACHED => {
+                Err(CuMpsMaxConnectionsReached)
+            }
             cudaError_enum::CUDA_ERROR_MPS_CLIENT_TERMINATED => Err(CuMpsClientTerminated),
             cudaError_enum::CUDA_ERROR_CDP_NOT_SUPPORTED => Err(CuCdpNotSupported),
             cudaError_enum::CUDA_ERROR_CDP_VERSION_MISMATCH => Err(CuCdpVersionMismatch),
-            cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED => Err(CuStreamCaptureUnsupported),
-            cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_INVALIDATED => Err(CuStreamCaptureInvalidated),
+            cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED => {
+                Err(CuStreamCaptureUnsupported)
+            }
+            cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_INVALIDATED => {
+                Err(CuStreamCaptureInvalidated)
+            }
             cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_MERGE => Err(CuStreamCaptureMerge),
             cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_UNMATCHED => Err(CuStreamCaptureUnmatched),
             cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_UNJOINED => Err(CuStreamCaptureUnjoined),
             cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_ISOLATION => Err(CuStreamCaptureIsolation),
             cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_IMPLICIT => Err(CuStreamCaptureImplicit),
             cudaError_enum::CUDA_ERROR_CAPTURED_EVENT => Err(CuCapturedEvent),
-            cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_WRONG_THREAD => Err(CuStreamCaptureWrongThread),
+            cudaError_enum::CUDA_ERROR_STREAM_CAPTURE_WRONG_THREAD => {
+                Err(CuStreamCaptureWrongThread)
+            }
             cudaError_enum::CUDA_ERROR_TIMEOUT => Err(CuTimeout),
             cudaError_enum::CUDA_ERROR_GRAPH_EXEC_UPDATE_FAILURE => Err(CuGraphExecUpdateFailure),
             cudaError_enum::CUDA_ERROR_EXTERNAL_DEVICE => Err(CuExternalDevice),
             cudaError_enum::CUDA_ERROR_INVALID_CLUSTER_SIZE => Err(CuInvalidClusterSize),
             cudaError_enum::CUDA_ERROR_UNKNOWN => Err(CuUnknown),
         }
-        
     }
 }
