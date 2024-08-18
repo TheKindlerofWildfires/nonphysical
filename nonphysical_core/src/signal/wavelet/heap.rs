@@ -19,7 +19,7 @@ impl<P: Primitive> DiscreteWavelet<P> for DaubechiesFirstRealWaveletHeap<P> {
         Self { coefficients }
     }
 
-    fn forward(&self, input: &mut [P]) {
+    fn forward(&mut self, input: &mut [P]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let half_n = n / 2;
@@ -39,7 +39,7 @@ impl<P: Primitive> DiscreteWavelet<P> for DaubechiesFirstRealWaveletHeap<P> {
 
     }
 
-    fn backward(&self, input: &mut [P]) {
+    fn backward(&mut self, input: &mut [P]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let half_n = n / 2;
@@ -74,7 +74,7 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletHeap<C> {
         Self { coefficients }
     }
 
-    fn forward(&self, input: &mut [C]) {
+    fn forward(&mut self, input: &mut [C]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let half_n = n / 2;
@@ -94,7 +94,7 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletHeap<C> {
 
     }
 
-    fn backward(&self, input: &mut [C]) {
+    fn backward(&mut self, input: &mut [C]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let half_n = n / 2;

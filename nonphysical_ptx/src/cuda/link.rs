@@ -62,7 +62,8 @@ pub fn link_fix() {
                     }
                 }
             }
-        
+            
+            dbg!(name);
             let mut file = File::create(name).expect("Couldn't write file");
             for chunk in new_file{
                 file.write_all(chunk.as_bytes()).expect("Couldn't write to file");

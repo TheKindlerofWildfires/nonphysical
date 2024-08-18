@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-//#![no_std]
+#![no_std]
 #![forbid(unsafe_code)]
 
 
@@ -17,7 +17,7 @@ pub mod signal;
 
 
 //unstable
-pub mod linear;
+//pub mod linear;
 
 //stalled
 //pub mod neural;

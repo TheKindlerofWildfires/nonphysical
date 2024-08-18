@@ -1,2 +1,2 @@
-pub mod cuda;
+pub mod driver;
 pub mod ptx;

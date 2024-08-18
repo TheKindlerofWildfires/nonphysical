@@ -3,6 +3,7 @@ use core::{arch::asm, intrinsics};
 use alloc::boxed::Box;
 use nonphysical_core::shared::float::Float;
 use super::primitive::F32;
+use crate::alloc::string::ToString;
 
 impl Float for F32 {
     const ZERO: Self = F32(0.0);
@@ -295,5 +296,9 @@ impl Float for F32 {
     #[inline(always)]
     fn to_le_bytes(self) -> Box<[u8]> {
         Box::new((self.0).to_le_bytes())
+    }
+    
+    fn type_id()->alloc::string::String {
+        "f32".to_string()
     }
 }

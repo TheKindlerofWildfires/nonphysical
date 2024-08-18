@@ -7,13 +7,13 @@ use nonphysical_core::{
     },
     signal::wavelet::{DiscreteWavelet, WaveletFamily},
 };
-
+use crate::cuda::shared::Shared;
 use super::WaveletArguments;
 use core::arch::nvptx::{_block_dim_x, _block_idx_x, _syncthreads, _thread_idx_x};
 
 #[no_mangle]
 pub extern "ptx-kernel" fn dwt_forward_kernel(args: &mut WaveletArguments<ComplexScaler<F32>>) {
-    let cu_shared = CuShared::new::<8192, 4>();
+    let mut cu_shared = CuShared::<F32,8192>::new();
     let block_idx = unsafe { _block_idx_x() } as usize;
     let idx = unsafe { _thread_idx_x() } as usize;
     let block_dim = unsafe { _block_dim_x() } as usize;
@@ -24,7 +24,7 @@ pub extern "ptx-kernel" fn dwt_forward_kernel(args: &mut WaveletArguments<Comple
         .nth(block_idx)
         .unwrap();
 
-    let dwt = DaubechiesFirstComplexWaveletPtx::new(cu_shared);
+    let mut dwt = DaubechiesFirstComplexWaveletPtx::new(cu_shared);
     //let self_chunk = args.x_copy.chunks_exact_mut(args.ndwt[0]).nth(block_idx).unwrap();
 
     dwt.forward(sub_data);
@@ -36,12 +36,12 @@ pub extern "ptx-kernel" fn dwt_forward_kernel(args: &mut WaveletArguments<Comple
         .step_by(block_dim)
         .for_each(|i| {
             sub_data[i] = ComplexScaler::new(
-                F32(cu_shared.load_f32(4 * i)),
-                F32(cu_shared.load_f32(4 * i + 1)),
+                cu_shared.load(4 * i),
+                cu_shared.load(4 * i + 1),
             );
             sub_data[i + args.ndwt[0] / 2] = ComplexScaler::new(
-                F32(cu_shared.load_f32(4 * i + 2)),
-                F32(cu_shared.load_f32(4 * i + 3)),
+                cu_shared.load(4 * i + 2),
+                cu_shared.load(4 * i + 3),
             );
         });
 }
@@ -71,15 +71,15 @@ pub extern "ptx-kernel" fn dwt_backward_kernel(args: &mut WaveletArguments<Compl
 
 pub struct DaubechiesFirstComplexWaveletPtx<C: Complex> {
     coefficients: [C; 2],
-    shared: CuShared,
+    shared: CuShared<F32,8192>,
 }
 
-impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletPtx<C> {
+impl<C: Complex<Primitive = F32>> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletPtx<C> {
     const SYMMETRY: usize = 0;
     const ORTHOGONAL: usize = 1;
     const BIORTHOGONAL: usize = 1;
     const FAMILY: WaveletFamily = WaveletFamily::Daubechies;
-    type DiscreteWaveletInit = CuShared;
+    type DiscreteWaveletInit = CuShared<F32,8192>;
 
     fn new(init: Self::DiscreteWaveletInit) -> Self {
         let first = C::new(C::Primitive::usize(2).sqrt().recip(), C::Primitive::ZERO);
@@ -91,7 +91,7 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletPtx<C> {
     }
 
     //This definition isn't literally correct, as the result is now interspersed
-    fn forward(&self, input: &mut [C]) {
+    fn forward(&mut self, input: &mut [C]) {
         let idx = unsafe { _thread_idx_x() } as usize;
         let block_dim = unsafe { _block_dim_x() } as usize;
         input
@@ -104,14 +104,14 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletPtx<C> {
                 let cache_b = chunk[1] * self.coefficients[1];
                 let low = cache_a + cache_b;
                 let high = cache_a - cache_b;
-                self.shared.store_f32(4 * i, low.real().as_float());
-                self.shared.store_f32(4 * i + 1, low.imag().as_float());
-                self.shared.store_f32(4 * i + 2, high.real().as_float());
-                self.shared.store_f32(4 * i + 3, high.imag().as_float());
+                self.shared.store(4 * i, low.real());
+                self.shared.store(4 * i + 1, low.imag());
+                self.shared.store(4 * i + 2, high.real());
+                self.shared.store(4 * i + 3, high.imag());
             });
     }
     //There's an expectation here that the vector was pre-interspersed
-    fn backward(&self, input: &mut [C]) {
+    fn backward(&mut self, input: &mut [C]) {
         let idx = unsafe { _thread_idx_x() } as usize;
         let block_dim = unsafe { _block_dim_x() } as usize;
         input

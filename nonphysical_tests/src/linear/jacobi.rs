@@ -5,7 +5,7 @@ mod jacobi_tests {
         shared::{
             complex::{Complex, ComplexScaler},
             float::Float,
-            matrix::{heap::MatrixHeap, Matrix},
+            matrix::{matrix_heap::MatrixHeap, Matrix},
             primitive::Primitive,
         },
     };

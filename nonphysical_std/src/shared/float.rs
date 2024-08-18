@@ -130,6 +130,10 @@ impl Float for F32 {
     fn to_le_bytes(self) -> Box<[u8]> {
         Box::new(self.0.to_le_bytes())
     }
+    
+    fn type_id()->String {
+        "f32".to_string()
+    }
 }
 
 impl Float for F64 {
@@ -259,6 +263,10 @@ impl Float for F64 {
     #[inline(always)]
     fn to_le_bytes(self) -> Box<[u8]> {
         Box::new(self.0.to_le_bytes())
+    }
+    
+    fn type_id()->String {
+        "f64".to_string()
     }
 }
 

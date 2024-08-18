@@ -3,7 +3,7 @@
 mod pca_tests {
     use std::time::SystemTime;
 
-    use nonphysical_core::{linear::pca::{PrincipleComponentAnalysis, RealPrincipleComponentAnalysis}, shared::{float::Float, matrix::{heap::MatrixHeap, Matrix}, primitive::Primitive}};
+    use nonphysical_core::{linear::pca::{PrincipleComponentAnalysis, RealPrincipleComponentAnalysis}, shared::{float::Float, matrix::{matrix_heap::MatrixHeap, Matrix}, primitive::Primitive}};
     use nonphysical_std::shared::primitive::F32;
 
     #[test]

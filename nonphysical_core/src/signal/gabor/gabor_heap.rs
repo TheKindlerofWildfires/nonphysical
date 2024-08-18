@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use crate::{shared::{complex::Complex, matrix::{heap::MatrixHeap, Matrix}}, signal::fourier::{heap::ComplexFourierTransformHeap, FourierTransform}};
+use crate::{shared::{complex::Complex, matrix::{matrix_heap::MatrixHeap, Matrix}}, signal::fourier::{fourier_heap::ComplexFourierTransformHeap, FourierTransform}};
 
 use super::GaborTransform;
 

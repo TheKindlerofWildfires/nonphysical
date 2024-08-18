@@ -2,7 +2,7 @@
 mod bidiagonal_tests {
     use nonphysical_core::{
         linear::bidiagonal::{Bidiagonal, RealBidiagonal},
-        shared::{float::Float, matrix::{heap::MatrixHeap, Matrix}, primitive::Primitive},
+        shared::{float::Float, matrix::{matrix_heap::MatrixHeap, Matrix}, primitive::Primitive},
     };
     use nonphysical_std::shared::primitive::F32;
 

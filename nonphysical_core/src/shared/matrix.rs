@@ -1,8 +1,8 @@
 use core::ops::{Add, Mul};
 
 use super::float::Float;
-pub mod heap;
-pub mod stack;
+pub mod matrix_heap;
+pub mod matrix_stack;
 pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized {
     type MatrixInit;
     fn new(init: Self::MatrixInit) -> Self;

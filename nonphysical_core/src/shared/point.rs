@@ -1,6 +1,6 @@
 use core::iter;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 use crate::random::pcg::PermutedCongruentialGenerator;
 use alloc::vec::Vec;
@@ -47,6 +47,7 @@ pub trait Point:
     fn data_ref<'a>(&'a mut self) -> impl Iterator<Item = &'a mut Self::Primitive>
     where
         Self::Primitive: 'a;
+
 }
 
 impl<P: Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {

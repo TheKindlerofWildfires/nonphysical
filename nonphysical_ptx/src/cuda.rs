@@ -1,8 +1,9 @@
-pub mod cu_box;
-pub mod cu_slice;
+pub mod global;
 
 #[cfg(target_arch = "nvptx64")]
 pub mod shared;
+#[cfg(target_arch = "nvptx64")]
+pub mod atomic;
 #[cfg(target_arch = "nvptx64")]
 pub mod intrinsic;
 
@@ -12,5 +13,10 @@ pub mod ffi;
 pub mod runtime;
 #[cfg(not(target_arch = "nvptx64"))]
 pub mod link;
+#[cfg(not(target_arch = "nvptx64"))]
+pub mod error;
+#[cfg(not(target_arch = "nvptx64"))]
+pub mod stream;
+
 
 

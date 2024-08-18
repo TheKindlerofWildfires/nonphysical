@@ -1,7 +1,7 @@
 use crate::shared::complex::Complex;
 use crate::shared::matrix::Matrix;
 
-pub mod heap;
+pub mod gabor_heap;
 pub trait GaborTransform<C:Complex>{
     type GaborInit;
     type GaborMatrix: Matrix<C>;

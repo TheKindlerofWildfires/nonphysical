@@ -1,7 +1,7 @@
 
 #[cfg(test)]
 mod matrix_tests {
-    use nonphysical_core::shared::{complex::{Complex, ComplexScaler}, float::Float, matrix::{heap::MatrixHeap, Matrix}, primitive::Primitive};
+    use nonphysical_core::shared::{complex::{Complex, ComplexScaler}, float::Float, matrix::{matrix_heap::MatrixHeap, Matrix}, primitive::Primitive};
     use nonphysical_std::shared::primitive::F32;
 
 

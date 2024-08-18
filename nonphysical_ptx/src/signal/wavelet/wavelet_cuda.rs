@@ -1,11 +1,10 @@
 use crate::cuda::runtime::Runtime;
 
-use nonphysical_core::{shared::complex::Complex,signal::fourier::{FourierTransform,heap::ComplexFourierTransformHeap}};
+use nonphysical_core::{shared::complex::Complex,signal::fourier::{FourierTransform,fourier_heap::ComplexFourierTransformHeap}};
 use std::{rc::Rc, marker::PhantomData,cmp::min, borrow::ToOwned};
 use super::WaveletArguments;
 use nonphysical_core::signal::wavelet::DiscreteWavelet;
 use nonphysical_core::shared::primitive::Primitive;
-use nonphysical_core::signal::wavelet::DaubechiesFirstRealWavelet;
 use nonphysical_core::signal::wavelet::WaveletFamily;
 pub struct ComplexFourierTransformCuda<C: Complex> {
     runtime: Rc<Runtime>,
@@ -35,7 +34,7 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletCuda<C> {
             ndwt,
         }
     }
-    fn forward(&self, input: &mut [C]) {
+    fn forward(&mut self, input: &mut [C]) {
         let now = SystemTime::now();
         let n = input.len();
         debug_assert!(n % 2 == 0);
@@ -68,7 +67,7 @@ impl<C: Complex> DiscreteWavelet<C> for DaubechiesFirstComplexWaveletCuda<C> {
         input.copy_from_slice(&x_result);
         dbg!(now.elapsed());
     }
-    fn backward(&self, input: &mut [C]) {
+    fn backward(&mut self, input: &mut [C]) {
         todo!();
     }
 

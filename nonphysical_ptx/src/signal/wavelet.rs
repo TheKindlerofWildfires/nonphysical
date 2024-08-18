@@ -1,13 +1,13 @@
-use crate::cuda::cu_slice::{CuSlice, CuSliceRef};
+use crate::cuda::global::{CuGlobalSlice, CuGlobalSliceRef};
 use nonphysical_core::shared::complex::Complex;
 
 #[cfg(target_arch = "nvptx64")]
-pub mod ptx;
+pub mod wavelet_ptx;
 
 #[cfg(not(target_arch = "nvptx64"))]
-pub mod cuda;
+pub mod wavelet_cuda;
 
 pub struct WaveletArguments<'a, C: Complex> {
-    pub x: CuSliceRef<'a, C>,
-    pub ndwt: CuSlice<'a,usize>,
+    pub x: CuGlobalSliceRef<'a, C>,
+    pub ndwt: CuGlobalSlice<'a,usize>,
 }

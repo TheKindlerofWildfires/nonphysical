@@ -1,193 +1,111 @@
+use super::{ffi, global::*};
 
-use super::{ffi, ffi::DevicePtr, cu_box::*, cu_slice::*};
-
+use crate::cuda::error::CuError;
+use crate::cuda::ffi::CUfunction;
+use std::ffi::CString;
+use std::ptr;
 use std::string::String;
 use std::vec;
-use std::dbg;
-use std::time::SystemTime;
+use crate::cuda::runtime::pinned::CuPinnedBox;
+use crate::cuda::runtime::host::CuGlobalBox;
 static mut CUDA_INITIALIZED: bool = false;
+
 pub struct Runtime {
     context: ffi::CUcontext,
     module: ffi::CUmodule,
 }
+pub struct Dim3 {
+    x: usize,
+    y: usize,
+    z: usize,
+}
 
 impl Runtime {
-    pub fn new(device_id: i32, kernel_str: &str) -> Result<Runtime, CuError> {
+    pub fn new(device_id: i32, kernel_str: &str) -> Runtime {
         // cuInit
         unsafe {
             if !CUDA_INITIALIZED {
-                let result = ffi::cuInit(0);
-                if result != ffi::CUresult::CUDA_SUCCESS {
-                    return Err(CuError::new(result));
-                }
+                CuError::check(ffi::cuInit(0)).expect("Failed to initialize a cuda context");
                 CUDA_INITIALIZED = true;
             }
         }
         // device check
         let mut device_num: i32 = 0;
-        let result = unsafe { ffi::cuDeviceGetCount(&mut device_num as *mut i32) };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        if device_id >= device_num {
-            return Err(CuError::DeviceIdIsOutOfRange);
-        }
+        CuError::check(unsafe { ffi::cuDeviceGetCount(&mut device_num as *mut i32) })
+            .expect("Failed to could the available devices");
+        assert!(device_id < device_num);
+
         // context
-        let mut context: ffi::CUcontext = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
-        let result = unsafe {
+        let mut context: ffi::CUcontext = ptr::null_mut();
+        CuError::check(unsafe {
             ffi::cuCtxCreate_v2(
                 &mut context as *mut ffi::CUcontext,
                 ffi::CUctx_flags_enum::CU_CTX_SCHED_AUTO as u32,
                 device_id,
             )
-        };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
+        })
+        .expect("Failed to create a cuda context");
+
         // module
-        let mut module: ffi::CUmodule = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
+        let mut module: ffi::CUmodule = ptr::null_mut();
         let kernel_cstr = std::ffi::CString::new(kernel_str).unwrap();
-        let result = unsafe {
-            ffi::cuModuleLoad(
-                &mut module as *mut ffi::CUmodule,
-                kernel_cstr.as_ptr(),
-            )
-        };
-        //this failed
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
+        CuError::check(unsafe {
+            ffi::cuModuleLoad(&mut module as *mut ffi::CUmodule, kernel_cstr.as_ptr())
+        })
+        .expect("Failed to load the module");
         // res
-        let res = Runtime {
-            context,
-            module,
-        };
-        Ok(res)
+        Runtime { context, module }
     }
-    pub fn launch<Args>(
+    pub fn launch<Args:Copy>(&self, function: CUfunction, args: &Args, grid_dim: Dim3, block_dim: Dim3) {
+        // launch
+        let mut pinned_args = CuPinnedBox::alloc(args);
+        let mut device_args = CuGlobalBox::alloc(args);
+        pinned_args.store(*args);
+        device_args.store(&pinned_args);
+        
+
+        let mut launch_args = vec![&mut device_args.ptr as *mut &mut Args as *mut std::ffi::c_void];
+        unsafe {
+            use std::os::raw::c_uint;
+            use std::ptr;
+            let shared_mem_bytes = 0;
+            CuError::check(ffi::cuLaunchKernel(
+                function,
+                grid_dim.x as c_uint,
+                grid_dim.y as c_uint,
+                grid_dim.z as c_uint,
+                block_dim.x as c_uint,
+                block_dim.y as c_uint,
+                block_dim.z as c_uint,
+                shared_mem_bytes as c_uint,
+                ptr::null_mut(),
+                launch_args.as_mut_ptr(),
+                ptr::null_mut(),
+            )).expect("Kernel launch failed");
+        }
+    }
+    pub fn launch_name<Args:Copy>(
         &self,
         func_name: String,
         args: &Args,
-        grid_dim_x: usize,
-        grid_dim_y: usize,
-        grid_dim_z: usize,
-        block_dim_x: usize,
-        block_dim_y: usize,
-        block_dim_z: usize,
-    ) -> Result<(), CuError> {
+        grid_dim: Dim3,
+        block_dim: Dim3,
+    ) -> CUfunction {
         // function
-
-        let mut function: ffi::CUfunction =
-            unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
-        let func_name_cstr = std::ffi::CString::new(func_name.as_str()).unwrap();
-        let result = unsafe {
+        let mut function: ffi::CUfunction = ptr::null_mut();
+        let func_name_cstr = CString::new(func_name.as_str()).unwrap();
+        CuError::check(unsafe {
             ffi::cuModuleGetFunction(
                 &mut function as *mut ffi::CUfunction,
                 self.module,
                 func_name_cstr.as_ptr(),
             )
-        };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }        
-        // launch
-        let args_d = self.alloc(args).unwrap();
+        })
+        .expect("Failed to find function");
 
-        let mut args_d_ptr = args_d.get();
-        let mut launch_args = vec![&mut args_d_ptr as *mut &Args as *mut std::ffi::c_void];
-        unsafe{ffi::cuCtxSynchronize();}
-        unsafe {
-            use std::os::raw::c_uint;
-            use std::ptr;
-            let shared_mem_bytes = 0;
-            let result = ffi::cuLaunchKernel(
-                function,
-                grid_dim_x as c_uint,
-                grid_dim_y as c_uint,
-                grid_dim_z as c_uint,
-                block_dim_x as c_uint,
-                block_dim_y as c_uint,
-                block_dim_z as c_uint,
-                shared_mem_bytes as c_uint,
-                ptr::null_mut(),
-                launch_args.as_mut_ptr(),
-                ptr::null_mut(),
-            );
-            if result != ffi::CUresult::CUDA_SUCCESS {
-                return Err(CuError::new(result));
-            }
-            unsafe{ffi::cuCtxSynchronize();}
-        }
+        self.launch(function, args, grid_dim, block_dim);
 
-        Ok(())
-    }
-    pub fn alloc<'a, T>(&'a self, x: &T) -> Result<CuBox<'a, T>, CuError> {
-        // allocate
-        let mut ptr: DevicePtr = 0;
-        let size = std::mem::size_of::<T>();
-        let result = unsafe { ffi::cuMemAlloc_v2(&mut ptr as *mut u64, size) };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        // memcpy
-        let result = unsafe {
-            ffi::cuMemcpyHtoD_v2(
-                ptr,
-                x as *const T as *const std::ffi::c_void,
-                std::mem::size_of::<T>(),
-            )
-        };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        // return
-        let ptr = unsafe { (ptr as *mut T).as_mut().unwrap() };
-        Ok(CuBox::new(ptr))
-    }
-    pub fn alloc_slice<'a, T>(&'a self, xs: &[T]) -> Result<CuSlice<'a, T>, CuError> {
-        // allocate
-        let mut ptr: DevicePtr = 0;
-        let size = std::mem::size_of::<T>() * xs.len();
-        let result = unsafe { ffi::cuMemAlloc_v2(&mut ptr as *mut u64, size) };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        // memcpy
-        let result = unsafe {
-            ffi::cuMemcpyHtoD_v2(
-                ptr,
-                xs.as_ptr() as *const T as *const std::ffi::c_void,
-                std::mem::size_of::<T>() * xs.len(),
-            )
-        };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        // return
-        Ok(CuSlice::new(ptr, xs.len()))
-    }
-
-    pub fn alloc_slice_ref<'a, T>(&'a self, xs: &[T]) -> Result<CuSliceRef<'a, T>, CuError> {
-        // allocate
-        let mut ptr: DevicePtr = 0;
-        let size = std::mem::size_of::<T>() * xs.len();
-        let result = unsafe { ffi::cuMemAlloc_v2(&mut ptr as *mut u64, size) };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        // memcpy
-        let result = unsafe {
-            ffi::cuMemcpyHtoD_v2(
-                ptr,
-                xs.as_ptr() as *const T as *const std::ffi::c_void,
-                std::mem::size_of::<T>() * xs.len(),
-            )
-        };
-        if result != ffi::CUresult::CUDA_SUCCESS {
-            return Err(CuError::new(result));
-        }
-        // return
-        Ok(CuSliceRef::new(ptr, xs.len()))
+        function
     }
 }
 
@@ -196,18 +114,5 @@ impl Drop for Runtime {
         unsafe {
             ffi::cuCtxDestroy_v2(self.context);
         }
-    }
-}
-
-
-#[derive(Debug)]
-pub enum CuError {
-    CUResult(ffi::cudaError_enum),
-    DeviceIdIsOutOfRange,
-}
-
-impl CuError {
-    pub fn new(x: ffi::cudaError_enum) -> CuError {
-        CuError::CUResult(x)
     }
 }

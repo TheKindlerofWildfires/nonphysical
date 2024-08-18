@@ -6,7 +6,7 @@ pub trait Intrinsic {
 
 impl Intrinsic for u32 {
     fn clz(&self) -> Self {
-        let mut out = 0;
+        let mut out;
         unsafe {
             asm!(
                 "clz.b32 {o}, {i};",
@@ -20,7 +20,7 @@ impl Intrinsic for u32 {
 
 impl Intrinsic for u64 {
     fn clz(&self) -> Self {
-        let mut out = 0;
+        let mut out;
         unsafe {
             asm!(
                 "clz.b64 {o}, {i};",

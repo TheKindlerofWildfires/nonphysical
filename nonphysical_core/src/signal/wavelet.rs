@@ -21,8 +21,8 @@ pub trait DiscreteWavelet<F: Float> {
 
     fn new(init: Self::DiscreteWaveletInit) -> Self;
 
-    fn forward(&self, input: &mut [F]);
+    fn forward(&mut self, input: &mut [F]);
 
-    fn backward(&self, input: &mut [F]);
+    fn backward(&mut self, input: &mut [F]);
 }
 

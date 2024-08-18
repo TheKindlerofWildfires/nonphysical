@@ -1,5 +1,5 @@
 use core::marker::PhantomData;
-use super::{complex::Complex, float::Float, primitive::Primitive, real::Real};
+use super::{complex::Complex, float::Float, point::Point, primitive::Primitive, real::Real};
 
 pub struct Vector<F:Float>{
     phantom_data: PhantomData<F>
@@ -276,4 +276,43 @@ impl<'a, C:Complex+'a> ComplexVector<C>{
         });
         (mean,square_distance/C::Primitive::usize(count))
     }*/
+}
+
+pub struct PointVector<P:Point>{
+    phantom_data: PhantomData<P>
+}
+
+impl<'a, R: Real<Primitive = R>, P:Point<Primitive=R>+'a> PointVector<P>{
+    pub fn mean<I>(iter: I) -> P
+    where
+        I: Iterator<Item = &'a P>,
+    {
+        let (_, mean) = iter.fold((0,P::ORIGIN), |acc, x| {
+            let (mut count, mut mean) = acc;
+            count +=1;
+            let mut delta = *x-mean;
+            delta.scale(R::usize(count).recip());
+            mean += delta;
+            (count,mean)
+        });
+        mean
+    }
+
+    pub fn variance<I>(iter: I) -> (P,P)
+    where
+     I: Iterator<Item = &'a P>,
+    {
+        let (count, mean, mut square_distance) = iter.fold((0,P::ORIGIN,P::ORIGIN), |acc, x| {
+            let (mut count, mut mean, mut square_distance) = acc;
+            count +=1;
+            let mut delta = *x-mean;
+            delta.scale(R::usize(count).recip());
+            mean += delta;
+            let delta2 = *x - mean;
+            square_distance+= delta*delta2;
+            (count,mean,square_distance)
+        });
+        square_distance.scale(P::Primitive::usize(count).recip());
+        (mean,square_distance)
+    }
 }

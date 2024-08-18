@@ -18,7 +18,7 @@ impl<P: Primitive, const N: usize> DiscreteWavelet<P> for DaubechiesFirstRealWav
         Self { coefficients }
     }
 
-    fn forward(&self, input: &mut [P]) {
+    fn forward(&mut self, input: &mut [P]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let mut deconstruction = [P::ZERO;N];
@@ -33,7 +33,7 @@ impl<P: Primitive, const N: usize> DiscreteWavelet<P> for DaubechiesFirstRealWav
         input.copy_from_slice(&deconstruction);
     }
 
-    fn backward(&self, input: &mut [P]) {
+    fn backward(&mut self, input: &mut [P]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let half_n = n / 2;
@@ -70,7 +70,7 @@ impl<C: Complex, const N: usize> DiscreteWavelet<C> for DaubechiesFirstComplexWa
         Self { coefficients }
     }
 
-    fn forward(&self, input: &mut [C]) {
+    fn forward(&mut self, input: &mut [C]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let mut deconstruction = [C::ZERO;N];
@@ -85,7 +85,7 @@ impl<C: Complex, const N: usize> DiscreteWavelet<C> for DaubechiesFirstComplexWa
         input.copy_from_slice(&deconstruction);
     }
 
-    fn backward(&self, input: &mut [C]) {
+    fn backward(&mut self, input: &mut [C]) {
         let n = input.len();
         assert!(n % 2 == 0);
         let half_n = n / 2;

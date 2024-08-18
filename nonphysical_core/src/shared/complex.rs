@@ -3,6 +3,7 @@ use super::float::Float;
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use alloc::boxed::Box;
+use alloc::format;
 /*
     This Struct defines complex numbers and functions which are unique to them
 */
@@ -174,6 +175,10 @@ impl<P: Primitive<Primitive = P>> Float for ComplexScaler<P> {
         let imag_bytes = self.imag.to_le_bytes().to_vec();
         real_bytes.extend(imag_bytes);
         real_bytes.into_boxed_slice()
+    }
+    
+    fn type_id()->alloc::string::String {
+        format!("complex_{}",P::type_id())
     }
 
 

@@ -115,11 +115,10 @@ impl<'a, C: Complex+'a> ComplexFourierTransformPtx<'a,C> {
     ) {
         let dist = 1 << t;
         let chunk_size = dist << 1;
-        //Bad assumptions here around idx, pretending it's right for the first pass
-        let sub_idx = idx >> t; //wrong for t=2,idx=4
+        let sub_idx = idx >> t;
         let inner_idx = idx % dist;
 
-        let chunk = x.chunks_exact_mut(chunk_size).nth(sub_idx).unwrap(); //this can't be idx, it needs to be sub idx
+        let chunk = x.chunks_exact_mut(chunk_size).nth(sub_idx).unwrap();
         let (c_s0, c_s1) = chunk.split_at_mut(dist);
 
         let i_cs0 = c_s0.iter_mut().nth(inner_idx).unwrap();

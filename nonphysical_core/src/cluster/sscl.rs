@@ -1,9 +1,9 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::{
-    cluster::Classification::{Core, Edge, Noise},
+    cluster::Classification::Core,
     random::pcg::PermutedCongruentialGenerator,
-    shared::{float::Float, point::Point, primitive::Primitive},
+    shared::{point::Point, primitive::Primitive, real::Real, vector::PointVector},
 };
 
 use super::Classification;
@@ -26,7 +26,12 @@ struct SSCluster<P: Point> {
     na: P::Primitive,
     nc: P::Primitive,
 }
-impl<Prim: Primitive, P: Point<Primitive = Prim>> SelfSelectiveCompetitiveLearning<P> {
+//Adding multi-split / centroid prevention would be good here
+
+//noticed an issue where clusters with larger than average variances get split up
+//probably very bad at nonlinear clusters
+//this has euler's convergence and it would be better
+impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLearning<P> {
     pub fn new(state: u32, iterations: usize) -> Self {
         let rng = PermutedCongruentialGenerator::new(state, state+1);
 
@@ -39,12 +44,14 @@ impl<Prim: Primitive, P: Point<Primitive = Prim>> SelfSelectiveCompetitiveLearni
         let max_p = data.iter().fold(P::MIN, |acc, p| acc.greater(p));
 
         let p_init = P::random_uniform(&min_p, &max_p, &mut self.rng);
+        let (_,var) = PointVector::variance(data.iter());
+        let mut eps = var.data().fold(P::Primitive::ZERO,|acc,v| acc+*v).sqrt();
         /*let eps = data
             .iter()
             .fold(P::Primitive::ZERO, |acc, d| acc + d.l2_distance(&p_init))
             / P::Primitive::usize(data.len());*/
         //This parameter matters a lot, if it's too big theres only one cluster, if it's too small we get like 15
-        let eps = (max_p-min_p).max_data()/P::Primitive::usize(100);
+        //let eps = (max_p-min_p).max_data()/P::Primitive::usize(100);
         let cluster_init = self.new_cluster(p_init, (min_p, max_p));
         let mut clusters = vec![cluster_init];
         loop {
@@ -122,13 +129,12 @@ impl<Prim: Primitive, P: Point<Primitive = Prim>> SelfSelectiveCompetitiveLearni
                             acc
                         }
                     });
-            
             if max_pc > eps {
                 let split_cluster = &clusters[max_pc_idx];
                 let new_p = split_cluster.r;
                 let new_cluster = self.new_cluster(new_p, (min_p, max_p));
                 clusters.push(new_cluster);
-                //reset the clsuters
+                //reset the clusters
                 let max_distance = min_p.l1_distance(&max_p);
                 clusters.iter_mut().for_each(|cluster| {
                     cluster.r = cluster.p;
@@ -140,13 +146,44 @@ impl<Prim: Primitive, P: Point<Primitive = Prim>> SelfSelectiveCompetitiveLearni
                     cluster.nc = P::Primitive::ZERO;
                     cluster.nr = P::Primitive::ZERO;
                 });
+                //update eps
+                let clustered_data = data.iter().map(|d|{
+                    let (_, win_cluster_idx) = clusters.iter().enumerate().fold(
+                        (P::Primitive::MAX, 0),
+                        |acc, (i, cluster)| {
+                            let distance = d.l2_distance(&cluster.p);
+                            if distance < acc.0 {
+                                (distance, i)
+                            } else {
+                                acc
+                            }
+                        },
+                    );
+                    win_cluster_idx
+                }).collect::<Vec<_>>();
+                eps = clusters.iter().enumerate().fold(P::Primitive::ZERO,|acc,(i,_)|{
+                    let (_,var) = PointVector::variance(data.iter().zip(clustered_data.iter()).filter(|(_,cd)| **cd==i).map(|(d,_)|d));
+                    acc+var.data().fold(P::Primitive::ZERO,|acc,v| acc+*v).sqrt()
+                });
             } else {
                 break;
             }
 
         }
-        dbg!(clusters.len());
-        Vec::new()
+        data.iter().map(|d|{
+            let (_, win_cluster_idx) = clusters.iter().enumerate().fold(
+                (P::Primitive::MAX, 0),
+                |acc, (i, cluster)| {
+                    let distance = d.l2_distance(&cluster.p);
+                    if distance < acc.0 {
+                        (distance, i)
+                    } else {
+                        acc
+                    }
+                },
+            );
+            win_cluster_idx
+        }).map(|u| Core(u)).collect::<Vec<_>>()
     }
     fn new_cluster(&mut self, p: P, (mn, mx): (P, P)) -> SSCluster<P> {
         let r = p;

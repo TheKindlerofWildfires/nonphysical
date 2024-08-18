@@ -6,7 +6,7 @@ pub mod svd_tests {
         linear::svd::{RealSingularValueDecomposition, SingularValueDecomposition},
         shared::{
             float::Float,
-            matrix::{heap::MatrixHeap, Matrix},
+            matrix::{matrix_heap::MatrixHeap, Matrix},
             primitive::Primitive,
         },
     };
@@ -277,7 +277,7 @@ mod svd_col_pivot_tests {
         linear::{qr_decomposition::{QRDecomposition, RealQRDecomposition}, svd::{RealSingularValueDecomposition, SingularValueDecomposition}},
         shared::{
             float::Float,
-            matrix::{heap::MatrixHeap, Matrix},
+            matrix::{matrix_heap::MatrixHeap, Matrix},
             primitive::Primitive,
             vector::Vector,
         },

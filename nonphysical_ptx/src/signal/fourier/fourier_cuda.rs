@@ -1,6 +1,6 @@
 use crate::cuda::runtime::Runtime;
 
-use nonphysical_core::{shared::complex::Complex,signal::fourier::{FourierTransform,heap::ComplexFourierTransformHeap}};
+use nonphysical_core::{shared::complex::Complex,signal::fourier::{FourierTransform,fourier_heap::ComplexFourierTransformHeap}};
 use std::{rc::Rc, marker::PhantomData,cmp::min, borrow::ToOwned};
 use super::FourierArguments;
 

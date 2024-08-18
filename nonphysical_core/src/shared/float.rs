@@ -5,7 +5,7 @@ use core::{
 };
 
 use super::primitive::Primitive;
-use alloc::boxed::Box;
+use alloc::{boxed::Box, string::String};
 
 
 /*
@@ -59,4 +59,5 @@ pub trait Float:
     fn atanh(self) -> Self;
     fn to_be_bytes(self) -> Box<[u8]>;
     fn to_le_bytes(self) -> Box<[u8]>;
+    fn type_id()->String;
 }

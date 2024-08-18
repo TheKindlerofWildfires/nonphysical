@@ -4,7 +4,7 @@ mod qr_col_pivot_pca_tests {
         linear::qr_decomposition::{QRDecomposition, RealQRDecomposition},
         shared::{
             float::Float,
-            matrix::{heap::MatrixHeap, Matrix},
+            matrix::{matrix_heap::MatrixHeap, Matrix},
             primitive::Primitive,
             vector::Vector,
         },
@@ -223,7 +223,7 @@ mod qr_col_pivot_svd_tests {
         linear::qr_decomposition::{QRDecomposition, RealQRDecomposition},
         shared::{
             float::Float,
-            matrix::{heap::MatrixHeap, Matrix},
+            matrix::{matrix_heap::MatrixHeap, Matrix},
             primitive::Primitive,
             vector::Vector,
         },
