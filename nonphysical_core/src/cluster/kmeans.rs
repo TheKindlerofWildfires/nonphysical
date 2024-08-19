@@ -14,7 +14,7 @@ impl<P:Point> Kmeans<P>{
         let mut taken: Vec<bool> = vec![false; seed_data.len()];
         let mut centroids = vec![P::ORIGIN;clusters];
         taken[0] = true; 
-        centroids[0] = seed_data[0].clone();
+        centroids[0] = seed_data[0];
 
         (1..clusters).for_each(|i| {
             let mut max_index = 0;
@@ -39,7 +39,7 @@ impl<P:Point> Kmeans<P>{
 
             });
             taken[max_index] = true;
-            centroids[i] = seed_data[max_index].clone();
+            centroids[i] = seed_data[max_index];
         });
         Self { centroids,iterations }
     }
@@ -77,7 +77,7 @@ impl<P:Point> Kmeans<P>{
                 match m {
                     Core(mp) => {
                         counts[*mp] +=1;
-                        self.centroids[*mp] = self.centroids[*mp].clone().add(c.clone());
+                        self.centroids[*mp] = self.centroids[*mp].add(*c);
                     },
                     _ => {unreachable!()}
 

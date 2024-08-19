@@ -14,13 +14,6 @@ impl<'a, F:Float+'a> Vector<F>{
         iter.fold(F::ZERO, |acc, x| acc+ *x)
     }
 
-    pub fn dot<I>(iter: I,other: I) -> F
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.zip(other).fold(F::IDENTITY, |acc, (x,y)| acc+ (*x * *y))
-    }
-
     pub fn add<I>(iter: I, other: F)
     where
         I: Iterator<Item = &'a mut F>,
@@ -80,6 +73,14 @@ impl<'a, F:Float+'a> Vector<F>{
     {
         iter.zip(other).for_each(|(i,j)| *i /= *j)
     }
+    
+    pub fn dot<I>(iter: I,other: I) -> F
+    where
+        I: Iterator<Item = &'a F>,
+    {
+        iter.zip(other).fold(F::IDENTITY, |acc, (x,y)| acc+ (*x * *y))
+    }
+
     pub fn l1_sum<I>(iter: I) -> F::Primitive
     where
         I: Iterator<Item = &'a F>,
@@ -121,47 +122,6 @@ impl<'a, F:Float+'a> Vector<F>{
         iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
     }
 
-    pub fn l1_sum_ref<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
-    }
-
-    pub fn l2_sum_ref<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
-    }
-
-    pub fn l1_min_ref<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
-    }
-
-    pub fn l2_min_ref<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
-    }
-    pub fn l1_max_ref<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
-    }
-
-    pub fn l2_max_ref<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
-    }
-
 }
 pub struct RealVector<R:Real>{
     phantom_data: PhantomData<R>
@@ -184,36 +144,6 @@ impl<'a, R:Real<Primitive=R>+'a> RealVector<R>{
     pub fn variance<I>(iter: I) -> (R::Primitive,R::Primitive)
     where
         I: Iterator<Item = &'a R>,
-    {
-        let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
-            let (mut count, mut mean, mut square_distance) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/R::usize(count);
-            let delta2 = *x - mean;
-            square_distance+= delta*delta2;
-            (count,mean,square_distance)
-        });
-        (mean,square_distance/R::usize(count))
-    }
-
-    pub fn mean_ref<I>(iter: I) -> R::Primitive
-    where
-        I: Iterator<Item = &'a mut R>,
-    {
-        let (_, mean) = iter.fold((0,R::Primitive::ZERO), |acc, x| {
-            let (mut count, mut mean) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/R::usize(count);
-            (count,mean)
-        });
-        mean
-    }
-
-    pub fn variance_ref<I>(iter: I) -> (R::Primitive,R::Primitive)
-    where
-        I: Iterator<Item = &'a mut R>,
     {
         let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
             let (mut count, mut mean, mut square_distance) = acc;

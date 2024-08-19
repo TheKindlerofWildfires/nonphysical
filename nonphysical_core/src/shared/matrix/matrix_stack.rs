@@ -62,7 +62,7 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
     }
 
     fn explicit_copy(&self) -> Self {
-        let new_data = self.data.clone();
+        let new_data = self.data;
 
         Self::new((self.rows, new_data))
     }

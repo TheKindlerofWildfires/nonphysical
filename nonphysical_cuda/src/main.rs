@@ -1,19 +1,18 @@
-use std::process::Command;
 use std::borrow::ToOwned;
-use std::dbg;
 use std::format;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::process::Command;
 use std::vec::Vec;
-pub fn main(){
+pub fn main() {
     println!("Started PTX compile");
-    let result = Command::new("cargo").current_dir("../nonphysical_ptx").args(&[
-        "rustc",
-        "--target=nvptx64-nvidia-cuda",
-        "--release",
-    ]).status().expect("Failed to compile PTX");
-    println!("Compiled {:?}",result);
+    let result = Command::new("cargo")
+        .current_dir("../nonphysical_ptx")
+        .args(["rustc", "--target=nvptx64-nvidia-cuda", "--release"])
+        .status()
+        .expect("Failed to compile PTX");
+    println!("Compiled {:?}", result);
     for entry in fs::read_dir("../target/nvptx64-nvidia-cuda/release/deps/").unwrap() {
         let path = entry.unwrap().path();
         let path_str = path.to_string_lossy();
@@ -36,18 +35,14 @@ pub fn main(){
             for block in blocks {
                 // Extract the function signature
                 if let Some(start_func) = block.find(".func ") {
-                    let end_func = block[start_func..]
-                        .find('\n')
-                        .unwrap_or_else(|| block.len())
-                        + start_func;
+                    let end_func =
+                        block[start_func..].find('\n').unwrap_or(block.len()) + start_func;
                     let func_signature = &block[start_func..end_func].trim();
 
                     // Extract the parameters
                     if let Some(start_params) = block.find('(') {
-                        let end_params = block[start_params..]
-                            .find(')')
-                            .unwrap_or_else(|| block.len())
-                            + start_params;
+                        let end_params =
+                            block[start_params..].find(')').unwrap_or(block.len()) + start_params;
                         let params = &block[start_params + 1..end_params].trim();
 
                         // Extract the .noreturn
@@ -66,7 +61,7 @@ pub fn main(){
                     }
                 }
             }
-            let mut file = File::create(format!("../{}.ptx",name)).expect("Couldn't write file");
+            let mut file = File::create(format!("../{}.ptx", name)).expect("Couldn't write file");
             for chunk in new_file {
                 file.write_all(chunk.as_bytes())
                     .expect("Couldn't write to file");

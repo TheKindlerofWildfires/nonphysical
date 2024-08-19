@@ -2,9 +2,9 @@
 resolver = "2"
 
 members = [
-    "nonphysical_core",
-    "nonphysical_ptx",
-    "nonphysical_std", "nonphysical_tests","playground"
+    "nonphysical_core", "nonphysical_cuda",
+    "nonphysical_ptx", "nonphysical_std", 
+    "nonphysical_cuda_tests", "nonphysical_tests"
 ]
 
 [profile.release]

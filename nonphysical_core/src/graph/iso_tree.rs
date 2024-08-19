@@ -85,8 +85,8 @@ impl<P: Point> IsoTree<P> {
 
             points.iter().for_each(|point| {
                 match Self::branch_left(point, &split_point, &split_vector) {
-                    true => points_left.push(point.clone()),
-                    false => points_right.push(point.clone()),
+                    true => points_left.push(*point),
+                    false => points_right.push(*point),
                 }
             });
 
@@ -113,7 +113,7 @@ impl<P: Point> IsoTree<P> {
         split_point: &P,
         split_vector: &P,
     ) -> bool {
-        (point.clone()-split_point.clone()).dot(split_vector) <= P::Primitive::ZERO
+        (*point-*split_point).dot(split_vector) <= P::Primitive::ZERO
         
     }
 

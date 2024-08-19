@@ -14,6 +14,8 @@ use std::{
     string::String,
 };
 
+use super::global::host::CuGlobalBox;
+
 static mut CUDA_INITIALIZED: bool = false;
 
 pub struct Runtime {
@@ -74,24 +76,42 @@ impl Runtime {
         Runtime { context, module }
     }
 
-    pub fn wrap_args<Args>(args: &Args) -> Vec<*mut c_void>{
+    pub fn wrap_args<Args>(args: &Args) -> Vec<*mut c_void> {
         let mut ptr: DevicePtr = 0;
         let size = std::mem::size_of::<Args>();
-        CuError::check(unsafe{ffi::cuMemAlloc_v2(&mut ptr as *mut u64, size)}).expect("Failed to allocate space for args");
-        CuError::check(unsafe{            ffi::cuMemcpyHtoD_v2(
-            ptr,
-            args as *const Args as *const std::ffi::c_void,
-            std::mem::size_of::<Args>(),
-        )}).expect("Failed to copy args");
+        CuError::check(unsafe { ffi::cuMemAlloc_v2(&mut ptr as *mut u64, size) })
+            .expect("Failed to allocate space for args");
+        CuError::check(unsafe {
+            ffi::cuMemcpyHtoD_v2(
+                ptr,
+                args as *const Args as *const std::ffi::c_void,
+                std::mem::size_of::<Args>(),
+            )
+        })
+        .expect("Failed to copy args");
         let mut ptr = unsafe { (ptr as *mut Args).as_mut() }.expect("Failed too convert args");
         vec![&mut ptr as *mut _ as *mut c_void]
     }
-    pub fn launch<Args>(&self, function: CUfunction, args: &Args, grid_dim: Dim3, block_dim: Dim3) {
+
+    /// # Safety
+    ///
+    /// This function isn't safe, the result of the launch is checked but there are many places a raw pointer can be dereferenced
+    pub unsafe fn launch<Args>(
+        &self,
+        function: CUfunction,
+        args: &Args,
+        grid_dim: Dim3,
+        block_dim: Dim3,
+    ) {
         // launch
-        let mut launch_args = Self::wrap_args(args);
-        unsafe {
-            let shared_mem_bytes = 0;
-            CuError::check(cuLaunchKernel(
+        let mut args_d = CuGlobalBox::alloc(args);
+        args_d.store(args);
+        let mut ptr = args_d.get();
+        let mut launch_args = vec![&mut ptr as *mut &Args as *mut c_void];
+        let shared_mem_bytes = 0;
+
+        CuError::check(unsafe {
+            cuLaunchKernel(
                 function,
                 grid_dim.x as c_uint,
                 grid_dim.y as c_uint,
@@ -103,9 +123,9 @@ impl Runtime {
                 ptr::null_mut(),
                 launch_args.as_mut_ptr(),
                 ptr::null_mut(),
-            ))
-            .expect("Kernel launch failed");
-        }
+            )
+        })
+        .expect("Kernel launch failed");
     }
     pub fn launch_name<Args>(
         &self,
@@ -127,7 +147,9 @@ impl Runtime {
         })
         .expect("Failed to find function");
 
-        self.launch(function, args, grid_dim, block_dim);
+        unsafe {
+            self.launch(function, args, grid_dim, block_dim);
+        }
 
         function
     }

@@ -1,5 +1,5 @@
 [package]
-name = "nonphysical_test_cuda"
+name = "nonphysical_cuda_tests"
 version = "0.1.0"
 edition = "2021"
 

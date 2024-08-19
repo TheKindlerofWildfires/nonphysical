@@ -11,5 +11,3 @@ extern "C" __global__ void test(unsigned int * x,float * y, int z) {
 
 
 }
-
-//idea -> only atomic operations on shared memory to be thread safe 

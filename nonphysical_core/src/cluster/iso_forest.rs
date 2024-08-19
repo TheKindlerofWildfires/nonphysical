@@ -53,7 +53,7 @@ impl<P: Point> IsoForest<P> {
                     .map(|index_chunk| {
                         let tree_data = index_chunk
                             .iter()
-                            .map(|i| seed_data[*i].clone())
+                            .map(|i| seed_data[*i])
                             .collect::<Vec<_>>();
 
                         IsoTree::new(&tree_data, max_depth, extension_level, &mut rng)

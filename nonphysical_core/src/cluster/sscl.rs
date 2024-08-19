@@ -35,7 +35,7 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
     pub fn new(state: u32, iterations: usize) -> Self {
         let rng = PermutedCongruentialGenerator::new(state, state+1);
 
-        Self { rng, iterations, phantom_data: PhantomData::default() }
+        Self { rng, iterations, phantom_data: PhantomData }
     }
 
     pub fn cluster(&mut self, data: &[P]) -> Vec<Classification> {
@@ -62,7 +62,7 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
                 self.rng.shuffle_usize(&mut order);
                 order.iter().for_each(|i| {
                     //Find winning P
-                    let x = data[*i].clone();
+                    let x = data[*i];
                     let (_, win_cluster_idx) = clusters.iter().enumerate().fold(
                         (P::Primitive::MAX, 0),
                         |acc, (i, cluster)| {
@@ -183,7 +183,7 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
                 },
             );
             win_cluster_idx
-        }).map(|u| Core(u)).collect::<Vec<_>>()
+        }).map(Core).collect::<Vec<_>>()
     }
     fn new_cluster(&mut self, p: P, (mn, mx): (P, P)) -> SSCluster<P> {
         let r = p;
