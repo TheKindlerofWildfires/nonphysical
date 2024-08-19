@@ -1,0 +1,13 @@
+[package]
+name = "nonphysical_tests"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[dependencies]
+nonphysical_core = {path="../nonphysical_core"}
+nonphysical_std = {path="../nonphysical_std"}
+
+
+[features]
+std = []

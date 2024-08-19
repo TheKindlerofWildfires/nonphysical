@@ -3,5 +3,47 @@
 version = 3
 
 [[package]]
-name = "nonphysical"
+name = "nonphysical_core"
 version = "0.1.0"
+
+[[package]]
+name = "nonphysical_cuda"
+version = "0.1.0"
+dependencies = [
+ "nonphysical_core",
+ "nonphysical_std",
+]
+
+[[package]]
+name = "nonphysical_cuda_tests"
+version = "0.1.0"
+dependencies = [
+ "nonphysical_core",
+ "nonphysical_cuda",
+ "nonphysical_ptx",
+ "nonphysical_std",
+]
+
+[[package]]
+name = "nonphysical_ptx"
+version = "0.1.0"
+dependencies = [
+ "nonphysical_core",
+ "nonphysical_cuda",
+ "nonphysical_std",
+]
+
+[[package]]
+name = "nonphysical_std"
+version = "0.1.0"
+dependencies = [
+ "nonphysical_core",
+]
+
+[[package]]
+name = "nonphysical_tests"
+version = "0.1.0"
+dependencies = [
+ "nonphysical_core",
+ "nonphysical_std",
+]

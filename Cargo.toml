@@ -1,18 +1,17 @@
-[package]
-name = "nonphysical"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "nonphysical_core", "nonphysical_cuda",
+    "nonphysical_ptx", "nonphysical_std", 
+    "nonphysical_cuda_tests", "nonphysical_tests"
+]
 
 [profile.release]
 codegen-units = 1
 panic = "abort"
-strip = "symbols"
+strip = true
 
 [profile.lto]
 inherits = "release"
 lto="fat"
-
-
-[dependencies]

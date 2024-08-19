@@ -1,0 +1,10 @@
+[package]
+name = "nonphysical_cuda"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nonphysical_core = {path="../nonphysical_core"}
+nonphysical_std = {path="../nonphysical_std"}
+
+[lib]
