@@ -58,6 +58,7 @@ impl<const N: usize> Atomic<F32> for CuShared<F32, N> {
         let mut old  = self.load(index);
         let mut assumed ;
         let mut value = value;
+
         if old<=value{
             return old;
         }
@@ -378,7 +379,7 @@ impl<const N: usize> Atomic<u32> for CuShared<u32, N> {
         let mut out: u32;
         unsafe {
             asm!(
-                "atom.shared.cas.b32 {o},[{idx}], {v}, {c};",
+                "atom.shared.cas.b32 {o},[{idx}], {c}, {v};",
                 idx = in(reg32) index,
                 v = in(reg32) value,
                 c = in(reg32) compare,

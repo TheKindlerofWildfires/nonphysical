@@ -15,14 +15,18 @@ use alloc::{boxed::Box, string::String};
 
 pub trait Float:
     Neg<Output = Self>
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Div<Output = Self>
-    + MulAssign
-    + AddAssign
-    + DivAssign
-    + SubAssign
+    + Add<Self,Output = Self>
+    + Sub<Self,Output = Self>
+    + Mul<Self,Output = Self>
+    + Div<Self,Output = Self>
+    + Mul<Self::Primitive,Output = Self>
+    + Div<Self::Primitive,Output = Self>
+    + AddAssign<Self>
+    + SubAssign<Self>
+    + MulAssign<Self>
+    + DivAssign<Self>
+    + MulAssign<Self::Primitive>
+    + DivAssign<Self::Primitive>
     + Clone
     + Copy
     + Sized
@@ -34,6 +38,8 @@ pub trait Float:
     type Primitive: Primitive;
     const ZERO: Self;
     const IDENTITY: Self;
+    const MIN: Self;
+    const MAX: Self;
     fn l1_norm(self) -> Self::Primitive;
     fn l2_norm(self) -> Self::Primitive;
     fn fma(self, mul: Self, add: Self) -> Self;
@@ -60,4 +66,7 @@ pub trait Float:
     fn to_be_bytes(self) -> Box<[u8]>;
     fn to_le_bytes(self) -> Box<[u8]>;
     fn type_id()->String;
+    fn greater(self,other: Self)->Self;
+    fn lesser(self,other: Self)->Self;
+
 }

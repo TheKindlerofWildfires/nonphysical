@@ -5,6 +5,7 @@ mod vector_tests {
     use nonphysical_ptx::shared::vector::vector_driver::*;
     use nonphysical_std::shared::primitive::F32;
     use nonphysical_core::shared::float::Float;
+    use vector_driver::CudaVectorHost;
     use std::sync::Arc;
     #[test]
     fn sum_host() {
@@ -13,6 +14,16 @@ mod vector_tests {
         let numbers = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
         let res = CudaVectorHost::sum(runtime, &numbers);
         assert!(res.0 == 549755780000.0);
+    }
+
+    #[test]
+    fn l1_min_host() {
+        let runtime = Arc::new(Runtime::new(0, "../nonphysical_ptx.ptx"));
+        //Allocate a host buffer
+        let numbers = (0..5).map(|i| F32::isize(i-2)).collect::<Vec<_>>();
+        let res = CudaVectorHost::l1_min(runtime, &numbers);
+        dbg!(res);
+        //assert!(res.0 == 0.0);
     }
 
     #[test]
@@ -135,18 +146,19 @@ mod vector_tests {
 }
 #[cfg(test)]
 mod real_vector_tests {
-    use nonphysical_core::shared::{primitive::Primitive, vector::RealVector};
+    use nonphysical_core::shared::{primitive::Primitive, vector::{float_vector::FloatVector, Vector}};
     use nonphysical_cuda::cuda::runtime::Runtime;
     use nonphysical_ptx::shared::vector::vector_driver::*;
     use nonphysical_std::shared::primitive::F32;
     use nonphysical_core::shared::float::Float;
+    use real_vector_driver::CudaRealVectorHost;
     use std::sync::Arc;
     #[test]
     fn mean_host() {
         let runtime = Arc::new(Runtime::new(0, "../nonphysical_ptx.ptx"));
         //Allocate a host buffer
         let numbers = (0..1024*1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let right = RealVector::mean(numbers.iter());
+        let right = FloatVector::mean(numbers.iter());
         let res = CudaRealVectorHost::mean(runtime, &numbers);
         assert!((right-res).l2_norm()<F32::ONE); //floating points are not great
     }
@@ -156,14 +168,14 @@ mod real_vector_tests {
         let runtime = Arc::new(Runtime::new(0, "../nonphysical_ptx.ptx"));
         //Allocate a host buffer
         let numbers = (0..1024*1).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let (right_mean, right_var) = RealVector::variance(numbers.iter());
+        let (right_mean, right_var) = FloatVector::variance(numbers.iter());
         let (mean,var) = CudaRealVectorHost::variance(runtime.clone(), &numbers);
         assert!((right_mean-mean).l2_norm()<F32::ONE); //floating points are not great
         assert!((right_var-var).l2_norm()<F32::ONE); //floating points are not great
 
 
         let numbers = (0..1024*1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let (right_mean, right_var) = RealVector::variance(numbers.iter());
+        let (right_mean, right_var) = FloatVector::variance(numbers.iter());
         let (mean,var) = CudaRealVectorHost::variance(runtime, &numbers);
         assert!((right_mean-mean)/(right_mean)<F32::EPSILON); //floating points are not great
         dbg!((right_var-var)/(right_var));

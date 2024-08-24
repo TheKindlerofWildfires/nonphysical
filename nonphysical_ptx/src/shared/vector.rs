@@ -26,6 +26,11 @@ pub struct VectorArgumentsReduce<'a, F: Float> {
     pub acc: CuGlobalSliceRef<'a, F>,
 }
 
+pub struct VectorArgumentsReducePrim<'a, F: Float> {
+    pub data: CuGlobalSlice<'a, F>,
+    pub acc: CuGlobalSliceRef<'a, F::Primitive>,
+}
+
 pub struct VectorArgumentsMap<'a, F: Float> {
     pub data: CuGlobalSliceRef<'a, F>,
     pub map: CuGlobalSlice<'a, F>,

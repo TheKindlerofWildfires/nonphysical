@@ -5,6 +5,8 @@ use super::primitive::{F32, F64};
 impl Float for F32 {
     const ZERO: Self = F32(0.0);
     const IDENTITY: Self = F32(1.0);
+    const MAX: Self = F32(f32::MAX);
+    const MIN: Self = F32(f32::MIN);
     type Primitive = F32;
     #[inline(always)]
     fn l1_norm(self) -> Self::Primitive {
@@ -134,11 +136,30 @@ impl Float for F32 {
     fn type_id()->String {
         "f32".to_string()
     }
+
+    
+    fn greater(self,other: Self)->Self {
+        if self>other{
+            self
+        }else{
+            other
+        }
+    }
+    
+    fn lesser(self,other: Self)->Self {
+        if self>other{
+            self
+        }else{
+            other
+        }
+    }
 }
 
 impl Float for F64 {
     const ZERO: Self = F64(0.0);
     const IDENTITY: Self = F64(1.0);
+    const MAX: Self = F64(f64::MAX);
+    const MIN: Self = F64(f64::MIN);
     type Primitive = F64;
     #[inline(always)]
     fn l1_norm(self) -> Self::Primitive {
@@ -267,6 +288,22 @@ impl Float for F64 {
     
     fn type_id()->String {
         "f64".to_string()
+    }
+
+    fn greater(self,other: Self)->Self {
+        if self>other{
+            self
+        }else{
+            other
+        }
+    }
+    
+    fn lesser(self,other: Self)->Self {
+        if self<other{
+            self
+        }else{
+            other
+        }
     }
 }
 

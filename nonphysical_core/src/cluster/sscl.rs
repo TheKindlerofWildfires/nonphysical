@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use crate::{
     cluster::Classification::Core,
     random::pcg::PermutedCongruentialGenerator,
-    shared::{point::Point, primitive::Primitive, real::Real, vector::PointVector},
+    shared::{point::Point, primitive::Primitive, real::Real, vector::point_vector::PointVector},
 };
 
 use super::Classification;
@@ -17,7 +17,7 @@ pub struct SelfSelectiveCompetitiveLearning<P: Point> {
 }
 
 #[derive(Clone,Debug)]
-struct SSCluster<P: Point> {
+pub struct SSCluster<P: Point> {
     p: P,
     r: P,
     a: P,
@@ -52,7 +52,7 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
             / P::Primitive::usize(data.len());*/
         //This parameter matters a lot, if it's too big theres only one cluster, if it's too small we get like 15
         //let eps = (max_p-min_p).max_data()/P::Primitive::usize(100);
-        let cluster_init = self.new_cluster(p_init, (min_p, max_p));
+        let cluster_init = Self::new_cluster(&mut self.rng, p_init, (min_p, max_p));
         let mut clusters = vec![cluster_init];
         loop {
             //Learning loop
@@ -80,7 +80,7 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
                     let px = win_cluster.p.l2_distance(&x);
                     let pr = win_cluster.p.l2_distance(&win_cluster.r);
                     let theta_a = P::Primitive::usize(if pa >= px { 1 } else { 0 });
-                    let theta_r = P::Primitive::usize(if px >= pr { 1 } else { 0 }); //r starts right at p, so this is a no go
+                    let theta_r = P::Primitive::usize(if px >= pr { 1 } else { 0 });
 
                     let delta = pa / (px + pa);
                     let rho = px / (px + pr);
@@ -132,7 +132,7 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
             if max_pc > eps {
                 let split_cluster = &clusters[max_pc_idx];
                 let new_p = split_cluster.r;
-                let new_cluster = self.new_cluster(new_p, (min_p, max_p));
+                let new_cluster = Self::new_cluster(&mut self.rng, new_p, (min_p, max_p));
                 clusters.push(new_cluster);
                 //reset the clusters
                 let max_distance = min_p.l1_distance(&max_p);
@@ -185,13 +185,13 @@ impl<R: Real<Primitive = R>, P: Point<Primitive = R>> SelfSelectiveCompetitiveLe
             win_cluster_idx
         }).map(Core).collect::<Vec<_>>()
     }
-    fn new_cluster(&mut self, p: P, (mn, mx): (P, P)) -> SSCluster<P> {
+    pub fn new_cluster(rng: &mut PermutedCongruentialGenerator, p: P, (mn, mx): (P, P)) -> SSCluster<P> {
         let r = p;
-        let mut a = P::random_uniform(&mn, &mx, &mut self.rng);
+        let mut a = P::random_uniform(&mn, &mx, rng);
         //If the cluster is closer to p than half the max distance it's too close
         let max_distance = mn.l1_distance(&mx);
         while p.l1_distance(&a) < max_distance / Primitive::usize(2) {
-            a = P::random_uniform(&mn, &mx, &mut self.rng);
+            a = P::random_uniform(&mn, &mx, rng);
         }
         let c = a;
         SSCluster {

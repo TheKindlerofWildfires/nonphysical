@@ -29,8 +29,6 @@ impl Primitive for F32 {
     const FRAC_PI_2: Self = F32(core::f32::consts::FRAC_PI_2);
     const ONE: Self = F32(1.0);
     const NEGATIVE_ONE: Self = F32(-1.0);
-    const MAX: Self = F32(f32::MAX);
-    const MIN: Self = F32(f32::MIN);
     const SMALL: Self = F32(f32::MIN_POSITIVE);
     const EPSILON: Self = F32(f32::EPSILON);
     const GAMMA: Self = F32(0.577_215_7);
@@ -262,8 +260,6 @@ impl Primitive for F64 {
     const FRAC_PI_2: Self = F64(core::f64::consts::FRAC_PI_2);
     const ONE: Self = F64(1.0);
     const NEGATIVE_ONE: Self = F64(-1.0);
-    const MAX: Self = F64(f64::MAX);
-    const MIN: Self = F64(f64::MIN);
     const SMALL: Self = F64(f64::MIN_POSITIVE);
     const EPSILON: Self = F64(f64::EPSILON);
     const GAMMA: Self = F64(0.577_215_664_901_532_9);

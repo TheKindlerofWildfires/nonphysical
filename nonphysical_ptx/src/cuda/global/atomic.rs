@@ -114,7 +114,7 @@ impl<'a> Atomic<F32> for CuGlobalSliceRef<'a, F32> {
         let mut out = F32::ZERO;
         unsafe {
             asm!(
-                "atom.global.cas.b32 {o},[{idx}], {v}, {c};",
+                "atom.global.cas.b32 {o},[{idx}], {c}, {v};",
                 idx = in(reg64) index,
                 v = in(reg32) value.0,
                 c = in(reg32) compare.0,

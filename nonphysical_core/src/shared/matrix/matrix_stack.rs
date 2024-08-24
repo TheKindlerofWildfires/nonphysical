@@ -1,4 +1,4 @@
-use crate::shared::{float::Float, vector::Vector};
+use crate::shared::{float::Float, vector::{float_vector::FloatVector, Vector}};
 use core::{
     borrow::BorrowMut,
     fmt::Debug,
@@ -57,7 +57,7 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
         debug_assert!(rows * cols == N);
         let data = [F::ZERO; N];
         let mut id = Self { rows, cols, data };
-        Vector::<F>::add(id.data_diag_ref(), F::IDENTITY);
+        FloatVector::add_ref(id.data_diag_ref(), F::IDENTITY);
         id
     }
 
@@ -426,7 +426,7 @@ impl<F: Float, const N: usize> Add<F> for MatrixStack<F, N> {
     type Output = Self;
     fn add(self, adder: F) -> Self {
         let mut out = self.explicit_copy();
-        Vector::<F>::add(out.data_ref(), adder);
+        FloatVector::add_ref(out.data_ref(), adder);
         out
     }
 }
@@ -435,7 +435,7 @@ impl<F: Float, const N: usize> Mul<F> for MatrixStack<F, N> {
     type Output = Self;
     fn mul(self, scaler: F) -> Self {
         let mut out = self.explicit_copy();
-        Vector::<F>::mul(out.data_ref(), scaler);
+        FloatVector::mul_ref(out.data_ref(), scaler);
         out
     }
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use nonphysical_core::shared::primitive::Primitive;
 use nonphysical_cuda::cuda::runtime::Runtime;
-use nonphysical_ptx::shared::vector::vector_driver::CudaVectorHost;
+use nonphysical_ptx::shared::vector::vector_driver::vector_driver::CudaVectorHost;
 use nonphysical_std::shared::primitive::F32;
 
 

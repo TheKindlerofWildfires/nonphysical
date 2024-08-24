@@ -5,7 +5,8 @@ use core::fmt::Debug;
 use crate::random::pcg::PermutedCongruentialGenerator;
 use alloc::vec::Vec;
 
-use super::{primitive::Primitive, real::Real, vector::Vector};
+use super::vector::Vector;
+use super::{primitive::Primitive, real::Real, vector::float_vector::FloatVector};
 
 #[derive(Clone,Copy, Debug)]
 pub struct StaticPoint<P: Primitive, const N: usize> {
@@ -19,6 +20,7 @@ pub trait Point:
     type Primitive: Primitive;
     type Precursor;
     const ORIGIN: Self;
+    const IDENTITY: Self;
     const MAX: Self;
     const MIN: Self;
     fn new(data: Self::Precursor) -> Self;
@@ -55,6 +57,7 @@ impl<P: Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
     type Precursor = [P; N];
 
     const ORIGIN: Self = Self { data: [P::ZERO; N] };
+    const IDENTITY: Self = Self{data: [P::IDENTITY;N]};
     const MAX: Self = Self { data: [P::MAX; N] };
     const MIN: Self = Self { data: [P::MIN; N] };
 
@@ -192,7 +195,7 @@ impl<P: Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
 
     #[inline(always)]
     fn dot(&self, other: &Self) -> Self::Primitive {
-        Vector::<P>::dot(self.data.iter(), other.data.iter())
+        FloatVector::dot(self.data.iter(), other.data.iter())
     }
 
     #[inline(always)]
@@ -225,7 +228,7 @@ impl<P: Primitive<Primitive = P>, const N: usize> Point for StaticPoint<P, N> {
 
     #[inline(always)]
     fn scale(&mut self, other: Self::Primitive) {
-        Vector::<P>::mul(self.data.iter_mut(), other);
+        FloatVector::scale_ref(self.data.iter_mut(), other);
     }
     #[inline(always)]
     fn dimension(&self) -> usize {
@@ -338,6 +341,7 @@ impl<P: Real<Primitive = P>> Point for P {
     type Precursor = Self;
 
     const ORIGIN: Self = Self::ZERO;
+    const IDENTITY: Self = Self::IDENTITY;
     const MAX: Self = P::MAX;
     const MIN: Self = P::MIN;
 

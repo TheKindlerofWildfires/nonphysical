@@ -1,319 +1,298 @@
-use core::marker::PhantomData;
-use super::{complex::Complex, float::Float, point::Point, primitive::Primitive, real::Real};
+pub mod float_vector;
+pub mod point_vector;
 
-pub struct Vector<F:Float>{
-    phantom_data: PhantomData<F>
-}
+use super::float::Float;
 
+pub trait Vector<'a, F: Float + 'a> {
+    // Reduction operations: [F] -> F
+    fn sum<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-impl<'a, F:Float+'a> Vector<F>{
-    pub fn sum<I>(iter: I) -> F
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold(F::ZERO, |acc, x| acc+ *x)
-    }
+    fn product<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-    pub fn add<I>(iter: I, other: F)
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.for_each(|c| *c += other)
-    }
+    fn greater<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-    pub fn sub<I>(iter: I, other: F)
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.for_each(|c| *c -= other)
-    }
+    fn lesser<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-    pub fn mul<I>(iter: I, other: F)
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.for_each(|c| *c *= other)
-    }
+    fn mean<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-    pub fn div<I>(iter: I, other: F)
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.for_each(|c| *c /= other)
-    }
+    fn variance<I: Iterator<Item = &'a F>>(iter: I) -> (F, F);
 
-    pub fn add_vec<I,J>(iter: I, other:J)
-    where
-        I: Iterator<Item = &'a mut F>,
-        J: Iterator<Item = &'a F>,
-    {
-        iter.zip(other).for_each(|(i,j)| *i += *j)
-    }
+    fn deviation<I: Iterator<Item = &'a F>>(iter: I) -> (F, F);
 
-    pub fn sub_vec<I,J>(iter: I, other:J)
-    where
-        I: Iterator<Item = &'a mut F>,
-        J: Iterator<Item = &'a F>,
-    {
-        iter.zip(other).for_each(|(i,j)| *i -= *j)
-    }
+    // Map style operations: [F], F -> [F]
+    fn add<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
-    pub fn mul_vec<I,J>(iter: I, other:J)
-    where
-        I: Iterator<Item = &'a mut F>,
-        J: Iterator<Item = &'a F>,
-    {
-        iter.zip(other).for_each(|(i,j)| *i *= *j)
-    }
+    fn sub<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
-    pub fn div_vec<I,J>(iter: I, other:J)
-    where
-        I: Iterator<Item = &'a mut F>,
-        J: Iterator<Item = &'a F>,
-    {
-        iter.zip(other).for_each(|(i,j)| *i /= *j)
-    }
-    
-    pub fn dot<I>(iter: I,other: I) -> F
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.zip(other).fold(F::IDENTITY, |acc, (x,y)| acc+ (*x * *y))
-    }
+    fn mul<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
-    pub fn l1_sum<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
-    }
+    fn div<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
-    pub fn l2_sum<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
-    }
-    pub fn l1_min<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
-    }
+    fn scale<I: Iterator<Item = &'a F> + 'a>(
+        iter: I,
+        other: F::Primitive,
+    ) -> impl Iterator<Item = F> + 'a;
 
-    pub fn l2_min<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
-    }
+    fn descale<I: Iterator<Item = &'a F> + 'a>(
+        iter: I,
+        other: F::Primitive,
+    ) -> impl Iterator<Item = F> + 'a;
 
-    pub fn l1_max<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
-    }
+    fn fma<I: Iterator<Item = &'a F> + 'a>(iter: I, mul: F, add: F)
+        -> impl Iterator<Item = F> + 'a;
 
-    pub fn l2_max<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a F>,
-    {
-        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
-    }
+    fn powf<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
-    fn l1_sum_ref<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l1_norm())
-    }
+    fn powi<I: Iterator<Item = &'a F> + 'a>(iter: I, other: i32) -> impl Iterator<Item = F> + 'a;
 
-    fn l2_sum_ref<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::ZERO, |acc, x| acc+ x.l2_norm())
-    }
+    fn ln<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    fn l1_min_ref<I>(iter: I) -> F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l1_norm()))
-    }
+    fn log2<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    fn l2_min_ref<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MAX, |acc, x| acc.lesser(x.l2_norm()))
-    }
-    fn l1_max_ref<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l1_norm()))
-    }
+    fn exp<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    fn l2_max_ref<I>(iter: I) ->  F::Primitive
-    where
-        I: Iterator<Item = &'a mut F>,
-    {
-        iter.fold( F::Primitive::MIN, |acc, x| acc.greater(x.l2_norm()))
-    }
+    fn exp2<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-}
-pub struct RealVector<R:Real>{
-    phantom_data: PhantomData<R>
-}
-impl<'a, R:Real<Primitive=R>+'a> RealVector<R>{
-    pub fn mean<I>(iter: I) -> R::Primitive
-    where
-        I: Iterator<Item = &'a R>,
-    {
-        let (_, mean) = iter.fold((0,R::Primitive::ZERO), |acc, x| {
-            let (mut count, mut mean) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/R::usize(count);
-            (count,mean)
-        });
-        mean
-    }
+    fn recip<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    pub fn variance<I>(iter: I) -> (R::Primitive,R::Primitive)
-    where
-        I: Iterator<Item = &'a R>,
-    {
-        let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
-            let (mut count, mut mean, mut square_distance) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/R::usize(count);
-            let delta2 = *x - mean;
-            square_distance+= delta*delta2;
-            (count,mean,square_distance)
-        });
-        (mean,square_distance/R::usize(count))
-    }
+    fn sin<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    fn mean_ref<I>(iter: I) -> R::Primitive
-    where
-        I: Iterator<Item = &'a mut R>,
-    {
-        let (_, mean) = iter.fold((0,R::Primitive::ZERO), |acc, x| {
-            let (mut count, mut mean) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/R::usize(count);
-            (count,mean)
-        });
-        mean
-    }
+    fn cos<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    fn variance_ref<I>(iter: I) -> (R::Primitive,R::Primitive)
-    where
-        I: Iterator<Item = &'a mut R>,
-    {
-        let (count, mean, square_distance) = iter.fold((0,R::Primitive::ZERO,R::Primitive::ZERO), |acc, x| {
-            let (mut count, mut mean, mut square_distance) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/R::usize(count);
-            let delta2 = *x - mean;
-            square_distance+= delta*delta2;
-            (count,mean,square_distance)
-        });
-        (mean,square_distance/R::usize(count))
-    }
+    fn tan<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-}
+    fn asin<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-pub struct ComplexVector<C:Complex>{
-    phantom_data: PhantomData<C>
-}
-impl<'a, C:Complex+'a> ComplexVector<C>{
-    pub fn scale<I>(iter: I, scaler: C::Primitive)
-    where
-        I: Iterator<Item = &'a mut C>,
-    {
-        iter.for_each(|c| *c *= scaler)
-    }
+    fn acos<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    pub fn descale<I>(iter: I, scaler:C::Primitive)
-    where
-        I: Iterator<Item = &'a mut C>,
-    {
-        iter.for_each(|c| *c /= scaler)
-    }
-    /* 
-    pub fn mean<I>(iter: I) -> C
-    where
-        I: Iterator<Item = &'a C>,
-    {
-        let (_, mean) = iter.fold((0,C::ZERO), |acc, x| {
-            let (mut count, mut mean) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/C::Primitive::usize(count);
-            (count,mean)
-        });
-        mean
-    }
+    fn atan<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    pub fn variance<I>(iter: I) -> (C,C)
-    where
-     I: Iterator<Item = &'a C>,
-    {
-        let (count, mean, square_distance) = iter.fold((0,C::ZERO,C::ZERO), |acc, x| {
-            let (mut count, mut mean, mut square_distance) = acc;
-            count +=1;
-            let delta = *x-mean;
-            mean += delta/C::Primitive::usize(count);
-            let delta2 = *x - mean;
-            square_distance+= delta*delta2;
-            (count,mean,square_distance)
-        });
-        (mean,square_distance/C::Primitive::usize(count))
-    }*/
-}
+    fn sinh<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-pub struct PointVector<P:Point>{
-    phantom_data: PhantomData<P>
-}
+    fn cosh<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-impl<'a, R: Real<Primitive = R>, P:Point<Primitive=R>+'a> PointVector<P>{
-    pub fn mean<I>(iter: I) -> P
-    where
-        I: Iterator<Item = &'a P>,
-    {
-        let (_, mean) = iter.fold((0,P::ORIGIN), |acc, x| {
-            let (mut count, mut mean) = acc;
-            count +=1;
-            let mut delta = *x-mean;
-            delta.scale(R::usize(count).recip());
-            mean += delta;
-            (count,mean)
-        });
-        mean
-    }
+    fn tanh<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
-    pub fn variance<I>(iter: I) -> (P,P)
-    where
-     I: Iterator<Item = &'a P>,
-    {
-        let (count, mean, mut square_distance) = iter.fold((0,P::ORIGIN,P::ORIGIN), |acc, x| {
-            let (mut count, mut mean, mut square_distance) = acc;
-            count +=1;
-            let mut delta = *x-mean;
-            delta.scale(R::usize(count).recip());
-            mean += delta;
-            let delta2 = *x - mean;
-            square_distance+= delta*delta2;
-            (count,mean,square_distance)
-        });
-        square_distance.scale(P::Primitive::usize(count).recip());
-        (mean,square_distance)
-    }
+    fn asinh<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
+
+    fn acosh<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
+
+    fn atanh<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
+
+    // Transformation map operation: [F] -> F::Primitive
+    fn l1_norm<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F::Primitive> + 'a;
+
+    fn l2_norm<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F::Primitive> + 'a;
+
+    // In-place operations: [mut F], F -> [F]
+    fn add_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
+
+    fn sub_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
+
+    fn mul_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
+
+    fn div_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
+
+    fn scale_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F::Primitive);
+
+    fn descale_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F::Primitive);
+
+    fn fma_ref<I: Iterator<Item = &'a mut F>>(iter: I, mul: F, add: F);
+
+    fn powf_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
+
+    fn powi_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: i32);
+
+    fn ln_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn log2_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn exp_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn exp2_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn recip_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn sin_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn cos_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn tan_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn asin_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn acos_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn atan_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn sinh_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn cosh_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn tanh_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn asinh_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn acosh_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    fn atanh_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
+    /*
+        Multi Map style operations where [F], [F] -> [F]
+    */
+
+    fn add_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
+
+    fn sub_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
+
+    fn mul_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
+
+    fn div_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
+
+    fn fma_vec<I: Iterator<Item = &'a F> + 'a>(
+        iter: I,
+        mul: I,
+        add: I,
+    ) -> impl Iterator<Item = F> + 'a;
+
+    fn powf_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
+
+    fn powi_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = &'a i32> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a;
+
+    fn greater_vec<I: Iterator<Item = &'a F> + 'a>(
+        iter: I,
+        other: I,
+    ) -> impl Iterator<Item = F> + 'a;
+
+    fn lesser_vec<I: Iterator<Item = &'a F> + 'a>(
+        iter: I,
+        other: I,
+    ) -> impl Iterator<Item = F> + 'a;
+
+    fn add_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    fn sub_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    fn mul_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    fn div_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    fn fma_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, mul: I, add: I);
+
+    fn powf_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    fn powi_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a i32>>(iter: I, other: J);
+
+    fn greater_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+
+    /*
+        Common Map -> Reduce operations for ease of use
+    */
+
+    fn dot<I: Iterator<Item = &'a F>>(iter: I, other: I) -> F;
+
+    fn quote<I: Iterator<Item = &'a F>>(iter: I, other: I) -> F;
+
+    // Direct map style operations: [F], F -> [F]
+    fn add_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
+
+    fn sub_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
+
+    fn mul_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
+
+    fn div_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
+
+    fn scale_direct<I: Iterator<Item = F>>(iter: I, other: F::Primitive)
+        -> impl Iterator<Item = F>;
+
+    fn descale_direct<I: Iterator<Item = F>>(
+        iter: I,
+        other: F::Primitive,
+    ) -> impl Iterator<Item = F>;
+
+    fn fma_direct<I: Iterator<Item = F>>(iter: I, mul: F, add: F) -> impl Iterator<Item = F>;
+
+    fn powf_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
+
+    fn powi_direct<I: Iterator<Item = F>>(iter: I, other: i32) -> impl Iterator<Item = F>;
+
+    fn ln_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn log2_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn exp_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn exp2_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn recip_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn sin_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn cos_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn tan_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn asin_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn acos_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn atan_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn sinh_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn cosh_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn tanh_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn asinh_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn acosh_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    fn atanh_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
+
+    // Direct map operation: [F] -> F::Primitive
+    fn l1_norm_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F::Primitive>;
+
+    fn l2_norm_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F::Primitive>;
+
+    fn add_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    fn sub_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    fn mul_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    fn div_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    fn fma_vec_direct<I: Iterator<Item = F>>(iter: I, mul: I, add: I) -> impl Iterator<Item = F>;
+
+    fn powf_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    fn powi_vec_direct<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = i32> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F>;
+
+    fn greater_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+
+    // Reduction operations: [F] -> F
+    fn sum_direct<I: Iterator<Item = F>>(iter: I) -> F;
+
+    fn product_direct<I: Iterator<Item = F>>(iter: I) -> F;
+
+    fn greater_direct<I: Iterator<Item = F>>(iter: I) -> F;
+
+    fn lesser_direct<I: Iterator<Item = F>>(iter: I) -> F;
+
+    fn mean_direct<I: Iterator<Item = F>>(iter: I) -> F;
+
+    fn variance_direct<I: Iterator<Item = F>>(iter: I) -> (F, F);
+
+    fn deviation_direct<I: Iterator<Item = F>>(iter: I) -> (F, F);
 }

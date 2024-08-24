@@ -8,6 +8,8 @@ use super::primitive::F32;
 impl Float for F32 {
     const ZERO: Self = F32(0.0);
     const IDENTITY: Self = F32(1.0);
+    const MAX: Self = F32(f32::MAX);
+    const MIN: Self = F32(f32::MIN);
     type Primitive = F32;
     #[inline(always)]
     fn l1_norm(self) -> Self::Primitive {
@@ -300,5 +302,21 @@ impl Float for F32 {
     
     fn type_id()->String {
         todo!()
+    }
+
+    fn greater(self, other: Self)->Self{
+        if self>other{
+            self
+        }else{
+            other
+        }
+    }
+
+    fn lesser(self, other: Self)->Self{
+        if self<other{
+            self
+        }else{
+            other
+        }
     }
 }

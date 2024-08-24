@@ -19,7 +19,11 @@ impl<P: Primitive<Primitive = P>> Float for ComplexScaler<P> {
         real: P::ZERO,
         imag: P::ZERO,
     };
-
+    const MAX: Self = ComplexScaler{
+        real: P::MAX,
+        imag: P::MAX,
+    };
+    const MIN: Self = Self::ZERO;
     type Primitive = P;
 
     #[inline(always)]
@@ -179,6 +183,22 @@ impl<P: Primitive<Primitive = P>> Float for ComplexScaler<P> {
     
     fn type_id()->alloc::string::String {
         format!("complex_{}",P::type_id())
+    }
+    
+    fn greater(self,other: Self)->Self {
+        if self.l2_norm()>other.l2_norm(){
+            self
+        }else{
+            other
+        }
+    }
+    
+    fn lesser(self,other: Self)->Self {
+        if self.l2_norm()<other.l2_norm(){
+            self
+        }else{
+            other
+        }
     }
 
 

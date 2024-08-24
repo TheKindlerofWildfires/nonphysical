@@ -6,7 +6,7 @@ use core::{
     ops::{Add, Mul},
 };
 
-use crate::shared::{float::Float, vector::Vector};
+use crate::shared::{float::Float, vector::{float_vector::FloatVector, Vector}};
 
 use super::Matrix;
 
@@ -60,7 +60,7 @@ impl<F: Float> Matrix<F> for MatrixHeap<F> {
         debug_assert!(rows > 0);
         let data = vec![F::ZERO; rows * cols];
         let mut id = Self { rows, cols, data };
-        Vector::<F>::add(id.data_diag_ref(), F::IDENTITY);
+        FloatVector::add_ref(id.data_diag_ref(), F::IDENTITY);
         id
     }
 
@@ -429,7 +429,7 @@ impl<F: Float> Add<F> for MatrixHeap<F> {
     type Output = Self;
     fn add(self, adder: F) -> Self {
         let mut out = self.explicit_copy();
-        Vector::<F>::add(out.data_ref(), adder);
+        FloatVector::add_ref(out.data_ref(), adder);
         out
     }
 }
@@ -438,7 +438,7 @@ impl<F: Float> Mul<F> for MatrixHeap<F> {
     type Output = Self;
     fn mul(self, scaler: F) -> Self {
         let mut out = self.explicit_copy();
-        Vector::<F>::mul(out.data_ref(), scaler);
+        FloatVector::mul_ref(out.data_ref(), scaler);
         out
     }
 }

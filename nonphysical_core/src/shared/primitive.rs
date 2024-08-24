@@ -6,8 +6,6 @@ pub trait Primitive: Float + PartialOrd + Rem + RemAssign {
     const FRAC_PI_2: Self;
     const ONE: Self;
     const NEGATIVE_ONE: Self;
-    const MAX: Self;
-    const MIN: Self;
     const SMALL: Self;
     const EPSILON: Self;
     const GAMMA: Self;
@@ -50,26 +48,4 @@ pub trait Primitive: Float + PartialOrd + Rem + RemAssign {
     fn sin_cos(self) -> (Self, Self);
     fn atan2(self, other: Self) -> Self;
     fn copy_sign(self, other: Self) -> Self;
-
-    fn greater(self, other: Self) -> Self
-    where
-        Self: Sized,
-    {
-        if self > other {
-            self
-        } else {
-            other
-        }
-    }
-
-    fn lesser(self, other: Self) -> Self
-    where
-        Self: Sized,
-    {
-        if self < other {
-            self
-        } else {
-            other
-        }
-    }
 }
