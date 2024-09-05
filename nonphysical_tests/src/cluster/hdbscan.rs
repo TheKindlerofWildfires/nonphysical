@@ -158,7 +158,6 @@ mod hdbscan_tests {
         ];
         let hdbscan = Hdbscan::new(3, 20, false, 5);
         let mask = hdbscan.cluster(&data);
-        dbg!(&mask);
         let known_mask = vec![
             Noise,
             Noise,
@@ -202,14 +201,14 @@ mod hdbscan_tests {
         let now = SystemTime::now();
         let hdbscan = Hdbscan::new(2, 1000, false, 32);
         let _ = hdbscan.cluster(&data);
-        let _ = dbg!(now.elapsed()); //about twice as fast as python.. but could it be better?
+        let _ = println!("{:?}",now.elapsed()); //about twice as fast as python.. but could it be better?
 
         let mut data = Vec::new();
         (0..20000).for_each(|i| data.push(i as f32));
         let now = SystemTime::now();
         let hdbscan = Hdbscan::new(2, 1000, false, 32);
         let _ = hdbscan.cluster(&data);
-        let _ = dbg!(now.elapsed()); //faster, but not by much
+        let _ = println!("{:?}",now.elapsed());  //faster, but not by much
     }
 
     #[test]

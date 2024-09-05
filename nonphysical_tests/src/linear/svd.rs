@@ -120,7 +120,7 @@ pub mod svd_tests {
         let mut in_mat =
             MatrixHeap::new((4096, (0..4096 * 4).map(|i| F32(i as f32)).collect())).transposed();
         let _ = RealSingularValueDecomposition::jacobi_svd(&mut in_mat);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed()); 
     }
 
     #[test]
@@ -129,8 +129,7 @@ pub mod svd_tests {
         let mut in_mat =
             MatrixHeap::new((4096, (0..4096 * 4).map(|i| F32(i as f32)).collect())).transposed();
         let (u,s,v) = RealSingularValueDecomposition::jacobi_svd_full(&mut in_mat);
-        dbg!(u.rows, u.cols, v.rows, v.cols);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed()); 
     }
 
     #[test]

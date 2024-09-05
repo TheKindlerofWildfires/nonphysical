@@ -40,11 +40,13 @@ pub trait Float:
     const IDENTITY: Self;
     const MIN: Self;
     const MAX: Self;
+    const NAN: Self;
+    const INFINITY: Self;
+    const NEGATIVE_INFINITY: Self;
     fn l1_norm(self) -> Self::Primitive;
     fn l2_norm(self) -> Self::Primitive;
     fn fma(self, mul: Self, add: Self) -> Self;
     fn powf(self, other: Self) -> Self;
-    fn powi(self, other: i32) -> Self;
     fn sqrt(self) -> Self;
     fn ln(self) -> Self;
     fn log2(self) -> Self;
@@ -68,5 +70,7 @@ pub trait Float:
     fn type_id()->String;
     fn greater(self,other: Self)->Self;
     fn lesser(self,other: Self)->Self;
+    fn finite(self)->bool;
+    fn is_nan(self)->bool;
 
 }

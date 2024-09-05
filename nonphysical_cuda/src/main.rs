@@ -9,7 +9,7 @@ pub fn main() {
     println!("Started PTX compile");
     let result = Command::new("cargo")
         .current_dir("../nonphysical_ptx")
-        .args(["rustc", "--target=nvptx64-nvidia-cuda", "--release"])
+        .args(["rustc", "--target=nvptx64-nvidia-cuda", "--release", "--", "--emit=asm"])
         .status()
         .expect("Failed to compile PTX");
     println!("Compiled {:?}", result);

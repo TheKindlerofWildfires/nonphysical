@@ -13,7 +13,6 @@ impl<T:Float> Eigen<T> for Matrix<T>{
         let t = self;
         //get the eigen values
         let eigen_values = t.data_diag().cloned().collect::<Vec<_>>();
-        dbg!(eigen_values);
 
         //recover eigen values
 

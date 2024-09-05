@@ -1,3 +1,5 @@
+use core::f64;
+
 use nonphysical_core::shared::float::Float;
 
 use super::primitive::{F32, F64};
@@ -7,6 +9,9 @@ impl Float for F32 {
     const IDENTITY: Self = F32(1.0);
     const MAX: Self = F32(f32::MAX);
     const MIN: Self = F32(f32::MIN);
+    const NAN: Self = F32(f32::NAN);
+    const INFINITY: Self = F32(f32::INFINITY);
+    const NEGATIVE_INFINITY: Self = F32(f32::NEG_INFINITY);
     type Primitive = F32;
     #[inline(always)]
     fn l1_norm(self) -> Self::Primitive {
@@ -26,11 +31,6 @@ impl Float for F32 {
     #[inline(always)]
     fn powf(self, other: Self) -> Self {
         F32(self.0.powf(other.0))
-    }
-
-    #[inline(always)]
-    fn powi(self, other: i32) -> Self {
-        F32(self.0.powi(other))
     }
 
     #[inline(always)]
@@ -147,11 +147,18 @@ impl Float for F32 {
     }
     
     fn lesser(self,other: Self)->Self {
-        if self>other{
+        if self<other{
             self
         }else{
             other
         }
+    }
+    fn finite(self)->bool {
+        self.0.is_finite()
+    }
+
+    fn is_nan(self)->bool {
+        self.0.is_nan()
     }
 }
 
@@ -160,6 +167,9 @@ impl Float for F64 {
     const IDENTITY: Self = F64(1.0);
     const MAX: Self = F64(f64::MAX);
     const MIN: Self = F64(f64::MIN);
+    const NAN: Self = F64(f64::NAN);
+    const INFINITY: Self = F64(f64::INFINITY);
+    const NEGATIVE_INFINITY: Self = F64(f64::NEG_INFINITY);
     type Primitive = F64;
     #[inline(always)]
     fn l1_norm(self) -> Self::Primitive {
@@ -179,11 +189,6 @@ impl Float for F64 {
     #[inline(always)]
     fn powf(self, other: Self) -> Self {
         F64(self.0.powf(other.0))
-    }
-
-    #[inline(always)]
-    fn powi(self, other: i32) -> Self {
-        F64(self.0.powi(other))
     }
 
     #[inline(always)]
@@ -304,6 +309,12 @@ impl Float for F64 {
         }else{
             other
         }
+    }
+    fn finite(self)->bool {
+        self.0.is_finite()
+    }
+    fn is_nan(self)->bool {
+        self.0.is_nan()
     }
 }
 

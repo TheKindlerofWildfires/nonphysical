@@ -14,14 +14,25 @@ use std::{
     string::String,
 };
 
-use super::global::host::CuGlobalBox;
+use super::{ffi::cuDeviceGetAttribute, global::host::CuGlobalBox};
 
-static mut CUDA_INITIALIZED: bool = false;
+pub static RUNTIME: std::sync::OnceLock<Runtime> = std::sync::OnceLock::<Runtime>::new();
 
 pub struct Runtime {
-    context: CUcontext,
-    module: CUmodule,
+    context: CuContext,
+    module: CuModule,
 }
+
+struct CuContext(CUcontext);
+
+unsafe impl Sync for CuContext {}
+unsafe impl Send for CuContext {}
+
+struct CuModule(CUmodule);
+
+unsafe impl Sync for CuModule {}
+unsafe impl Send for CuModule {}
+
 pub struct Dim3 {
     pub x: usize,
     pub y: usize,
@@ -42,15 +53,11 @@ impl<'a, T> CUDABox<'a, T> {
     }
 }
 impl Runtime {
-    pub fn new(device_id: i32, kernel_str: &str) -> Runtime {
+    pub fn init(device_id: i32, kernel_str: &str) {
         // cuInit
-        unsafe {
-            if !CUDA_INITIALIZED {
-                CuError::check(cuInit(0)).expect("Failed to initialize a cuda context");
-                CUDA_INITIALIZED = true;
-            }
-        }
-        // device check
+        RUNTIME.get_or_init(|| {
+            unsafe { CuError::check(cuInit(0)).expect("Failed to initialize a cuda context") };
+             // device check
         let mut device_num: i32 = 0;
         CuError::check(unsafe { cuDeviceGetCount(&mut device_num as *mut i32) })
             .expect("Failed to could the available devices");
@@ -73,7 +80,11 @@ impl Runtime {
         CuError::check(unsafe { cuModuleLoad(&mut module as *mut CUmodule, kernel_cstr.as_ptr()) })
             .expect("Failed to load the module");
         // res
+        let context = CuContext(context);
+        let module = CuModule(module);
         Runtime { context, module }
+        });
+       
     }
 
     pub fn wrap_args<Args>(args: &Args) -> Vec<*mut c_void> {
@@ -141,7 +152,7 @@ impl Runtime {
         CuError::check(unsafe {
             cuModuleGetFunction(
                 &mut function as *mut CUfunction,
-                self.module,
+                self.module.0 as CUmodule,
                 func_name_cstr.as_ptr(),
             )
         })
@@ -156,12 +167,19 @@ impl Runtime {
     pub fn sync(&self) {
         CuError::check(unsafe { cuCtxSynchronize() }).expect("Failed to sync with device");
     }
+    pub fn get_property(attribute: usize)->isize{
+        let mut value = 0;
+        let device_num = 0;
+        let attribute = attribute as i32;
+        CuError::check(unsafe { cuDeviceGetAttribute(&mut value, attribute, device_num)}).expect("Failed to get attribute");
+        value as isize
+    }
 }
 
 impl Drop for Runtime {
     fn drop(&mut self) {
         unsafe {
-            cuCtxDestroy_v2(self.context);
+            cuCtxDestroy_v2(self.context.0 as CUcontext);
         }
     }
 }

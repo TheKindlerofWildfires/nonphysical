@@ -1,4 +1,4 @@
-use core::{arch::asm, intrinsics};
+use core::{arch::asm, f32};
 use alloc::{boxed::Box,string::String};
 
 
@@ -10,6 +10,10 @@ impl Float for F32 {
     const IDENTITY: Self = F32(1.0);
     const MAX: Self = F32(f32::MAX);
     const MIN: Self = F32(f32::MIN);
+    const NAN: Self = F32(f32::NAN);
+    const INFINITY: Self = F32(f32::INFINITY);
+    const NEGATIVE_INFINITY: Self = F32(f32::NEG_INFINITY);
+
     type Primitive = F32;
     #[inline(always)]
     fn l1_norm(self) -> Self::Primitive {
@@ -68,14 +72,6 @@ impl Float for F32 {
             );
         }
         ret
-    }
-
-
-    //The intrinsic worked here, but put it in the wrong registers
-    //I think it's faster/more accurate to do the moves than to do the floating point exp, but I'm not sure
-    #[inline(always)]
-    fn powi(self, other: i32) -> Self {
-        F32(unsafe { intrinsics::powif32(self.0, other) })
     }
 
     #[inline(always)]
@@ -299,11 +295,11 @@ impl Float for F32 {
     fn to_le_bytes(self) -> Box<[u8]> {
         Box::new((self.0).to_le_bytes())
     }
-    
+    #[inline(always)]
     fn type_id()->String {
         todo!()
     }
-
+    #[inline(always)]
     fn greater(self, other: Self)->Self{
         if self>other{
             self
@@ -311,12 +307,21 @@ impl Float for F32 {
             other
         }
     }
-
+    #[inline(always)]
     fn lesser(self, other: Self)->Self{
         if self<other{
             self
         }else{
             other
         }
+    }
+    #[inline(always)]
+    fn finite(self)->bool {
+        self.0.is_finite()
+    }
+    
+    #[inline(always)]
+    fn is_nan(self)->bool {
+        self.0.is_nan()
     }
 }

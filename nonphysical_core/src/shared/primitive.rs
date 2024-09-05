@@ -1,7 +1,8 @@
 use core::ops::{Rem, RemAssign};
 
-use super::float::Float;
-pub trait Primitive: Float + PartialOrd + Rem + RemAssign {
+use super::{float::Float, unsigned::Unsigned};
+pub trait Primitive: Float + PartialOrd + Rem + RemAssign + Default {
+    type Unsigned: Unsigned;
     const PI: Self;
     const FRAC_PI_2: Self;
     const ONE: Self;
@@ -9,6 +10,7 @@ pub trait Primitive: Float + PartialOrd + Rem + RemAssign {
     const SMALL: Self;
     const EPSILON: Self;
     const GAMMA: Self;
+
 
     //conversion functions
     fn u8(u: u8) -> Self;

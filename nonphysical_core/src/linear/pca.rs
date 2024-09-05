@@ -23,10 +23,8 @@ impl<R: Real<Primitive = R>> PrincipleComponentAnalysis<R> for RealPrincipleComp
     type Matrix = MatrixHeap<R>;
     fn pca(data: &mut Self::Matrix, components: usize) -> Self::Matrix {
         Self::normalize(data);
-        dbg!(&data);
 
         let (mut u, s, v) = RealSingularValueDecomposition::jacobi_svd_full(data);
-        dbg!(&u,&s,&v);
 
         let signs = v
             .data_rows()

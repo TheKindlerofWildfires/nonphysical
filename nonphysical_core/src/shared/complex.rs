@@ -55,15 +55,6 @@ impl<P: Primitive<Primitive = P>> Float for ComplexScaler<P> {
         Self { real, imag }
     }
     #[inline(always)]
-    fn powi(self, other: i32) -> Self {
-        let magnitude = self.l1_norm().powi(other);
-        let phase = self.phase() * P::i32(other);
-        let (st, ct) = phase.sin_cos();
-        let real = ct * magnitude;
-        let imag = st * magnitude;
-        Self { real, imag }
-    }
-    #[inline(always)]
     fn sqrt(self) -> Self {
         self.powf(Self::real(P::u8(2).recip()))
     }
@@ -200,6 +191,20 @@ impl<P: Primitive<Primitive = P>> Float for ComplexScaler<P> {
             other
         }
     }
+    
+    fn finite(self)->bool {
+        self.real().finite()&&self.imag().finite()
+    }
+
+    fn is_nan(self)->bool {
+        self.real().is_nan()||self.imag().is_nan()
+    }
+    
+    const NAN: Self = Self{real: Self::Primitive::NAN, imag:Self::Primitive::NAN};
+    
+    const INFINITY: Self = Self{real: Self::Primitive::INFINITY, imag:Self::Primitive::INFINITY};
+    
+    const NEGATIVE_INFINITY: Self = Self{real: Self::Primitive::NEGATIVE_INFINITY, imag:Self::Primitive::NEGATIVE_INFINITY};
 
 
 }

@@ -37,8 +37,6 @@ mod householder_tests {
 
         house.apply_left(&mut m, &essential, [0,3],[1,3]);
 
-        dbg!(&m);
-
         let known = vec![1.0, 0.447214, 0.894427, -0.782624, -0.0177051, -0.41041, -1.28574, -0.0354101,-0.82082]
             .iter()
             .map(|i| F32(*i as f32))
@@ -119,8 +117,6 @@ mod householder_tests {
         let essential = m.data_row(1).skip(2).cloned().collect::<Vec<_>>();
 
         house.apply_left(&mut m, &essential, [1,3],[2,3]);
-
-        dbg!(&m);
 
         let known = vec![1.0, 0.447214, 0.894427, 1.51995, 1.0431 ,0.95779, 0.561992, 0.0762821,-2.23517e-08]
             .iter()

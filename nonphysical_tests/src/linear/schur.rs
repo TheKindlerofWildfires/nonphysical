@@ -41,7 +41,6 @@ mod schur_tests {
         u.data().zip(known_u.iter()).for_each(|(a, b)| {
             assert!((*a - *b).square_norm() < f32::EPSILON)
         });
-        //dbg!(m,h_coefficients,u);
     }
     #[test]
     fn pre_work_4x4(){
@@ -95,7 +94,6 @@ mod schur_tests {
         u.data().zip(known_u.iter()).for_each(|(a, b)| {
             assert!((*a - *b).square_norm() < f32::EPSILON)
         });
-        //dbg!(m,h_coefficients,u);
     }
 
     #[test]
@@ -103,7 +101,6 @@ mod schur_tests {
         let mut m = Matrix::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
         let coefficients = <Matrix<f32> as Hessenberg<f32>>::hessenberg(&mut m);
         let u = <Matrix<f32> as Hessenberg<f32>>::sequence(&mut m, &coefficients);
-        dbg!(&u);
         let known_coefficients =  vec![Complex::new(1.18257,0.0), Complex::new(1.15614,0.0), Complex::new(1.13359,0.0), Complex::new(0.0,0.0)];
         coefficients.iter().zip(known_coefficients.iter()).for_each(|(c,k)|{
             assert!((*c-*k).square_norm()<f32::EPSILON);

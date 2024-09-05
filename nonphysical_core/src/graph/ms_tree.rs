@@ -1,4 +1,4 @@
-use crate::shared::{float::Float,primitive::Primitive, point::Point};
+use crate::shared::{float::Float, point::Point};
 use alloc::vec::Vec;
 use alloc::vec;
 pub struct MSTreeNode<P: Point> {
@@ -10,6 +10,8 @@ pub struct MSTreeNode<P: Point> {
 pub struct MSTree<P: Point> {
     pub ms_tree_vec: Vec<MSTreeNode<P>>,
 }
+
+pub mod ecl;
 
 impl<P: Point> MSTreeNode<P> {
     fn new(left_node_idx: usize, right_node_idx: usize, distance: P::Primitive) -> Self {

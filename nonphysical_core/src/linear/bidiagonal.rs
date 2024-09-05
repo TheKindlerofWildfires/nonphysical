@@ -108,6 +108,5 @@ impl<R: Real<Primitive = R>>Bidiagonal<R> for RealBidiagonal<R> {
 
             kk+=1;
         }
-        dbg!(bidiagonal);
     }
 }

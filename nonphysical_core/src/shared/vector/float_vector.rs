@@ -92,10 +92,6 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.map(move |x| (*x).powf(other))
     }
 
-    fn powi<I: Iterator<Item = &'a F> + 'a>(iter: I, other: i32) -> impl Iterator<Item = F> + 'a {
-        iter.map(move |x| (*x).powi(other))
-    }
-
     fn ln<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a {
         iter.map(move |x| (*x).ln())
     }
@@ -208,10 +204,6 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.for_each(|x| *x = (*x).powf(other))
     }
 
-    fn powi_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: i32) {
-        iter.for_each(|x| *x = (*x).powi(other))
-    }
-
     fn ln_ref<I: Iterator<Item = &'a mut F>>(iter: I) {
         iter.for_each(|x| *x = (*x).ln())
     }
@@ -310,13 +302,6 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| (*x).powf(*other))
     }
 
-    fn powi_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = &'a i32> + 'a>(
-        iter: I,
-        other: J,
-    ) -> impl Iterator<Item = F> + 'a {
-        iter.zip(other).map(move |(x, other)| (*x).powi(*other))
-    }
-
     fn greater_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
@@ -331,48 +316,43 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| (*x).lesser(*other))
     }
 
-    fn add_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn add_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).add_assign(*other))
     }
 
-    fn sub_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn sub_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).sub_assign(*other))
     }
 
-    fn mul_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn mul_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).mul_assign(*other))
     }
 
-    fn div_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn div_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).div_assign(*other))
     }
 
-    fn fma_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, mul: I, add: I) {
+    fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, mul: J, add: J) {
         iter.zip(mul)
             .zip(add)
             .for_each(move |((x, mul), add)| *x = (*x).fma(*mul, *add))
     }
 
-    fn powf_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn powf_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J){
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).powf(*other))
     }
 
-    fn powi_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a i32>>(iter: I, other: J) {
-        iter.zip(other)
-            .for_each(move |(x, other)| *x = (*x).powi(*other))
-    }
-
-    fn greater_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).greater(*other))
     }
 
-    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I) {
+    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).lesser(*other))
     }
@@ -423,10 +403,6 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
 
     fn powf_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F> {
         iter.map(move |x| x.powf(other))
-    }
-
-    fn powi_direct<I: Iterator<Item = F>>(iter: I, other: i32) -> impl Iterator<Item = F> {
-        iter.map(move |x| x.powi(other))
     }
 
     fn ln_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F> {
@@ -535,13 +511,6 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| x.powf(other))
     }
 
-    fn powi_vec_direct<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = i32> + 'a>(
-        iter: I,
-        other: J,
-    ) -> impl Iterator<Item = F> {
-        iter.zip(other).map(move |(x, other)| x.powi(other))
-    }
-
     fn greater_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
         iter.zip(other).map(move |(x, other)| x.greater(other))
     }
@@ -593,5 +562,13 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
     fn deviation_direct<I: Iterator<Item = F>>(iter: I) -> (F, F) {
         let (mean, variance) = Self::variance_direct(iter);
         (mean, variance.sqrt())
+    }
+
+    fn dot_direct<I: Iterator<Item = F>>(iter: I, other: I) -> F {
+        iter.zip(other).fold(F::MIN, |acc, (i,o)| acc.add(i.mul(o)))
+    }
+
+    fn quote_direct<I: Iterator<Item = F>>(iter: I, other: I) -> F {
+        iter.zip(other).fold(F::MIN, |acc, (i,o)| acc.add(i.div(o)))
     }
 }

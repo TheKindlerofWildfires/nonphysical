@@ -1,11 +1,14 @@
-use core::{arch::asm, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign}};
-
+use core::{
+    arch::asm,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign},
+};
 use nonphysical_core::shared::{float::Float, primitive::Primitive};
-
+use crate::shared::unsigned::U32;
 #[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
 pub struct F32(pub f32);
 
 impl Primitive for F32 {
+    type Unsigned = U32;
     const PI: Self = F32(core::f32::consts::PI);
     const FRAC_PI_2: Self = F32(core::f32::consts::FRAC_PI_2);
     const ONE: Self = F32(1.0);
@@ -144,7 +147,7 @@ impl Primitive for F32 {
                 r = out(reg32) ret.0,
             );
         }
-        ret   
+        ret
     }
 
     #[inline(always)]
@@ -157,16 +160,15 @@ impl Primitive for F32 {
                 r = out(reg32) ret.0,
             );
         }
-        ret   
+        ret
     }
-
 
     //intrinsic worked here, but was questionable
     #[inline(always)]
     fn round(self) -> Self {
         todo!()
     }
-    
+
     #[inline(always)]
     fn sign(self) -> Self {
         Self::ONE.copy_sign(self)
@@ -179,29 +181,29 @@ impl Primitive for F32 {
 
     #[inline(always)]
     fn atan2(self, other: Self) -> Self {
-        if self == Self::ZERO{
-            if other >= Self::ZERO{
+        if self == Self::ZERO {
+            if other >= Self::ZERO {
                 Self::ZERO
-            }else{
+            } else {
                 Self::PI
             }
-        }else if self > Self::ZERO{
-            if other==Self::ZERO{
+        } else if self > Self::ZERO {
+            if other == Self::ZERO {
                 Self::FRAC_PI_2
-            }else if other>Self::ZERO{
-                (self/other).atan()
-            }else{
-                Self::PI-(self/other).atan()
+            } else if other > Self::ZERO {
+                (self / other).atan()
+            } else {
+                Self::PI - (self / other).atan()
             }
-        }else {
-            if other==Self::ZERO{
-                Self::PI+Self::FRAC_PI_2
-            }else if other>Self::ZERO{
-                Self::usize(2)*Self::PI-(self/other).atan()
-            }else{
-                Self::PI+(self/other).atan()
+        } else {
+            if other == Self::ZERO {
+                Self::PI + Self::FRAC_PI_2
+            } else if other > Self::ZERO {
+                Self::usize(2) * Self::PI - (self / other).atan()
+            } else {
+                Self::PI + (self / other).atan()
             }
-        }  
+        }
     }
 
     #[inline(always)]
@@ -215,11 +217,11 @@ impl Primitive for F32 {
                 r = out(reg32) ret.0,
             );
         }
-        ret  
+        ret
     }
 }
 
-impl AddAssign for F32{
+impl AddAssign for F32 {
     fn add_assign(&mut self, other: Self) {
         unsafe {
             asm!(
@@ -231,7 +233,7 @@ impl AddAssign for F32{
         }
     }
 }
-impl SubAssign for F32{
+impl SubAssign for F32 {
     fn sub_assign(&mut self, other: Self) {
         unsafe {
             asm!(
@@ -243,7 +245,7 @@ impl SubAssign for F32{
         }
     }
 }
-impl MulAssign for F32{
+impl MulAssign for F32 {
     fn mul_assign(&mut self, other: Self) {
         unsafe {
             asm!(
@@ -255,7 +257,7 @@ impl MulAssign for F32{
         }
     }
 }
-impl DivAssign for F32{
+impl DivAssign for F32 {
     fn div_assign(&mut self, other: Self) {
         unsafe {
             asm!(
@@ -268,13 +270,13 @@ impl DivAssign for F32{
     }
 }
 
-impl RemAssign for F32{
+impl RemAssign for F32 {
     fn rem_assign(&mut self, other: Self) {
-        self.0%=other.0
+        self.0 %= other.0
     }
 }
 
-impl Add for F32{
+impl Add for F32 {
     type Output = Self;
     fn add(self, other: Self) -> Self {
         let mut ret: F32 = F32(0.0);
@@ -286,10 +288,10 @@ impl Add for F32{
                 r = out(reg32) ret.0,
             );
         }
-        ret  
+        ret
     }
 }
-impl Sub for F32{
+impl Sub for F32 {
     type Output = Self;
     fn sub(self, other: Self) -> Self {
         let mut ret: F32 = F32(0.0);
@@ -301,10 +303,10 @@ impl Sub for F32{
                 r = out(reg32) ret.0,
             );
         }
-        ret  
+        ret
     }
 }
-impl Mul for F32{
+impl Mul for F32 {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
         let mut ret: F32 = F32(0.0);
@@ -316,10 +318,10 @@ impl Mul for F32{
                 r = out(reg32) ret.0,
             );
         }
-        ret  
+        ret
     }
 }
-impl Div for F32{
+impl Div for F32 {
     type Output = Self;
     fn div(self, other: Self) -> Self {
         let mut ret: F32 = F32(0.0);
@@ -331,16 +333,17 @@ impl Div for F32{
                 r = out(reg32) ret.0,
             );
         }
-        ret  
+        ret
     }
 }
-impl Rem for F32{
+impl Rem for F32 {
     type Output = Self;
-    fn rem(self, other: Self) -> Self {
-        F32(self.0%other.0)
+    fn rem(self, _other: Self) -> Self {
+        todo!();
+        F32(self.0 % _other.0)
     }
 }
-impl Neg for F32{
+impl Neg for F32 {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -352,6 +355,11 @@ impl Neg for F32{
                 r = out(reg32) ret.0,
             );
         }
-        ret  
+        ret
+    }
+}
+impl Default for F32{
+    fn default() -> Self {
+        Self(0.0)
     }
 }

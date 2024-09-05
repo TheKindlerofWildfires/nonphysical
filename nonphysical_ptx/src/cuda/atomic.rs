@@ -1,6 +1,8 @@
 pub trait Atomic<T: Copy> {
     fn atomic_add(&mut self, index: usize, value: T) -> T;
 
+    fn atomic_mul(&mut self, index: usize, value: T) -> T;
+
     fn atomic_exch(&mut self, index: usize, value: T) -> T;
 
     fn atomic_max(&mut self, index: usize, value: T) -> T;
@@ -22,6 +24,8 @@ pub trait Atomic<T: Copy> {
 
 pub trait Reduce<T: Copy> {
     fn reduce_add(&mut self, index: usize, value: T);
+
+    fn reduce_mul(&mut self, index: usize, value: T);
 
     fn reduce_max(&mut self, index: usize, value: T);
 

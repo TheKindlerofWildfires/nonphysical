@@ -178,8 +178,6 @@ mod hessenberg_tests {
     fn hessenberg_5x5() {
         let mut m = Matrix::new(5, (0..25).map(|i| Complex::new(i as f32, 0.0)).collect());
         let coefficients = <Matrix<f32> as Hessenberg<f32>>::hessenberg(&mut m);
-        dbg!(&coefficients);
-        dbg!(&m);
 
         let known_coefficients = vec![Complex::new(1.18257,0.0), Complex::new(1.15614,0.0), Complex::new(1.13359,0.0), Complex::new(0.0,0.0)];
         coefficients.iter().zip(known_coefficients.iter()).for_each(|(c,k)|{

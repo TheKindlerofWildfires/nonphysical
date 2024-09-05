@@ -53,10 +53,8 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
         //Best guess is one of them is tilted, but I don't know which
         //I'm guessing it happened in the adjoint call
         let (mut u, mut v) = if matrix.n_cols() > matrix.n_rows() {
-            dbg!("A");
             Self::col_precondition_full(matrix)
         } else if matrix.n_rows()>matrix.n_cols(){
-            dbg!("B");
             Self::row_precondition_full(matrix)
         }else {
             (
@@ -265,7 +263,6 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
         let qr = Self::QRDecomposition::col_pivot(matrix);
         let u = qr.householder_sequence(matrix);
         let v = qr.col_permutations();
-        dbg!(&matrix, &qr.tau);
         //could have done this in place, but did a lazy malloc
         let new_matrix = Self::Matrix::new((
             matrix.n_rows(),
@@ -279,13 +276,11 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
         matrix
             .data_lower_triangular_ref()
             .for_each(|mp| *mp = R::ZERO);
-        dbg!(&u,&v);
         (u, v)
     }
 
     fn row_precondition_full(matrix: &mut Self::Matrix) -> (Self::Matrix, Self::Matrix) {
         let qr = Self::QRDecomposition::col_pivot(matrix);
-        dbg!(&matrix, &qr.tau);
         let u = qr.col_permutations();
         let v = qr.householder_sequence(matrix);
         let new_matrix = Self::Matrix::new((
@@ -302,7 +297,6 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
         matrix
             .data_lower_triangular_ref()
             .for_each(|mp| *mp = R::ZERO);
-        dbg!(&u,&v);
         (u,v)
     }
 
@@ -314,7 +308,6 @@ impl<R: Real<Primitive = R>> SingularValueDecomposition<R, R> for RealSingularVa
             scale = R::Primitive::float(1.0);
         }
         Vector::mul(matrix.data_ref(), scale);
-        dbg!(&matrix);
         let bidiagonal = RealBidiagonal::new(matrix);
         let mut computed = MatrixHeap::zero(diag+1, diag);
         computed.data_ref().zip(bidiagonal.bidiagonal.data()).for_each(|(cp,bp)|{

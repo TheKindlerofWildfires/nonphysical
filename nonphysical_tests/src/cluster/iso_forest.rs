@@ -153,7 +153,7 @@ mod iso_forest_tests {
         let iso_forest: IsoForest<StaticPoint<F32, 1>> =
             IsoForest::new(&data, 128, 128, 0, 1, F32(0.0), F32(0.1));
         let _ = iso_forest.score(&data);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed()); 
     }
 
     #[test]
@@ -170,7 +170,7 @@ mod iso_forest_tests {
         let iso_forest: IsoForest<StaticPoint<F32, 2>> =
             IsoForest::new(&data, 128, 128, 1, 1, F32(0.0), F32(0.1));
         let _ = iso_forest.score(&data);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed()); 
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod iso_forest_tests {
         let now = SystemTime::now();
         let iso_forest: IsoForest<F32> = IsoForest::new(&data, 128, 128, 0, 1, F32(0.0), F32(0.1));
         let _ = iso_forest.score(&data);
-        let _ = dbg!(now.elapsed());
+        let _ = println!("{:?}",now.elapsed()); 
     }
 
     #[test]

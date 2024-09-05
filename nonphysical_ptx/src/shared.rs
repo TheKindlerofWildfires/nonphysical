@@ -4,6 +4,7 @@ pub mod float;
 pub mod primitive;
 #[cfg(target_arch = "nvptx64")]
 pub mod real;
-
+#[cfg(target_arch = "nvptx64")]
+pub mod unsigned;
 
 pub mod vector;

@@ -10,7 +10,6 @@ mod pca_tests {
     fn pca_3x3() {
         let mut m = MatrixHeap::new((3, (0..9).map(|i| F32(i as f32)).collect()));
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
-        dbg!(&transformed);
         let known_values = vec![
             -1.7320502, -2.1976344e-8, 1.7320505,
             -2.8048786e-10, -3.5588445e-18, -2.8048786e-10,
@@ -27,7 +26,6 @@ mod pca_tests {
     fn pca_3x3_t() {
         let mut m = MatrixHeap::new((3, (0..9).map(|i| F32(i as f32)).collect())).transposed();
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
-        dbg!(&transformed);
         let known_values = vec![
             -5.19615242,
             0.0,
@@ -93,9 +91,7 @@ mod pca_tests {
     fn pca_4x3() {
         //wrong in svd
         let mut m = MatrixHeap::new((3, (0..12).map(|i| F32(i as f32)).collect()));
-        dbg!(&m);
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
-        dbg!(&transformed);
         let known_values = vec![
             -2.5980763,-8.6602551,-8.6602551,2.5980763,
             6.5293634e-08,8.7382812e-09,-8.7382812e-09,7.1119146e-08
@@ -113,9 +109,7 @@ mod pca_tests {
     fn pca_4x3_t() {
         //wrong in svd
         let mut m = MatrixHeap::new((4, (0..12).map(|i| F32(i as f32)).collect())).transposed();
-        dbg!(&m);
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
-        dbg!(&transformed);
         let known_values = vec![
             -7.7942300,-2.5980766,2.5980766,7.7942295,
             4.3529084e-08,-9.1508454e-08,9.1508454e-08,-1.7476561e-08
@@ -132,9 +126,7 @@ mod pca_tests {
     fn pca_3x4() {
         //bugged in svd
         let mut m = MatrixHeap::new((3, (0..12).map(|i| F32(i as f32)).collect())).transposed();
-        dbg!(&m);
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
-        dbg!(&transformed);
         let known_values = vec![
             -2.0,0.0,2.0,1.0e-7, 0.0, 1.0e-7
         ];
@@ -151,9 +143,7 @@ mod pca_tests {
     fn pca_3x4_t() {
         //bugged in svd
         let mut m = MatrixHeap::new((3, (0..12).map(|i| F32(i as f32)).collect())).transposed();
-        dbg!(&m);
         let transformed = RealPrincipleComponentAnalysis::pca(&mut m, 2);
-        dbg!(&transformed);
         let known_values = vec![
             -7.9999995, -0.0, 7.9999995,4.1295317e-07, 0.0, 4.1295311e-07
         ];

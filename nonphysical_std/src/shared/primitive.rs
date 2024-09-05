@@ -3,6 +3,8 @@ use std::fmt::Debug;
 
 use nonphysical_core::shared::primitive::Primitive;
 
+use super::unsigned::{U32, U64};
+
 #[derive(PartialOrd, PartialEq, Copy, Clone)]
 pub struct F32(pub f32);
 
@@ -25,6 +27,7 @@ impl Debug for F64 {
 }
 
 impl Primitive for F32 {
+    type Unsigned = U32;
     const PI: Self = F32(core::f32::consts::PI);
     const FRAC_PI_2: Self = F32(core::f32::consts::FRAC_PI_2);
     const ONE: Self = F32(1.0);
@@ -255,7 +258,15 @@ impl Neg for F32{
         F32(-self.0)
     }
 }
+
+impl Default for F32{
+    fn default() -> Self {
+        Self(0.0)
+    }
+}
+
 impl Primitive for F64 {
+    type Unsigned = U64;
     const PI: Self = F64(core::f64::consts::PI);
     const FRAC_PI_2: Self = F64(core::f64::consts::FRAC_PI_2);
     const ONE: Self = F64(1.0);
@@ -483,5 +494,11 @@ impl Rem for F64{
     type Output = Self;
     fn rem(self, other: Self) -> Self {
         F64(self.0%other.0)
+    }
+}
+
+impl Default for F64{
+    fn default() -> Self {
+        Self(0.0)
     }
 }

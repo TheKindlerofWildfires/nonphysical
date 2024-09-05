@@ -43,8 +43,6 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
-    fn powi<I: Iterator<Item = &'a F> + 'a>(iter: I, other: i32) -> impl Iterator<Item = F> + 'a;
-
     fn ln<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
 
     fn log2<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
@@ -101,8 +99,6 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
 
-    fn powi_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: i32);
-
     fn ln_ref<I: Iterator<Item = &'a mut F>>(iter: I);
 
     fn log2_ref<I: Iterator<Item = &'a mut F>>(iter: I);
@@ -157,11 +153,6 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
 
-    fn powi_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = &'a i32> + 'a>(
-        iter: I,
-        other: J,
-    ) -> impl Iterator<Item = F> + 'a;
-
     fn greater_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
@@ -172,23 +163,21 @@ pub trait Vector<'a, F: Float + 'a> {
         other: I,
     ) -> impl Iterator<Item = F> + 'a;
 
-    fn add_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+    fn add_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn sub_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+    fn sub_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn mul_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+    fn mul_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn div_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+    fn div_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn fma_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, mul: I, add: I);
+    fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, mul: J, add: J);
 
-    fn powf_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+    fn powf_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn powi_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a i32>>(iter: I, other: J);
+    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn greater_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
-
-    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: I);
+    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
     /*
         Common Map -> Reduce operations for ease of use
@@ -218,8 +207,6 @@ pub trait Vector<'a, F: Float + 'a> {
     fn fma_direct<I: Iterator<Item = F>>(iter: I, mul: F, add: F) -> impl Iterator<Item = F>;
 
     fn powf_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
-
-    fn powi_direct<I: Iterator<Item = F>>(iter: I, other: i32) -> impl Iterator<Item = F>;
 
     fn ln_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
 
@@ -272,11 +259,6 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
-    fn powi_vec_direct<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = i32> + 'a>(
-        iter: I,
-        other: J,
-    ) -> impl Iterator<Item = F>;
-
     fn greater_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
     fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
@@ -295,4 +277,13 @@ pub trait Vector<'a, F: Float + 'a> {
     fn variance_direct<I: Iterator<Item = F>>(iter: I) -> (F, F);
 
     fn deviation_direct<I: Iterator<Item = F>>(iter: I) -> (F, F);
+
+    
+    /*
+        Common Map -> Reduce operations for ease of use
+    */
+
+    fn dot_direct<I: Iterator<Item = F>>(iter: I, other: I) -> F;
+
+    fn quote_direct<I: Iterator<Item = F>>(iter: I, other: I) -> F;
 }

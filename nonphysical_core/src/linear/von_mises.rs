@@ -36,7 +36,6 @@ impl<T:Float> VonMises<T> for Matrix<T>{
             delta -= norm;
             <Vec<&Complex<T>> as Vector<T>>::scale(b.data_ref(),norm.recip());
             c+=1;
-            dbg!(c);
         }
 
         (b,norm)
