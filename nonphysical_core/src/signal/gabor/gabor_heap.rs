@@ -37,6 +37,7 @@ impl<C: Complex> GaborTransform<C> for GaborTransformHeap<C> {
             .for_each(|g_chunk| {
                 Self::convolve(g_chunk, &self.window);
                 self.fourier.fft(g_chunk);
+                ComplexFourierTransformHeap::shift(g_chunk);
             });
 
         MatrixHeap::new((self.window.len(), gabor_data))

@@ -1,7 +1,7 @@
 use nonphysical_core::shared;
 use nonphysical_core::shared::unsigned::Unsigned;
 
-use super::{THREAD_MAX,INSERT_SIZE};
+use super::{INSERT_SIZE, THREAD_MAX};
 use crate::cuda::grid::GridStride;
 use crate::cuda::shared::CuShared;
 use crate::cuda::shared::Shared;
@@ -17,7 +17,7 @@ use core::marker::PhantomData;
 use nonphysical_core::shared::float::Float;
 use nonphysical_core::shared::primitive::Primitive;
 
-/* 
+/*
 #[no_mangle]
 pub extern "ptx-kernel" fn merge_path_stride<'a>(args: &'a mut MergeSortArgumentsGlobal<'a, F32>) {
     let mut a_temp = named_share!(F32, 1024, "a");
@@ -181,19 +181,27 @@ pub extern "ptx-kernel" fn insert_skip<'a>(args: &'a mut MergeSortArgumentsGloba
         )
     };
     let effective_id = thread_id + block_id * block_dim;
-    let block_src_iter = GridStride::block_stride_ref(&mut args.src, INSERT_SIZE,effective_id);
-    let mut block_dst_iter = args.dst.chunks_mut(INSERT_SIZE).nth(effective_id).unwrap().iter_mut();//GridStride::block_stride_ref(&mut args.dst, INSERT_SIZE,effective_id);
+    let block_src_iter = GridStride::block_stride_ref(&mut args.src, INSERT_SIZE, effective_id);
+    let mut block_dst_iter = args
+        .dst
+        .chunks_mut(INSERT_SIZE)
+        .nth(effective_id)
+        .unwrap()
+        .iter_mut(); //GridStride::block_stride_ref(&mut args.dst, INSERT_SIZE,effective_id);
 
-    let mut thread_memory = [F32::ZERO;INSERT_SIZE];
-    block_src_iter.zip(thread_memory.iter_mut()).for_each(|(bsi,tmi)|{
-        *tmi = *bsi;
-    });
+    let mut thread_memory = [F32::ZERO; INSERT_SIZE];
+    block_src_iter
+        .zip(thread_memory.iter_mut())
+        .for_each(|(bsi, tmi)| {
+            *tmi = *bsi;
+        });
 
     insert_sort(&mut thread_memory);
-    block_dst_iter.zip(thread_memory.iter()).for_each(|(bdi, tmi)| {
-        *bdi = *tmi;
-    });
-
+    block_dst_iter
+        .zip(thread_memory.iter())
+        .for_each(|(bdi, tmi)| {
+            *bdi = *tmi;
+        });
 }
 
 #[no_mangle]
@@ -206,43 +214,56 @@ pub extern "ptx-kernel" fn insert_skip_stride<'a>(args: &'a mut MergeSortArgumen
         )
     };
     let effective_id = thread_id + block_id * block_dim;
-    let block_src_iter = GridStride::block_stride_ref(&mut args.src, INSERT_SIZE,effective_id);
+    let block_src_iter = GridStride::block_stride_ref(&mut args.src, INSERT_SIZE, effective_id);
     //let mut block_dst_iter = GridStride::block_stride_ref(&mut args.dst, INSERT_SIZE,effective_id);
-    let alt_id = (effective_id*2)%16+(effective_id*2/16);
-    let mut block_dst_iter = args.dst.chunks_mut(INSERT_SIZE).nth(alt_id).unwrap().iter_mut();
-    let mut thread_memory = [F32::ZERO;INSERT_SIZE];
-    block_src_iter.zip(thread_memory.iter_mut()).for_each(|(bsi,tmi)|{
-        *tmi = *bsi;
-    });
+    let alt_id = thread_id + (effective_id / THREAD_MAX);
+
+    let mut block_dst_iter = args
+        .dst
+        .chunks_mut(INSERT_SIZE)
+        .nth(alt_id)
+        .unwrap()
+        .iter_mut();
+    let mut thread_memory = [F32::ZERO; INSERT_SIZE];
+
+    block_src_iter
+        .zip(thread_memory.iter_mut())
+        .for_each(|(bsi, tmi)| {
+            *tmi = *bsi;
+        });
 
     insert_sort(&mut thread_memory);
-    block_dst_iter.zip(thread_memory.iter()).for_each(|(bdi, tmi)| {
-        *bdi = *tmi;
-    });
-
+    block_dst_iter
+        .zip(thread_memory.iter())
+        .for_each(|(bdi, tmi)| {
+            *bdi = *tmi;
+        });
 }
 
-fn insert_sort(arr: &mut [F32]){
-    for i in 0..INSERT_SIZE{
+fn insert_sort(arr: &mut [F32]) {
+    for i in 0..INSERT_SIZE {
         let mut j = i;
         let key = arr[i];
-        loop{
-            if j<=0{
+        loop {
+            if j <= 0 {
                 break;
             }
-            let cmp = arr[j-1];
-            if cmp<key{
+            let cmp = arr[j - 1];
+            if cmp < key {
                 break;
             }
-            arr[j]=cmp;
-            j-=1;
+            arr[j] = cmp;
+            j -= 1;
         }
-        arr[j]=key;
+        arr[j] = key;
     }
 }
 
+//perf is better when it actually sorts
+//All of the work is in the branches I think (ALU), can any of this be branchless
+//If I was doing multiple at once the stalls would be less bad
 #[no_mangle]
-pub extern "ptx-kernel" fn matrix_sort<'a>(args: &'a mut MergeSortArgumentsGlobal<'a, F32>){
+pub extern "ptx-kernel" fn matrix_sort<'a>(args: &'a mut MergeSortArgumentsGlobal<'a, F32>) {
     //need to find P/Q
     let (thread_id, block_dim, block_id) = unsafe {
         (
@@ -256,58 +277,130 @@ pub extern "ptx-kernel" fn matrix_sort<'a>(args: &'a mut MergeSortArgumentsGloba
     let nm = THREAD_MAX;
     let mut p = thread_id;
     let mut q = block_id;
-    args.dst[p+q*block_dim]=F32::ZERO;
-    //works if q=0,1
-    //works if p=0
-    //if p=1,q=7 too low by 1
-    //if p=2,q=7 too low by 2
-    //if p=3,q=7 too low by 3
-    //if p=1,q=2 too high by 2
-    //if p=2,q=2 too high by 4
-    //if p=3,q=2 too high by 6
-    //if p=1,q=3 too high by 2
-    //if p=2,q=3 too high by 4
+
+    let x = args.src[p + q * block_dim];
+
+    let mut lpq = (p + 1) * (q + 1) - 1; //p*q;
+    //bounds checking here is probably ugly
+
+    //only really need to check conditions when they change
+    /*if p>= 1 && q<nm-1 {
+        loop {
+            if x < args.src[p + 1 + (q - 1) * block_dim] {
+                p -= 1;
+                if p>= 1{
+                    continue;
+                }else{
+                    break;
+                }
+            } else {
+                lpq += q;
+                q += 1;
+                if q<nm-1{
+                    continue;
+                }else{
+                    break;
+                }
+            }
+        }
+    }*/
+    //unroll the first check
     /* 
-    if p!=2 || q!=2{
-        return;
+    if p >= 1 && q < nm - 1 {
+        //only check one condition per loop (takes check from 3 cmp per loop to 2, but it's slower)
+        loop{
+            if x < args.src[p - 1 + (q + 1) * block_dim] {
+                p -= 1;
+                if p==0{
+                    break;
+                }
+                
+            } else {
+                lpq += q;
+                q += 1;
+                if q==nm-1{
+                    break;
+                }
+            }
+        }
+    }*/
+    /* 
+    while p >= 1 && q < nm - 1 {
+        if x < args.src[p - 1 + (q + 1) * block_dim] {
+            p -= 1;
+        } else {
+            lpq += p;
+            q += 1;
+        }
     }*/
 
-    let x = args.src[p+q*block_dim];
-    
-    unsafe {_syncthreads()};
+    /* 
+    while p >= 1 && q < nm - 1 {
+        let idx = p-1+(q+1)*block_dim;
+        let cond = (x<args.src[idx]) as usize;
+        p-= cond;
+        q+= (1-cond);
 
-    let mut lpq = (p+1)*(q+1)-1;//p*q;
-    
-    let start =lpq;
-    let mut c1 = 0;
-    let mut c2 = 0;
-    let mut c3 = 0;
-    let mut c4 = 0;
-    while p>= 1 && q<nm-1{
-        if x <args.src[p-1+(q+1)*block_dim]{
-            p -=1;
-        }else{
+    }*/
+    /* 
+    let mut idx =p - 1 + (q + 1) * block_dim; 
+    let mut cnt = 0;
+    while p >= 1 && q < nm - 1 {
+        if x < args.src[idx] {
+            p -= 1;
+            idx-=1;
+        } else {
             lpq += p;
-            q+=1;
+            idx+=block_dim;
         }
-    }
-    let mut p = thread_id;
-    let mut q = block_id;
-    while p<m-1 && q>=1 {
-        if x< args.src[p+1+(q-1)*block_dim]{
-            q -= 1;
-        }else{
-            lpq += q;
-            p+=1;
-        }
-    }
+        cnt+=1;
+    }*/
     
-    unsafe {_syncthreads()};
+    //The mutating idx helped a fair bit (40%) but seems fishy
+    //conditional reduction may have helped a little (5%)
+    //I'm interested in the multi idx theory but it seems far fetched (balance divergent workloads)
+    //alternatively I could dedicate two threads to do the two parts and then combine(but if one is short the other will be long always)
+    //I'd like a read on how many times the loop runs, if there's a pattern maybe I could deep ballot -> it's N-1, 
+    //could try raw deref
+    //I could cheat on the edges 
+    //args.dst[0] = F32::PI;
+    let mut cnt = 0;
+    while p >= 1 && q < nm - 1 {
+        if x < args.src[p - 1 + (q + 1) * block_dim] {
+            p -= 1;
+        } else {
+            lpq += p;
+            q += 1;
+        }
+        cnt+=1;
+    }
     let mut p = thread_id;
     let mut q = block_id;
-    //args.dst[p+q*block_dim]=F32::usize(lpq);
-    args.dst[lpq]=x;
-    //args.dst[thread_id+block_id*block_dim] = F32::usize(lpq);
+    args.dst[p + q * block_dim]=F32::usize(cnt);
+    return;
+    /* 
+    while p >= 1 && q < nm - 1 {
+        if x < args.src[p - 1 + (q + 1) * block_dim] {
+            p -= 1;
+        } else {
+            lpq += p;
+            q += 1;
+        }
+    }*/
+    let mut p = thread_id;
+    let mut q = block_id;
+    while p < m - 1 && q >= 1 {
+        if x < args.src[p + 1 + (q - 1) * block_dim] {
+            q -= 1;
+        } else {
+            lpq += q;
+            p += 1;
+        }
+    }
 
+    let mut p = thread_id;
+    let mut q = block_id;
 
+    args.dst[lpq] = x;
+    args.dst[0] = F32::PI;
 }

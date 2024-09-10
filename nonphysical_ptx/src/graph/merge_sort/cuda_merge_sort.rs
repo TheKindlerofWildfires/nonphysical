@@ -88,7 +88,7 @@ impl<F:Float> CudaMergeSort<F>{
             Self::launch_merge_path(&mut args, expected_size,"merge_path".to_string());
             expected_size<<=1;
         }
-        
+        //An assumption was broken here, it's possible for the wrong order to occur here in the columns
         //apply cleanup
         std::mem::swap(&mut args.src,&mut args.dst);
         Self::launch_matrix_sort(&mut args);

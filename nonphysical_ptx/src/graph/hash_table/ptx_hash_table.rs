@@ -4,7 +4,7 @@ use crate::cuda::grid::GridStride;
 use crate::shared::primitive::F32;
 use nonphysical_core::shared::float::Float;
 use core::num::Wrapping;
-use core::arch::nvptx::{_thread_idx_x, _block_dim_x, _block_idx_x,_syncthreads};
+use core::arch::nvptx::{_thread_idx_x, _block_dim_x,_syncthreads};
 use crate::cuda::shuffle::{Shuffle,Shuffler};
 use crate::WARP_SIZE;
 use crate::shared::unsigned::U32;

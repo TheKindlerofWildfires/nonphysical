@@ -1,6 +1,6 @@
 use core::cmp::min;
 
-use crate::shared::{float::Float, matrix::{heap::MatrixHeap, Matrix}};
+use crate::shared::{float::Float, matrix::{matrix_heap::MatrixHeap, Matrix}};
 
 pub trait Gemm<'a, F: Float + 'a> {
     type GemmMatrix: Matrix<F>;

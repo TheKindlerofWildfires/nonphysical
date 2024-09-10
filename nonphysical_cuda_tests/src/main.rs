@@ -25,12 +25,12 @@ pub fn main() {
 
     dbg!(now.elapsed());
     Runtime::init(0, "nonphysical_ptx.ptx");
-    let data1 = (0..64).collect::<Vec<_>>();
+    let data1 = (0..8*8).collect::<Vec<_>>();
 
     //let data = vec![9,7,5,3,8,4,6,5];
     let data1 = data1.into_iter().rev().map(|i| F32::isize(i)).collect::<Vec<_>>();
     let out = CudaMergeSort::merge_1024(&data1);
-    dbg!(out.len(),&out[0..64]);
+    dbg!(out.len(),&out);
     //dbg!(out);
     return;
 }

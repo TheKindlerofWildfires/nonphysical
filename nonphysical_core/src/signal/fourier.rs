@@ -7,4 +7,5 @@ pub trait FourierTransform<F:Float>{
     fn new(init: Self::FourierInit) -> Self;
     fn fft(&self, x: &mut [F]);
     fn ifft(&self, x: &mut [F]);
+    fn shift(x: &mut [F]);
 }
