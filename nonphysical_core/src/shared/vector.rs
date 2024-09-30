@@ -28,6 +28,8 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn div<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a;
 
+    fn neg<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a;
+
     fn scale<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: F::Primitive,
@@ -91,6 +93,8 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn div_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F);
 
+    fn neg_ref<I: Iterator<Item = &'a mut F>>(iter: I);
+
     fn scale_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F::Primitive);
 
     fn descale_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: F::Primitive);
@@ -145,6 +149,16 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn div_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
 
+    fn scale_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a;
+
+    fn descale_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a;
+
     fn fma_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         mul: I,
@@ -171,6 +185,16 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn div_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
+    fn scale_vec_ref<I: Iterator<Item = &'a mut F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    );
+
+    fn descale_vec_ref<I: Iterator<Item = &'a mut F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    );
+
     fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, mul: J, add: J);
 
     fn powf_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
@@ -195,6 +219,8 @@ pub trait Vector<'a, F: Float + 'a> {
     fn mul_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
 
     fn div_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F>;
+
+    fn neg_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F>;
 
     fn scale_direct<I: Iterator<Item = F>>(iter: I, other: F::Primitive)
         -> impl Iterator<Item = F>;
@@ -255,6 +281,16 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn div_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
+    fn scale_vec_direct<I: Iterator<Item = F> + 'a, J: Iterator<Item=F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F>;
+
+    fn descale_vec_direct<I: Iterator<Item = F> + 'a, J: Iterator<Item=F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F>;
+
     fn fma_vec_direct<I: Iterator<Item = F>>(iter: I, mul: I, add: I) -> impl Iterator<Item = F>;
 
     fn powf_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
@@ -263,6 +299,31 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
+    fn add_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+
+    fn sub_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+
+    fn mul_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+
+    fn div_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+
+    fn scale_vec_ref_direct<I: Iterator<Item = &'a mut F> + 'a, J: Iterator<Item=F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    );
+
+    fn descale_vec_ref_direct<I: Iterator<Item = &'a mut F> + 'a, J: Iterator<Item=F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    );
+
+    fn fma_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, mul: J, add: J);
+
+    fn powf_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+
+    fn greater_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+
+    fn lesser_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
     // Reduction operations: [F] -> F
     fn sum_direct<I: Iterator<Item = F>>(iter: I) -> F;
 

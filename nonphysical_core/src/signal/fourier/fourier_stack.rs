@@ -35,16 +35,16 @@ impl<C: Complex,const N: usize> FourierTransform<C> for ComplexFourierTransformS
         let sf = C::Primitive::ONE / C::Primitive::usize(x.len());
         x.iter_mut().for_each(|c| *c = c.conjugate() * sf);
     }
-    
-    fn shift(x: &mut [C]) {
-        let half = x.len()/2;
-        let mut chunks = x.chunks_exact_mut(half);
-        let c1 = chunks.next().unwrap();
-        let c2 = chunks.next().unwrap();
-        c1.iter_mut().zip(c2.iter_mut()).for_each(|(a,b)|{
-            core::mem::swap(a,b);
-        });
+
+    fn fft_shifted(&self, x: &mut [C]) {
+        self.fft(x);
+        Self::shift(x);
     }
+    fn ifft_shifted(&self, x: &mut [C]) {
+        self.ifft(x);
+        Self::shift(x);
+    }
+
 }
 impl<C:Complex,const N: usize> ComplexFourierTransformStack<C,N>{
     #[inline]
@@ -57,6 +57,15 @@ impl<C:Complex,const N: usize> ComplexFourierTransformStack<C,N>{
             *twiddle = C::new(cos, sin);
         });
         twiddles
+    }
+    fn shift(x: &mut [C]) {
+        let half = x.len()/2;
+        let mut chunks = x.chunks_exact_mut(half);
+        let c1 = chunks.next().unwrap();
+        let c2 = chunks.next().unwrap();
+        c1.iter_mut().zip(c2.iter_mut()).for_each(|(a,b)|{
+            core::mem::swap(a,b);
+        });
     }
 
     #[inline]

@@ -1,13 +1,14 @@
 use super::primitive::Primitive;
 use super::float::Float;
-use core::fmt::Debug;
+use core::cmp::Ordering;
+use core::fmt::{Result,Formatter,Debug};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use alloc::boxed::Box;
 use alloc::format;
 /*
     This Struct defines complex numbers and functions which are unique to them
 */
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq,Eq)]
 pub struct ComplexScaler<P: Primitive> {
     pub real: P,
     pub imag: P,
@@ -320,8 +321,14 @@ impl<P: Primitive<Primitive = P>> DivAssign<P> for ComplexScaler<P> {
 }
 
 impl<P: Primitive> Debug for ComplexScaler<P> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{:?} + {:?}i", self.real, self.imag)
+    }
+}
+
+impl<P: Primitive<Primitive = P>> PartialOrd for ComplexScaler<P>{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.l1_norm().partial_cmp(&other.l1_norm())
     }
 }
 

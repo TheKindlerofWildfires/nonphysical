@@ -260,6 +260,17 @@ pub extern "ptx-kernel" fn vector_div_f32<'a>(args: &'a mut VectorArgumentsMap<'
         .zip(out_iter)
         .for_each(|(global, local)| *global = local);
 }
+
+#[no_mangle]
+pub extern "ptx-kernel" fn vector_neg_f32<'a>(args: &'a mut VectorArgumentsMap<'a, F32, F32, F32>) {
+    let iter = GridStride::stride(&args.data);
+    let out_iter = FloatVector::neg(iter);
+    let out_global = GridStride::stride_ref(&mut args.output);
+    out_global
+        .zip(out_iter)
+        .for_each(|(global, local)| *global = local);
+}
+
 #[no_mangle]
 pub extern "ptx-kernel" fn vector_scale_f32<'a>(
     args: &'a mut VectorArgumentsMap<'a, F32, F32, <F32 as Float>::Primitive>,
@@ -553,6 +564,14 @@ pub extern "ptx-kernel" fn vector_div_ref_f32<'a>(
 }
 
 #[no_mangle]
+pub extern "ptx-kernel" fn vector_neg_ref_f32<'a>(
+    args: &'a mut VectorArgumentsApply<'a, F32, F32>,
+) {
+    let iter = GridStride::stride_ref(&mut args.data);
+    FloatVector::neg_ref(iter);
+}
+
+#[no_mangle]
 pub extern "ptx-kernel" fn vector_scale_ref_f32<'a>(
     args: &'a mut VectorArgumentsApply<'a, F32, <F32 as Float>::Primitive>,
 ) {
@@ -765,6 +784,32 @@ pub extern "ptx-kernel" fn vector_div_vec_f32<'a>(
 }
 
 #[no_mangle]
+pub extern "ptx-kernel" fn vector_scale_vec_f32<'a>(
+    args: &'a mut VectorArgumentsMap<'a, F32, F32, F32>,
+) {
+    let iter = GridStride::stride(&args.data);
+    let other = GridStride::stride(&args.map);
+    let out_iter = FloatVector::scale_vec(iter, other);
+    let out_global = GridStride::stride_ref(&mut args.output);
+    out_global
+        .zip(out_iter)
+        .for_each(|(global, local)| *global = local);
+}
+
+#[no_mangle]
+pub extern "ptx-kernel" fn vector_descale_vec_f32<'a>(
+    args: &'a mut VectorArgumentsMap<'a, F32, F32, F32>,
+) {
+    let iter = GridStride::stride(&args.data);
+    let other = GridStride::stride(&args.map);
+    let out_iter = FloatVector::descale_vec(iter, other);
+    let out_global = GridStride::stride_ref(&mut args.output);
+    out_global
+        .zip(out_iter)
+        .for_each(|(global, local)| *global = local);
+}
+
+#[no_mangle]
 pub extern "ptx-kernel" fn vector_powf_vec_f32<'a>(
     args: &'a mut VectorArgumentsMap<'a, F32, F32, F32>,
 ) {
@@ -846,6 +891,24 @@ pub extern "ptx-kernel" fn vector_div_vec_ref_f32<'a>(
     let iter = GridStride::stride_ref(&mut args.data);
     let other = GridStride::stride(&args.map);
     FloatVector::div_vec_ref(iter, other);
+}
+
+#[no_mangle]
+pub extern "ptx-kernel" fn vector_scale_vec_ref_f32<'a>(
+    args: &'a mut VectorArgumentsApply<'a, F32, F32>,
+) {
+    let iter = GridStride::stride_ref(&mut args.data);
+    let other = GridStride::stride(&args.map);
+    FloatVector::scale_vec_ref(iter, other);
+}
+
+#[no_mangle]
+pub extern "ptx-kernel" fn vector_descale_vec_ref_f32<'a>(
+    args: &'a mut VectorArgumentsApply<'a, F32, F32>,
+) {
+    let iter = GridStride::stride_ref(&mut args.data);
+    let other = GridStride::stride(&args.map);
+    FloatVector::descale_vec_ref(iter, other);
 }
 
 #[no_mangle]

@@ -423,7 +423,16 @@ impl<F: Float> Matrix<F> for MatrixHeap<F> {
             core::mem::swap(&mut (*ap), &mut (*bp));
         });
     }
+
+    fn dot(&self, other: &Self)->Self {
+        let data = self.data_rows().enumerate().map(|(i,row)|{
+            other.data_col(i).zip(row.iter()).fold(F::ZERO, |acc,(o,s)| acc+*o**s)
+        });
+        Self::new((self.rows,data.collect()))
+    }
 }
+
+
 
 impl<F: Float> Add<F> for MatrixHeap<F> {
     type Output = Self;

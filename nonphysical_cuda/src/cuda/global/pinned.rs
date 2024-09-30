@@ -13,8 +13,16 @@ pub struct CuPinnedSliceRef<'a, T: Copy> {
 
 //This pins memory to the CPU for fast write to device access
 impl<'a, T: Copy> CuPinnedSlice<'a, T> {
-    pub fn alloc(data: &[T]) -> Self {
-        let size = size_of::<T>() * data.len();
+    pub fn from_iter<I: Iterator<Item = &'a T> + 'a>(iter: I)->Self{
+        let count = iter.size_hint();
+        let slice = Self::alloc(count.1.unwrap());
+        slice.ptr.iter_mut().zip(iter).for_each(|(s,i)|{
+            *s = *i
+        });
+        slice
+    }
+    pub fn alloc(len: usize) -> Self {
+        let size = size_of::<T>() * len;
         let mut ptr = ptr::null_mut();
         CuError::check(unsafe {
             ffi::cuMemHostAlloc(
@@ -25,7 +33,7 @@ impl<'a, T: Copy> CuPinnedSlice<'a, T> {
         })
         .expect("Failed to allocate a pinned buffer");
         Self {
-            ptr: unsafe { from_raw_parts_mut(ptr as *mut T, data.len()) },
+            ptr: unsafe { from_raw_parts_mut(ptr as *mut T,len) },
         }
     }
     pub fn to_global(&mut self) -> CuGlobalSlice<'a, T> {
@@ -43,26 +51,22 @@ impl<'a, T: Copy> CuPinnedSlice<'a, T> {
         assert!(data.len() == self.ptr.len());
         self.ptr.copy_from_slice(data);
     }
+    pub fn len(&self)->usize{
+        self.ptr.len()
+    }
 }
 
-/*
-impl<'a, T: Copy> Drop for CuPinnedSlice<'a, T> {
-    fn drop(&mut self) {
-        CuError::check(unsafe { ffi::cuMemFreeHost(self.ptr.as_mut_ptr() as *mut c_void) })
-            .expect("Failed to free a pinned buffer");
-    }
-}*/
 //This pins memory to the CPU for fast read on host access
 impl<'a, T: Copy> CuPinnedSliceRef<'a, T> {
-    pub fn alloc(data: &[T]) -> Self {
-        let size = size_of::<T>() * data.len();
+    pub fn alloc(len: usize) -> Self {
+        let size = size_of::<T>() * len;
         let mut ptr = ptr::null_mut();
         CuError::check(unsafe {
             ffi::cuMemHostAlloc(&mut ptr as *mut _ as *mut *mut c_void, size, 0| ffi::CU_MEMHOSTALLOC_DEVICEMAP)
         })
         .expect("Failed to allocate a pinned buffer");
         Self {
-            ptr: unsafe { from_raw_parts_mut(ptr as *mut T, data.len()) },
+            ptr: unsafe { from_raw_parts_mut(ptr as *mut T, len) },
         }
     }
     pub fn to_global(&mut self) -> CuGlobalSliceRef<'a, T> {
@@ -86,15 +90,10 @@ impl<'a, T: Copy> CuPinnedSliceRef<'a, T> {
         assert!(data.len() == self.ptr.len());
         data.copy_from_slice(self.ptr);
     }
-}
-/*
-//Rust 'helps' here by automatically cleaning up the memory
-impl<'a, T: Copy> Drop for CuPinnedSliceRef<'a, T> {
-    fn drop(&mut self) {
-        CuError::check(unsafe { ffi::cuMemFreeHost(self.ptr.as_mut_ptr() as *mut c_void) })
-            .expect("Failed to free a pinned buffer");
+    pub fn len(&self)->usize{
+        self.ptr.len()
     }
-} */
+}
 
 pub struct CuPinnedBox<'a, T: Copy> {
     pub ptr: &'a mut T,
@@ -142,13 +141,6 @@ impl<'a, T: Copy> CuPinnedBox<'a, T> {
         *self.ptr = data;
     }
 }
-/*
-impl<'a, T: Copy> Drop for CuPinnedBox<'a, T> {
-    fn drop(&mut self) {
-        CuError::check(unsafe { ffi::cuMemFreeHost(self.ptr as *mut T as *mut c_void) })
-            .expect("Failed to free a pinned buffer");
-    }
-}*/
 //This pins memory to the CPU for fast read on host access
 impl<'a, T: Copy> CuPinnedBoxRef<'a, T> {
     pub fn alloc(_: &'a T) -> Self {
@@ -185,12 +177,3 @@ impl<'a, T: Copy> CuPinnedBoxRef<'a, T> {
         *data = *self.ptr;
     }
 }
-/*
-//Rust 'helps' here by automatically cleaning up the memory
-impl<'a, T: Copy> Drop for CuPinnedBoxRef<'a, T> {
-    fn drop(&mut self) {
-        CuError::check(unsafe { ffi::cuMemFreeHost(self.ptr as *mut T as *mut c_void) })
-            .expect("Failed to free a pinned buffer");
-    }
-}
-    */

@@ -66,6 +66,10 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.map(move |x| (*x).div(other))
     }
 
+    fn neg<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a {
+        iter.map(move |x| (*x).neg())
+    }
+
     fn scale<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: <F as Float>::Primitive,
@@ -188,6 +192,10 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.for_each(|x| (*x).div_assign(other))
     }
 
+    fn neg_ref<I: Iterator<Item = &'a mut F>>(iter: I) {
+        iter.for_each(|x| *x = -*x)
+    }
+
     fn scale_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: <F as Float>::Primitive) {
         iter.for_each(|x| (*x).mul_assign(other))
     }
@@ -288,6 +296,20 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| (*x).div(*other))
     }
 
+    fn scale_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = &'a F::Primitive> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a {
+        iter.zip(other).map(move |(x, other)| (*x).mul(*other))
+    }
+
+    fn descale_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item = &'a F::Primitive> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a {
+        iter.zip(other).map(move |(x, other)| (*x).div(*other))
+    }
+
     fn fma_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         mul: I,
@@ -316,43 +338,72 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| (*x).lesser(*other))
     }
 
-    fn add_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
+    fn add_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).add_assign(*other))
     }
 
-    fn sub_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
+    fn sub_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).sub_assign(*other))
     }
 
-    fn mul_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
+    fn mul_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).mul_assign(*other))
     }
 
-    fn div_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
+    fn div_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| (*x).div_assign(*other))
     }
 
-    fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, mul: J, add: J) {
+    fn scale_vec_ref<
+        I: Iterator<Item = &'a mut F> + 'a,
+        J: Iterator<Item = &'a F::Primitive> + 'a,
+    >(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other)
+            .for_each(|(x, other)| (*x).mul_assign(*other))
+    }
+
+    fn descale_vec_ref<
+        I: Iterator<Item = &'a mut F> + 'a,
+        J: Iterator<Item = &'a F::Primitive> + 'a,
+    >(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other)
+            .for_each(|(x, other)| (*x).div_assign(*other))
+    }
+
+    fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
+        iter: I,
+        mul: J,
+        add: J,
+    ) {
         iter.zip(mul)
             .zip(add)
             .for_each(move |((x, mul), add)| *x = (*x).fma(*mul, *add))
     }
 
-    fn powf_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J){
+    fn powf_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).powf(*other))
     }
 
-    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
+    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
+        iter: I,
+        other: J,
+    ) {
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).greater(*other))
     }
 
-    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J) {
+    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).lesser(*other))
     }
@@ -381,6 +432,10 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
 
     fn div_direct<I: Iterator<Item = F>>(iter: I, other: F) -> impl Iterator<Item = F> {
         iter.map(move |x| x.div(other))
+    }
+
+    fn neg_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F> {
+        iter.map(move |x| x.neg())
     }
 
     fn scale_direct<I: Iterator<Item = F>>(
@@ -501,6 +556,20 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| x.div(other))
     }
 
+    fn scale_vec_direct<I: Iterator<Item = F> + 'a, J: Iterator<Item = F::Primitive> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> {
+        iter.zip(other).map(move |(x, other)| x.mul(other))
+    }
+
+    fn descale_vec_direct<I: Iterator<Item = F> + 'a, J: Iterator<Item = F::Primitive> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> {
+        iter.zip(other).map(move |(x, other)| x.div(other))
+    }
+
     fn fma_vec_direct<I: Iterator<Item = F>>(iter: I, mul: I, add: I) -> impl Iterator<Item = F> {
         iter.zip(mul)
             .zip(add)
@@ -517,6 +586,75 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
 
     fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
         iter.zip(other).map(move |(x, other)| x.lesser(other))
+    }
+
+    fn add_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        iter.zip(other).for_each(|(i, j)| i.add_assign(j));
+    }
+
+    fn sub_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        iter.zip(other).for_each(|(x, other)| x.sub_assign(other));
+    }
+
+    fn mul_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        iter.zip(other).for_each(|(x, other)| x.mul_assign(other));
+    }
+
+    fn div_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        iter.zip(other).for_each(|(x, other)| x.div_assign(other));
+    }
+
+    fn scale_vec_ref_direct<
+        I: Iterator<Item = &'a mut F> + 'a,
+        J: Iterator<Item = F::Primitive> + 'a,
+    >(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other).for_each(|(x, other)| x.mul_assign(other));
+    }
+
+    fn descale_vec_ref_direct<
+        I: Iterator<Item = &'a mut F> + 'a,
+        J: Iterator<Item = F::Primitive> + 'a,
+    >(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other).for_each(|(x, other)| x.div_assign(other));
+    }
+
+    fn fma_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        mul: J,
+        add: J,
+    ) {
+        iter.zip(mul)
+            .zip(add)
+            .for_each(move |((x, mul), add)| *x = (*x).fma(mul, add))
+    }
+
+    fn powf_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other).for_each(|(x, other)| *x = (*x).powf(other));
+    }
+
+    fn greater_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other)
+            .for_each(|(x, other)| *x = (*x).greater(other));
+    }
+
+    fn lesser_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        other: J,
+    ) {
+        iter.zip(other)
+            .for_each(|(x, other)| *x = (*x).lesser(other));
     }
 
     fn sum_direct<I: Iterator<Item = F>>(iter: I) -> F {
@@ -565,10 +703,12 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
     }
 
     fn dot_direct<I: Iterator<Item = F>>(iter: I, other: I) -> F {
-        iter.zip(other).fold(F::MIN, |acc, (i,o)| acc.add(i.mul(o)))
+        iter.zip(other)
+            .fold(F::MIN, |acc, (i, o)| acc.add(i.mul(o)))
     }
 
     fn quote_direct<I: Iterator<Item = F>>(iter: I, other: I) -> F {
-        iter.zip(other).fold(F::MIN, |acc, (i,o)| acc.add(i.div(o)))
+        iter.zip(other)
+            .fold(F::MIN, |acc, (i, o)| acc.add(i.div(o)))
     }
 }

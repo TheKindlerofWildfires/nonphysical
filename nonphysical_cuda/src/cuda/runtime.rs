@@ -14,7 +14,7 @@ use std::{
     string::String,
 };
 
-use super::{ffi::cuDeviceGetAttribute, global::host::CuGlobalBox};
+use super::{ffi::cuDeviceGetAttribute, global::host::CuGlobalBox, stream::CuStream};
 
 pub static RUNTIME: std::sync::OnceLock<Runtime> = std::sync::OnceLock::<Runtime>::new();
 
@@ -138,6 +138,41 @@ impl Runtime {
         })
         .expect("Kernel launch failed");
     }
+    /// # Safety
+    ///
+    /// This function isn't safe, the result of the launch is checked but there are many places a raw pointer can be dereferenced
+    pub unsafe fn launch_async<Args>(
+        &self,
+        function: CUfunction,
+        args: &Args,
+        grid_dim: Dim3,
+        block_dim: Dim3,
+        stream:&CuStream
+    ) {
+        // launch
+        let mut args_d = CuGlobalBox::alloc(args);
+        args_d.store(args);
+        let mut ptr = args_d.get();
+        let mut launch_args = vec![&mut ptr as *mut &Args as *mut c_void];
+        let shared_mem_bytes = 0;
+
+        CuError::check(unsafe {
+            cuLaunchKernel(
+                function,
+                grid_dim.x as c_uint,
+                grid_dim.y as c_uint,
+                grid_dim.z as c_uint,
+                block_dim.x as c_uint,
+                block_dim.y as c_uint,
+                block_dim.z as c_uint,
+                shared_mem_bytes as c_uint,
+                stream.stream,
+                launch_args.as_mut_ptr(),
+                ptr::null_mut(),
+            )
+        })
+        .expect("Kernel launch failed");
+    }
     pub fn launch_name<Args>(
         &self,
         func_name: String,
@@ -160,6 +195,34 @@ impl Runtime {
 
         unsafe {
             self.launch(function, args, grid_dim, block_dim);
+        }
+
+        function
+    }
+
+    pub fn launch_name_async<Args>(
+        &self,
+        func_name: String,
+        args: &Args,
+        grid_dim: Dim3,
+        block_dim: Dim3,
+        stream: &CuStream,
+    ) -> CUfunction {
+        // function
+        let mut function: CUfunction = ptr::null_mut();
+        let func_name_cstr =
+            CString::new(func_name.as_str()).expect("Could not create function name");
+        CuError::check(unsafe {
+            cuModuleGetFunction(
+                &mut function as *mut CUfunction,
+                self.module.0 as CUmodule,
+                func_name_cstr.as_ptr(),
+            )
+        })
+        .expect("Failed to find function");
+
+        unsafe {
+            self.launch_async(function, args, grid_dim, block_dim,stream);
         }
 
         function

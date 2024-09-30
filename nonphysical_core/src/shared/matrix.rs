@@ -54,4 +54,5 @@ pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized {
     fn transposed(&self) -> Self;
     fn col_swap(&mut self, a: usize, b: usize);
     fn row_swap(&mut self, a: usize, b: usize);
+    fn dot(&self, other: &Self)->Self;
 }

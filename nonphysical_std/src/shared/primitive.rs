@@ -5,7 +5,7 @@ use nonphysical_core::shared::primitive::Primitive;
 
 use super::unsigned::{U32, U64};
 
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Copy, Clone,)]
 pub struct F32(pub f32);
 
 #[derive(PartialOrd, PartialEq, Copy, Clone)]

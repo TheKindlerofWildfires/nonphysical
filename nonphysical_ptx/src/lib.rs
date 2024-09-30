@@ -12,7 +12,7 @@
 extern crate std;
 pub const WARP_SIZE: usize = 32;
 pub const LOG_WARP_SIZE: usize = 5;
-//pub mod signal;
+pub mod signal;
 //pub mod cluster;
 extern crate alloc;
 pub mod shared;

@@ -34,6 +34,7 @@ pub trait Float:
     + Send
     + Debug
     + PartialEq
+    + PartialOrd
 {
     type Primitive: Primitive;
     const ZERO: Self;

@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod vector_tests {
-    use nonphysical_core::shared::float::Float;
-    use nonphysical_core::shared::{
-        primitive::Primitive,
-        vector::{float_vector::FloatVector, Vector},
-    };
+    use nonphysical_core::shared::
+        primitive::Primitive
+    ;
     use nonphysical_cuda::cuda::runtime::Runtime;
     use nonphysical_ptx::graph::merge_sort::cuda_merge_sort::CudaMergeSort;
-    use nonphysical_std::shared::{primitive::F32, unsigned::U32};
+    use nonphysical_std::shared::primitive::F32;
     #[test]
     fn sort_tiny() {
         Runtime::init(0, "../nonphysical_ptx.ptx");

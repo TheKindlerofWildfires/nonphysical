@@ -8,10 +8,12 @@ use nonphysical_core::shared::{float::Float, vector::Vector};
 use nonphysical_cuda::cuda::{
     global::host::{CuGlobalSlice, CuGlobalSliceRef},
     runtime::{Dim3, RUNTIME},
+    stream::CuStream,
+    
 };
 
 use super::{
-    VectorArgumentsApply, VectorArgumentsMap, VectorArgumentsMapReduce, VectorArgumentsReduce
+    VectorArgumentsApply, VectorArgumentsMap, VectorArgumentsMapReduce, VectorArgumentsReduce,
 };
 use crate::WARP_SIZE;
 pub struct CudaVector {}
@@ -88,6 +90,30 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         (acc[0], acc[1])
     }
 
+    /*
+    fn add<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a {
+        let vector = iter.map(|x| *x).collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        use std::time::SystemTime;
+        use std::dbg;
+        let now = SystemTime::now();
+
+        let stream = CuStream::non_blocking();
+        dbg!(now.elapsed());
+        let now = SystemTime::now();
+
+        let mut arguments = Self::map_alloc_async(&vector, &output, &[other],&stream);
+        dbg!(now.elapsed());
+
+        let now = SystemTime::now();
+
+        Self::map_transfer_async(&mut arguments, &vector, &mut output, &[other], "add",&stream);
+        dbg!(now.elapsed());
+
+
+        output.into_iter()
+    }*/
+    
     fn add<I: Iterator<Item = &'a F> + 'a>(iter: I, other: F) -> impl Iterator<Item = F> + 'a {
         let vector = iter.map(|x| *x).collect::<Vec<_>>();
         let mut output = vec![F::ZERO; vector.len()];
@@ -120,6 +146,29 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         output.into_iter()
     }
 
+    fn neg<I: Iterator<Item = &'a F> + 'a>(iter: I) -> impl Iterator<Item = F> + 'a {
+        let vector = iter.map(|x| *x).collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        let mut arguments = Self::map_alloc(&vector, &output, &[F::ZERO]);
+        Self::map_transfer(&mut arguments, &vector, &mut output, &[F::ZERO], "neg");
+        output.into_iter()
+    }
+    /*
+    fn scale<I: Iterator<Item = &'a F> + 'a>(
+        iter: I,
+        other: <F as Float>::Primitive,
+    ) -> impl Iterator<Item = F> + 'a {
+        //let vector = iter.map(|x| *x).collect::<Vec<_>>();
+
+        let mut data = CuPinnedSlice::from_iter(iter);
+        let mut output = CuPinnedSliceRef::alloc(data.len());
+        let mut map = CuPinnedSlice::alloc(1);
+        let mut arguments = VectorArgumentsMap { data:data.to_global(), output:output.to_global(), map:map.to_global() };
+        let mut output = vec![F::ZERO; data.len()];
+        Self::map_transfer_pinned(&mut arguments, &mut output, &[other], "scale");
+        output.into_iter()
+    }*/
+
     fn scale<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: <F as Float>::Primitive,
@@ -143,9 +192,9 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
     }
 
     fn fma<I: Iterator<Item = &'a F> + 'a>(
-        iter: I,
-        mul: F,
-        add: F,
+        _iter: I,
+        _mul: F,
+        _add: F,
     ) -> impl Iterator<Item = F> + 'a {
         todo!();
         /*
@@ -402,6 +451,17 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
             .for_each(|(r, v)| **r = *v);
     }
 
+    fn neg_ref<I: Iterator<Item = &'a mut F>>(iter: I) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &[F::ZERO]);
+        Self::apply_transfer(&mut arguments, &mut vector, &[F::ZERO], "neg_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
     fn scale_ref<I: Iterator<Item = &'a mut F>>(iter: I, other: <F as Float>::Primitive) {
         let mut ref_vector = iter.collect::<Vec<_>>();
         let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
@@ -424,7 +484,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
             .for_each(|(r, v)| **r = *v);
     }
 
-    fn fma_ref<I: Iterator<Item = &'a mut F>>(iter: I, mul: F, add: F) {
+    fn fma_ref<I: Iterator<Item = &'a mut F>>(_iter: I, _mul: F, _add: F) {
         todo!();
         /*
          let mut ref_vector = iter.collect::<Vec<_>>();
@@ -689,10 +749,34 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         output.into_iter()
     }
 
-    fn fma_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn scale_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
         iter: I,
-        mul: I,
-        add: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a{
+        let vector = iter.map(|x| *x).collect::<Vec<_>>();
+        let other = other.map(|x| *x).collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        let mut arguments = Self::map_alloc(&vector, &output, &other);
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "scale_vec");
+        output.into_iter()
+    }
+
+    fn descale_vec<I: Iterator<Item = &'a F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> + 'a{
+        let vector = iter.map(|x| *x).collect::<Vec<_>>();
+        let other = other.map(|x| *x).collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        let mut arguments = Self::map_alloc(&vector, &output, &other);
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "descale_vec");
+        output.into_iter()
+    }
+
+    fn fma_vec<I: Iterator<Item = &'a F> + 'a>(
+        _iter: I,
+        _mul: I,
+        _add: I,
     ) -> impl Iterator<Item = F> + 'a {
         todo!();
         /*
@@ -787,10 +871,41 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
             .for_each(|(r, v)| **r = *v);
     }
 
-    fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
+    
+    fn scale_vec_ref<I: Iterator<Item = &'a mut F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
         iter: I,
-        mul: J,
-        add: J,
+        other: J,
+    ){
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| *x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "scale_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn descale_vec_ref<I: Iterator<Item = &'a mut F> + 'a, J: Iterator<Item=&'a F::Primitive>+'a>(
+        iter: I,
+        other: J,
+    ){
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| *x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "scale_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn fma_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
+        _iter: I,
+        _mul: J,
+        _add: J,
     ) {
         todo!();
         /*
@@ -896,6 +1011,14 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         output.into_iter()
     }
 
+    fn neg_direct<I: Iterator<Item = F>>(iter: I) -> impl Iterator<Item = F> {
+        let vector = iter.collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        let mut arguments = Self::map_alloc(&vector, &vector, &[F::ZERO]);
+        Self::map_transfer(&mut arguments, &vector, &mut output, &[F::ZERO], "neg");
+        output.into_iter()
+    }
+
     fn scale_direct<I: Iterator<Item = F>>(
         iter: I,
         other: <F as Float>::Primitive,
@@ -918,7 +1041,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         output.into_iter()
     }
 
-    fn fma_direct<I: Iterator<Item = F>>(iter: I, mul: F, add: F) -> impl Iterator<Item = F> {
+    fn fma_direct<I: Iterator<Item = F>>(_iter: I, _mul: F, _add: F) -> impl Iterator<Item = F> {
         todo!();
         /*
         let vector = iter.collect::<Vec<_>>();
@@ -1147,8 +1270,32 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         Self::map_transfer(&mut arguments, &vector, &mut output, &other, "div_vec");
         output.into_iter()
     }
+    fn scale_vec_direct<I: Iterator<Item = F> + 'a, J: Iterator<Item = F::Primitive> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> {
+        let vector = iter.collect::<Vec<_>>();
+        let other = other.collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        let mut arguments = Self::map_alloc(&vector, &output, &other);
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "scale_vec");
+        output.into_iter()
+    }
 
-    fn fma_vec_direct<I: Iterator<Item = F>>(iter: I, mul: I, add: I) -> impl Iterator<Item = F> {
+    fn descale_vec_direct<I: Iterator<Item = F> + 'a, J: Iterator<Item = F::Primitive> + 'a>(
+        iter: I,
+        other: J,
+    ) -> impl Iterator<Item = F> {
+        let vector = iter.collect::<Vec<_>>();
+        let other = other.collect::<Vec<_>>();
+        let mut output = vec![F::ZERO; vector.len()];
+        let mut arguments = Self::map_alloc(&vector, &output, &other);
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "descale_vec");
+        output.into_iter()
+    }
+
+    fn fma_vec_direct<I: Iterator<Item = F>>(_iter: I, _mul: I, _add: I) -> impl Iterator<Item = F> {
+        todo!();
         /*
         let vector = iter.collect::<Vec<_>>();
         let mul = mul.collect::<Vec<_>>();
@@ -1185,6 +1332,143 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         let mut arguments = Self::map_alloc(&vector, &output, &other);
         Self::map_transfer(&mut arguments, &vector, &mut output, &other, "lesser_vec");
         output.into_iter()
+    }
+
+    fn add_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "add_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn sub_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "sub_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn mul_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "mul_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn div_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(iter: I, other: J) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "div_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn scale_vec_ref_direct<
+        I: Iterator<Item = &'a mut F> + 'a,
+        J: Iterator<Item = F::Primitive> + 'a,
+    >(
+        iter: I,
+        other: J,
+    ) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "scale_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn descale_vec_ref_direct<
+        I: Iterator<Item = &'a mut F> + 'a,
+        J: Iterator<Item = F::Primitive> + 'a,
+    >(
+        iter: I,
+        other: J,
+    ) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "descale_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn fma_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        _iter: I,
+        _mul: J,
+        _add: J,
+    ) {
+        todo!()
+    }
+
+    fn powf_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        other: J,
+    ) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "powf_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn greater_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        other: J,
+    ) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "greater_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
+    }
+
+    fn lesser_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+        iter: I,
+        other: J,
+    ) {
+        let mut ref_vector = iter.collect::<Vec<_>>();
+        let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
+        let other = other.map(|x| x).collect::<Vec<_>>();
+        let mut arguments = Self::apply_alloc(&vector, &other);
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "lesser_vec_ref");
+        ref_vector
+            .iter_mut()
+            .zip(vector.iter())
+            .for_each(|(r, v)| **r = *v);
     }
 
     fn sum_direct<I: Iterator<Item = F>>(iter: I) -> F {
@@ -1264,8 +1548,8 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
 
 impl CudaVector {
     fn launch<Args>(args: &mut Args, len: usize, kernel: String) {
-        let threads = min(1024, len.div_ceil(WARP_SIZE/2));
-        let block_size = len.div_ceil(threads*WARP_SIZE/2);//Half a warp was optimal in testing
+        let threads = min(1024, len.div_ceil(WARP_SIZE / 2));
+        let block_size = len.div_ceil(threads * WARP_SIZE / 2); //Half a warp was optimal in testing
         let grid = Dim3 {
             x: block_size,
             y: 1,
@@ -1279,6 +1563,27 @@ impl CudaVector {
         match RUNTIME.get() {
             Some(rt) => {
                 rt.launch_name(kernel, args, grid, block);
+            }
+            None => panic!("Cuda Runtime not initialized"),
+        };
+    }
+
+    fn launch_async<Args>(args: &mut Args, len: usize, kernel: String,stream:&CuStream) {
+        let threads = min(1024, len.div_ceil(WARP_SIZE / 2));
+        let block_size = len.div_ceil(threads * WARP_SIZE / 2); //Half a warp was optimal in testing
+        let grid = Dim3 {
+            x: block_size,
+            y: 1,
+            z: 1,
+        };
+        let block = Dim3 {
+            x: threads,
+            y: 1,
+            z: 1,
+        };
+        match RUNTIME.get() {
+            Some(rt) => {
+                rt.launch_name_async(kernel, args, grid, block,stream);
             }
             None => panic!("Cuda Runtime not initialized"),
         };
@@ -1299,6 +1604,18 @@ impl CudaVector {
         let data = CuGlobalSlice::alloc(&vector);
         let output = CuGlobalSliceRef::alloc(&output);
         let map = CuGlobalSlice::alloc(other);
+        VectorArgumentsMap { data, output, map }
+    }
+
+    fn map_alloc_async<'a, Fa: Float + 'a, Fb: Float + 'a, Fc: Float + 'a>(
+        vector: &[Fa],
+        output: &[Fb],
+        other: &[Fc],
+        stream: &CuStream,
+    ) -> VectorArgumentsMap<'a, Fa, Fb, Fc> {
+        let data = CuGlobalSlice::alloc_async(&vector,stream);
+        let output = CuGlobalSliceRef::alloc_async(&output,stream);
+        let map = CuGlobalSlice::alloc_async(other,stream);
         VectorArgumentsMap { data, output, map }
     }
 
@@ -1350,6 +1667,43 @@ impl CudaVector {
         Self::launch(arguments, len, kernel);
         arguments.output.load(output);
     }
+
+    fn map_transfer_async<'a, Fa: Float + 'a, Fb: Float + 'a, Fc: Float + 'a>(
+        arguments: &mut VectorArgumentsMap<'a, Fa, Fb, Fc>,
+        vector: &[Fa],
+        output: &mut [Fb],
+        map: &[Fc],
+        name: &str,
+        stream: &CuStream,
+    ) {
+        let len = arguments.data.ptr.len();
+        assert!(len == arguments.output.ptr.len());
+        stream.sync();
+        arguments.data.store_async(&vector,stream);
+        arguments.map.store_async(map,stream);
+        stream.sync();
+        let kernel = format!("vector_{}_{}", name, Fa::type_id());
+        Self::launch_async(arguments, len, kernel,stream);
+        stream.sync();
+        arguments.output.load_async(output,stream);
+        stream.sync();
+
+    }
+    fn map_transfer_pinned<'a, Fa: Float + 'a, Fb: Float + 'a, Fc: Float + 'a>(
+        arguments: &mut VectorArgumentsMap<'a, Fa, Fb, Fc>,
+        output: &mut [Fb],
+        map: &[Fc],
+        name: &str,
+    ) {
+        let len = arguments.data.ptr.len();
+        assert!(len == arguments.output.ptr.len());
+        arguments.map.store(map);
+        let kernel = format!("vector_{}_{}", name, Fa::type_id());
+        Self::launch(arguments, len, kernel);
+        arguments.output.load(output);
+    }
+    
+
     fn apply_transfer<'a, Fa: Float + 'a, Fb: Float + 'a>(
         arguments: &mut VectorArgumentsApply<'a, Fa, Fb>,
         vector: &mut [Fa],

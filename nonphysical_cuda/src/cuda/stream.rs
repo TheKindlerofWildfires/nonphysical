@@ -4,6 +4,8 @@ use crate::cuda::{
 };
 use std::ptr;
 
+use super::ffi::cuStreamSynchronize;
+
 pub struct CuStream {
     pub stream: CUstream,
 }
@@ -24,6 +26,9 @@ impl CuStream {
         let mut stream = ptr::null_mut(); 
         CuError::check(unsafe { cuStreamCreate(&mut stream, CUstream_flags_enum_CU_STREAM_NON_BLOCKING as u32) }).expect("Failed to create a stream");
         Self {stream}
+    }
+    pub fn sync(&self){
+        CuError::check(unsafe { cuStreamSynchronize(self.stream) }).expect("Failed to sync a stream");
     }
 }
 

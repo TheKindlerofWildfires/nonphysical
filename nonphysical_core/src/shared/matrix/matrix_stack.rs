@@ -420,6 +420,14 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
             core::mem::swap(&mut (*ap), &mut (*bp));
         });
     }
+
+    fn dot(&self, other: &Self)->Self {
+        let mut out = Self::zero(self.rows, 1);
+        self.data_rows().zip(out.data_ref()).enumerate().for_each(|(i,(row,out))|{
+            *out = other.data_col(i).zip(row.iter()).fold(F::ZERO, |acc,(o,s)| acc+*o**s)
+        });        
+        out
+    }
 }
 
 impl<F: Float, const N: usize> Add<F> for MatrixStack<F, N> {
