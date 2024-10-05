@@ -70,7 +70,7 @@ __device__ void fft_2(int ridx){
     sub_data[ridx*4+2] = tmp1-sub_data[ridx*4+2];
     sub_data[ridx*4+3] = tmp2-sub_data[ridx*4+3];
 }
-extern "C" __global__ void fft(float * data) {
+extern "C" __global__ void forward(float * data) {
     int block_idx = blockIdx.x;
     int thread_idx = threadIdx.x;
     int block_dim = blockDim.x;

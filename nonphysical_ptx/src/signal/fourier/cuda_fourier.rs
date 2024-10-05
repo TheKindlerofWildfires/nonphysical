@@ -25,7 +25,7 @@ impl<C: Complex> FourierTransform<C> for ComplexFourierTransformCuda<C> {
         }
     }
 
-    fn fft(&self, x: &mut [C]) {
+    fn forward(&self, x: &mut [C]) {
         let reference_fft = ComplexFourierTransformHeap::<C>::new(self.nfft);
 
         let mut args = Self::fourier_alloc(x, &reference_fft.twiddles);
@@ -33,7 +33,7 @@ impl<C: Complex> FourierTransform<C> for ComplexFourierTransformCuda<C> {
         self.fourier_transfer(&mut args, x,&reference_fft.twiddles,"forward")
     }
 
-    fn ifft(&self, x: &mut [C]) {
+    fn backward(&self, x: &mut [C]) {
         let reference_fft = ComplexFourierTransformHeap::<C>::new(self.nfft);
 
         let mut args = Self::fourier_alloc(x, &reference_fft.twiddles);

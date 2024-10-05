@@ -14,7 +14,6 @@ use crate::shared::primitive::F32;
 use crate::signal::fourier::FourierArguments;
 use core::arch::nvptx::{_block_dim_x, _block_idx_x, _syncthreads, _thread_idx_x};
 use core::cmp::min;
-use core::mem;
 use nonphysical_core::shared::complex::{Complex, ComplexScaler};
 use nonphysical_core::shared::float::Float;
 use nonphysical_core::shared::primitive::Primitive;

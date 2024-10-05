@@ -56,7 +56,7 @@ impl<C: Complex> CycloStationaryTransform<C> for CycloStationaryTransformHeap<C>
                 Self::convolve(c_chunk, &self.window);
 
                 //Step 3a: Fourier and shift
-                self.fourier.fft(c_chunk);
+                self.fourier.forward(c_chunk);
                 ComplexFourierTransformHeap::shift(c_chunk);
 
                 //Step 3b: Adjust the phase relationship

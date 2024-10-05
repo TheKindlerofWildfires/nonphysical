@@ -27,18 +27,18 @@ mod fourier_heap {
             ComplexScaler::<F32>::new(F32(-2.0), F32(-2.0)),
         ];
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
@@ -71,18 +71,18 @@ mod fourier_heap {
             ComplexScaler::<F32>::new(F32(-16.0), F32(0.0)),
         ];
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
@@ -117,12 +117,12 @@ mod fourier_heap {
             ComplexScaler::<F32>::new(F32(8.0), F32(16.0)),
         ];
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
             assert_eq!(*xp, yp);
@@ -155,7 +155,7 @@ mod fourier_heap {
             ComplexScaler::<F32>::new(F32(32.21871594), F32(-48.21871594)),
         ];
 
-        fft.fft(&mut x);
+        fft.forward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
@@ -182,18 +182,18 @@ mod fourier_heap {
             .map(|i| ComplexScaler::<F32>::new(F32(i as f32), F32((i+1) as f32)))
             .collect::<Vec<_>>();
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
@@ -227,18 +227,18 @@ mod fourier_heap {
             .map(|i| ComplexScaler::<F32>::new(F32(i as f32), F32((i+1) as f32)))
             .collect::<Vec<_>>();
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
 
         x.iter().zip(truth_3).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
@@ -273,12 +273,12 @@ mod fourier_heap {
             .map(|i| ComplexScaler::<F32>::new(F32(i as f32), F32((i+1) as f32)))
             .collect::<Vec<_>>();
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
 
         x.iter().zip(truth_2).for_each(|(xp, yp)| {
             assert_eq!(*xp, yp);
@@ -311,7 +311,7 @@ mod fourier_heap {
             .map(|i| ComplexScaler::<F32>::new(F32(i as f32), F32((i+1) as f32)))
             .collect::<Vec<_>>();
 
-        fft.ifft(&mut x);
+        fft.backward(&mut x);
         x.iter().zip(truth_1).for_each(|(xp, yp)| {
             assert!((*xp - yp).l2_norm() < F32::EPSILON);
         });
@@ -322,8 +322,8 @@ mod fourier_heap {
             .map(|i| ComplexScaler::<F32>::new(F32(i as f32), F32((i+1) as f32)))
             .collect::<Vec<_>>();
         let fft: ComplexFourierTransformHeap<ComplexScaler<F32>> = ComplexFourierTransformHeap::new(x.len());
-        fft.fft(&mut x);
-        fft.ifft(&mut x);
+        fft.forward(&mut x);
+        fft.backward(&mut x);
         (0..1024).zip(x.iter()).for_each(|(i,xp)|{
             assert!((F32(i as f32)-xp.real).l2_norm() < F32::EPSILON);
             assert!((F32((i+1) as f32)-xp.imag).l2_norm() < F32::EPSILON);
@@ -338,13 +338,13 @@ mod fourier_heap {
             .collect::<Vec<_>>();
         let fft: ComplexFourierTransformHeap<ComplexScaler<F32>> = ComplexFourierTransformHeap::new(x.len());
         (0..1024).for_each(|_|{
-            fft.fft(&mut x);
+            fft.forward(&mut x);
         });
         let forward_time = forward.elapsed();
         let backward = SystemTime::now();
 
         (0..1024).for_each(|_|{
-            fft.ifft(&mut x);
+            fft.backward(&mut x);
         });
         let backward_time = backward.elapsed();
 
@@ -361,13 +361,13 @@ mod fourier_heap {
             .collect::<Vec<_>>();
         let fft: ComplexFourierTransformHeap<ComplexScaler<F32>> = ComplexFourierTransformHeap::new(x.len());
         (0..1024).for_each(|_|{
-            fft.fft(&mut x);
+            fft.forward(&mut x);
         });
         let forward_time = forward.elapsed();
         let backward = SystemTime::now();
 
         (0..1024).for_each(|_|{
-            fft.ifft(&mut x);
+            fft.backward(&mut x);
         });
         let backward_time = backward.elapsed();
 
@@ -384,13 +384,13 @@ mod fourier_heap {
             .collect::<Vec<_>>();
         let fft: ComplexFourierTransformHeap<ComplexScaler<F32>> = ComplexFourierTransformHeap::new(x.len());
         (0..1024).for_each(|_|{
-            fft.fft(&mut x);
+            fft.forward(&mut x);
         });
         let forward_time = forward.elapsed();
         let backward = SystemTime::now();
 
         (0..1024).for_each(|_|{
-            fft.ifft(&mut x);
+            fft.backward(&mut x);
         });
         let backward_time = backward.elapsed();
 

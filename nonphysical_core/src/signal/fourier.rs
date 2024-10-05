@@ -4,8 +4,8 @@ pub mod fourier_heap;
 pub trait FourierTransform<F:Float>{
     type FourierInit;
     fn new(init: Self::FourierInit) -> Self;
-    fn fft(&self, x: &mut [F]);
-    fn ifft(&self, x: &mut [F]);
+    fn forward(&self, x: &mut [F]);
+    fn backward(&self, x: &mut [F]);
     fn fft_shifted(&self, x: &mut [F]);
     fn ifft_shifted(&self, x: &mut [F]);
 }

@@ -1,7 +1,4 @@
 [env]
 
-[build]
-target = "nvptx64-nvidia-cuda"
-
 [target.nvptx64-nvidia-cuda]
 rustflags = ["-Z", "unstable-options", "-C", "linker-flavor=llbc", "-C", "target-cpu=sm_80", "-Z", "tune-cpu=sm_80", "--emit", "asm"]

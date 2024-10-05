@@ -12,7 +12,7 @@ impl<C: Complex> FourierTransform<C> for ComplexFourierTransformHeap <C> {
         Self { twiddles }
     }
 
-    fn fft(&self, x: &mut [C]) {
+    fn forward(&self, x: &mut [C]) {
         let twiddles = &mut self.twiddles.clone();
 
         let n: usize = x.len().ilog2() as usize;
@@ -34,18 +34,18 @@ impl<C: Complex> FourierTransform<C> for ComplexFourierTransformHeap <C> {
         Self::reverse(x, n);
     }
 
-    fn ifft(&self, x: &mut [C]) {
+    fn backward(&self, x: &mut [C]) {
         x.iter_mut().for_each(|c| *c = c.conjugate());
-        self.fft(x);
+        self.forward(x);
         let sf = C::Primitive::ONE / C::Primitive::usize(x.len());
         x.iter_mut().for_each(|c| *c = c.conjugate() * sf);
     }
     fn fft_shifted(&self, x: &mut [C]) {
-        self.fft(x);
+        self.forward(x);
         Self::shift(x);
     }
     fn ifft_shifted(&self, x: &mut [C]) {
-        self.ifft(x);
+        self.backward(x);
         Self::shift(x);
     }
 

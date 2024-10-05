@@ -60,7 +60,6 @@ impl<F: Float> DiscreteWavelet<F> for DaubechiesFirstWaveletHeap<F> {
             });
         out
     }
-    //bugs known in these functions, need to compare to right answers
 
     fn decompose(&self, input: &[F]) -> Self::Matrix {
         let n = input.len();
