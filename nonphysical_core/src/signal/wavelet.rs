@@ -1,8 +1,9 @@
-use crate::shared::float::Float;
+use alloc::vec::Vec;
+
+use crate::shared::{float::Float, matrix::Matrix};
 
 
-pub mod heap;
-pub mod stack;
+pub mod wavelet_heap;
 pub enum WaveletFamily {
     ReverseBiorthogonal,
     Daubechies,
@@ -17,12 +18,23 @@ pub trait DiscreteWavelet<F: Float> {
     const ORTHOGONAL: usize;
     const BIORTHOGONAL: usize;
     const FAMILY: WaveletFamily;
+    type Matrix: Matrix<F>;
     type DiscreteWaveletInit;
 
     fn new(init: Self::DiscreteWaveletInit) -> Self;
 
-    fn forward(&mut self, input: &mut [F]);
+    fn forward(&self, input: &[F]) -> Vec<F>;
 
-    fn backward(&mut self, input: &mut [F]);
+    fn backward(&self, input: &[F])-> Vec<F>;
+
+    fn decompose(&self, input: &[F])->Self::Matrix;
+
+    fn cis_detail(&self, input: &[F])->Self::Matrix;
+
+    fn cis_approx(&self, input: &[F])->Self::Matrix;
+
+    fn trans_detail(&self, input: &[F])->Self::Matrix;
+
+    fn trans_approx(&self, input: &[F])->Self::Matrix;
 }
 

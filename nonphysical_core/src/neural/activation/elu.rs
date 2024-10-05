@@ -1,13 +1,11 @@
 use core::marker::PhantomData;
 
-use alloc::vec::Vec;
 
 use crate::{
     neural::layer::Layer,
     shared::{
         float::Float,
-        matrix::{matrix_heap::MatrixHeap, Matrix},
-        vector::{float_vector::FloatVector, Vector},
+        matrix::matrix_heap::MatrixHeap,
     },
 };
 
@@ -35,7 +33,7 @@ impl<F: Float> Layer<F> for Elu<F> {
     /*
        f(x) =  log(exp(x)+1)
     */
-    fn forward(&self, x: &Self::Matrix) -> Self::Matrix {
+    fn forward(&self, _x: &Self::Matrix) -> Self::Matrix {
         todo!()
     }
     /*
@@ -44,22 +42,22 @@ impl<F: Float> Layer<F> for Elu<F> {
     */
     fn backward(
         &self,
-        gradient: &Self::Matrix, //incoming grad
-        memory: &Self::Matrix,   //historical input
+        _gradient: &Self::Matrix, //incoming grad
+        _memory: &Self::Matrix,   //historical input
         _lambda: F,
         _epsilon: F,
     ) -> Self::Matrix {
         todo!()
     }
 
-    fn forward_ref(&self, x: &mut Self::Matrix) {
+    fn forward_ref(&self, _x: &mut Self::Matrix) {
         todo!()
     }
 
     fn backward_ref(
         &self,
-        gradient: &mut Self::Matrix,
-        memory: &Self::Matrix,
+        _gradient: &mut Self::Matrix,
+        _memory: &Self::Matrix,
         _lambda: F,
         _epsilon: F,
     ) {

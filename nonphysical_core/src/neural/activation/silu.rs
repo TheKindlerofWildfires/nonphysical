@@ -34,7 +34,7 @@ impl<F: Float> Layer<F> for Silu<F> {
     /*
        f(x) =  log(exp(x)+1)
     */
-    fn forward(&self, x: &Self::Matrix) -> Self::Matrix {
+    fn forward(&self, _x: &Self::Matrix) -> Self::Matrix {
         todo!()
     }
     /*
@@ -43,26 +43,26 @@ impl<F: Float> Layer<F> for Silu<F> {
     */
     fn backward(
         &self,
-        gradient: &Self::Matrix, //incoming grad
-        memory: &Self::Matrix,   //historical input
+        _gradient: &Self::Matrix, //incoming grad
+        _memory: &Self::Matrix,   //historical input
         _lambda: F,
         _epsilon: F,
     ) -> Self::Matrix {
         todo!()
     }
 
-    fn forward_ref(&self, x: &mut Self::Matrix) {
+    fn forward_ref(&self, _x: &mut Self::Matrix) {
         todo!()
     }
 
     fn backward_ref(
         &self,
-        gradient: &mut Self::Matrix,
-        memory: &Self::Matrix,
+        _gradient: &mut Self::Matrix,
+        _memory: &Self::Matrix,
         _lambda: F,
         _epsilon: F,
     ) {
-        let factor = FloatVector::recip_direct(FloatVector::add_direct(FloatVector::exp_direct(FloatVector::neg(memory.data())),F::IDENTITY));
-        FloatVector::mul_vec_ref_direct(gradient.data_ref(), factor);
+        let factor = FloatVector::recip_direct(FloatVector::add_direct(FloatVector::exp_direct(FloatVector::neg(_memory.data())),F::IDENTITY));
+        FloatVector::mul_vec_ref_direct(_gradient.data_ref(), factor);
     }
 }

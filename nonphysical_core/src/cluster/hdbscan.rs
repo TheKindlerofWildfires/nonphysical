@@ -3,8 +3,6 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::{cell::RefCell, marker::PhantomData};
 use std::collections::HashMap;
-use std::dbg;
-use std::time::SystemTime;
 
 use crate::{
     cluster::Classification::{Core, Noise},
@@ -39,24 +37,12 @@ impl<P: Point> Hdbscan<P> {
     }
 
     pub fn cluster(&self, data: &[P]) -> Vec<Classification> {
-        let now = SystemTime::now();
         let core_distances = self.kd_core_distances(data);
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
-
         let ms_tree = MSTree::new(data, &core_distances);
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
         let sl_tree = SLTree::new(&ms_tree);
         let condensed_tree = self.condense_tree(&sl_tree, data.len());
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
         let winning_clusters = self.winning_clusters(&condensed_tree, data.len());
-        dbg!(now.elapsed());
-        let now = SystemTime::now();
-
         let out = self.label_data(&winning_clusters, &condensed_tree, data.len());
-        dbg!(now.elapsed());
         out
     }
 

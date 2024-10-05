@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use alloc::vec::Vec;
 
 use crate::{
     neural::layer::Layer,
@@ -44,8 +43,8 @@ impl<P: Primitive> Layer<P> for Softsign<P> {
     */
     fn backward(
         &self,
-        gradient: &Self::Matrix, //incoming grad
-        memory: &Self::Matrix,   //historical input
+        _gradient: &Self::Matrix, //incoming grad
+        _memory: &Self::Matrix,   //historical input
         _lambda: P,
         _epsilon: P,
     ) -> Self::Matrix {
@@ -59,8 +58,8 @@ impl<P: Primitive> Layer<P> for Softsign<P> {
 
     fn backward_ref(
         &self,
-        gradient: &mut Self::Matrix,
-        memory: &Self::Matrix,
+        _gradient: &mut Self::Matrix,
+        _memory: &Self::Matrix,
         _lambda: P,
         _epsilon: P,
     ) {

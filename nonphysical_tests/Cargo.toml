@@ -5,7 +5,7 @@ edition = "2021"
 resolver = "2"
 
 [dependencies]
-nonphysical_core = {path="../nonphysical_core"}
+nonphysical_core = {path="../nonphysical_core",features=["std"]}
 nonphysical_std = {path="../nonphysical_std"}
 
 
