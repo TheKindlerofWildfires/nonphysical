@@ -215,9 +215,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.fft_shifted(&mut data_reference);    
+        reference_fft.forward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.fft_shifted(&mut data);
+        fft.forward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -231,9 +231,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.fft_shifted(&mut data_reference);    
+        reference_fft.forward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.fft_shifted(&mut data);
+        fft.forward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -247,9 +247,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.fft_shifted(&mut data_reference);    
+        reference_fft.forward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.fft_shifted(&mut data);
+        fft.forward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -263,9 +263,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.fft_shifted(&mut data_reference);    
+        reference_fft.forward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.fft_shifted(&mut data);
+        fft.forward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -279,9 +279,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.fft_shifted(&mut data_reference);    
+        reference_fft.forward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.fft_shifted(&mut data);
+        fft.forward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -295,9 +295,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.fft_shifted(&mut data_reference);    
+        reference_fft.forward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.fft_shifted(&mut data);
+        fft.forward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -312,9 +312,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.ifft_shifted(&mut data_reference);    
+        reference_fft.backward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.ifft_shifted(&mut data);
+        fft.backward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -328,9 +328,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.ifft_shifted(&mut data_reference);    
+        reference_fft.backward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.ifft_shifted(&mut data);
+        fft.backward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -344,9 +344,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.ifft_shifted(&mut data_reference);    
+        reference_fft.backward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.ifft_shifted(&mut data);
+        fft.backward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -360,9 +360,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.ifft_shifted(&mut data_reference);    
+        reference_fft.backward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.ifft_shifted(&mut data);
+        fft.backward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -376,9 +376,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.ifft_shifted(&mut data_reference);    
+        reference_fft.backward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.ifft_shifted(&mut data);
+        fft.backward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);
@@ -392,9 +392,9 @@ mod fourier_tests {
         let mut data = (0..nfft*1024).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let mut data_reference = (0..nfft).map(|i| ComplexScaler::new(F32::usize(i%nfft), F32::ZERO)).collect::<Vec<_>>();
         let reference_fft = ComplexFourierTransformHeap::new(nfft);
-        reference_fft.ifft_shifted(&mut data_reference);    
+        reference_fft.backward_shifted(&mut data_reference);    
         let fft = ComplexFourierTransformCuda::new(nfft);
-        fft.ifft_shifted(&mut data);
+        fft.backward_shifted(&mut data);
         data.chunks_exact(nfft).for_each(|chunk|{
             chunk.iter().zip(data_reference.iter()).for_each(|(a,b)|{
                 assert!(a==b);

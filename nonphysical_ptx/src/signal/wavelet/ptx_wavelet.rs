@@ -186,20 +186,8 @@ fn daubechies_first_backward_kernel<'a, const NDWT: usize>(
             }else{
                 i/2+half_len
             };
-
             *data = x.load(idx);
         });
-    /* 
-    let thread_data = GridStride::thread_stride_ref(slice_ref);
-
-    thread_data
-        .skip(1)
-        .step_by(2)
-        .zip((0..half_len).skip(thread_id).step_by(block_dim))
-        .for_each(|(data, i)| {
-            let idx = i +half_len;
-            *data = x.load(idx);
-        });*/
 }
 
 pub struct DaubechiesFirstWaveletPtx<'a, const N: usize> {

@@ -1,3 +1,3 @@
 pub mod fourier;
 pub mod wavelet;
-//pub mod gabor;
+pub mod cyclostationary;

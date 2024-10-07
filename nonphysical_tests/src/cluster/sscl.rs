@@ -32,7 +32,7 @@ mod sscl_tests {
         ];
         let now = SystemTime::now();
         sscl.cluster(&data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
     }
 
 
@@ -68,7 +68,7 @@ mod sscl_tests {
         ];
         let now = SystemTime::now();
         sscl.cluster(&data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
     }
     #[test]
     fn sscl_large(){
@@ -101,10 +101,9 @@ mod sscl_tests {
                 cp.scale(F32::usize(i));
                 cp}).collect::<Vec<_>>()
         }).collect(); 
-        dbg!(data.len());
         let now = SystemTime::now();
         sscl.cluster(&data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
     }
 
     #[test]
@@ -138,10 +137,9 @@ mod sscl_tests {
                 cp.scale(F32::usize(i));
                 cp}).collect::<Vec<_>>()
         }).collect(); 
-        dbg!(data.len());
         let now = SystemTime::now();
         sscl.cluster(&data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
     }
 
     #[test]
@@ -175,9 +173,8 @@ mod sscl_tests {
                 cp.scale(F32::usize(i));
                 cp}).collect::<Vec<_>>()
         }).collect(); 
-        dbg!(data.len());
         let now = SystemTime::now();
         sscl.cluster(&data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
     }
 }

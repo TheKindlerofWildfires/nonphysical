@@ -292,7 +292,7 @@ impl<P: Primitive<Primitive = P>> MulAssign for ComplexScaler<P> {
     fn mul_assign(&mut self, other: Self) {
         let tmp = self.real * other.imag + self.imag * other.real;
         self.real = self.real * other.real - self.imag * other.imag;
-        self.imag += tmp;
+        self.imag = tmp;
     }
 }
 

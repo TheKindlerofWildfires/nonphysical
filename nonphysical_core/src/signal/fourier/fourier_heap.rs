@@ -40,11 +40,11 @@ impl<C: Complex> FourierTransform<C> for ComplexFourierTransformHeap <C> {
         let sf = C::Primitive::ONE / C::Primitive::usize(x.len());
         x.iter_mut().for_each(|c| *c = c.conjugate() * sf);
     }
-    fn fft_shifted(&self, x: &mut [C]) {
+    fn forward_shifted(&self, x: &mut [C]) {
         self.forward(x);
         Self::shift(x);
     }
-    fn ifft_shifted(&self, x: &mut [C]) {
+    fn backward_shifted(&self, x: &mut [C]) {
         self.backward(x);
         Self::shift(x);
     }

@@ -359,10 +359,10 @@ pub struct ComplexFourierTransformPtx<'a, const N: usize> {
     twiddles: &'a [ComplexScaler<F32>],
 }
 impl<'a, const N: usize> ComplexFourierTransformPtx<'a, N> {
-    fn new(twiddles: &'a [ComplexScaler<F32>]) -> Self {
+    pub fn new(twiddles: &'a [ComplexScaler<F32>]) -> Self {
         Self { twiddles }
     }
-    fn core_fft(
+    pub fn core_fft(
         &self,
         thread_idx: usize,
         block_dim: usize,
@@ -398,7 +398,7 @@ impl<'a, const N: usize> ComplexFourierTransformPtx<'a, N> {
             });
     }
 
-    fn reverse_idx(n: usize) -> usize {
+    pub fn reverse_idx(n: usize) -> usize {
         let mut v = n;
         v = ((v >> 1) & 0x55555555) | ((v & 0x55555555) << 1);
         v = ((v >> 2) & 0x33333333) | ((v & 0x33333333) << 2);

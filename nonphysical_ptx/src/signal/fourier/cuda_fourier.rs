@@ -5,13 +5,13 @@ use nonphysical_core::{
 };
 use nonphysical_cuda::cuda::global::host::{CuGlobalSlice, CuGlobalSliceRef};
 use nonphysical_cuda::cuda::runtime::Dim3;
-use std::{cmp::min, marker::PhantomData};
+use std::{cmp::min, vec::Vec};
 use alloc::string::String;
 use alloc::format;
 use nonphysical_cuda::cuda::runtime::RUNTIME;
 
 pub struct ComplexFourierTransformCuda<C: Complex> {
-    phantom_data: PhantomData<C>,
+    twiddles: Vec<C>,
     nfft: usize,
 }
 
@@ -19,42 +19,37 @@ impl<C: Complex> FourierTransform<C> for ComplexFourierTransformCuda<C> {
     type FourierInit = usize;
     fn new(init: Self::FourierInit) -> Self {
         let nfft = init;
+        let reference_fft = ComplexFourierTransformHeap::<C>::new(nfft);
+        let twiddles = reference_fft.twiddles;
         Self {
-            phantom_data: PhantomData,
+            twiddles,
             nfft,
         }
     }
 
     fn forward(&self, x: &mut [C]) {
-        let reference_fft = ComplexFourierTransformHeap::<C>::new(self.nfft);
 
-        let mut args = Self::fourier_alloc(x, &reference_fft.twiddles);
+        let mut args = Self::fourier_alloc(x, &self.twiddles);
 
-        self.fourier_transfer(&mut args, x,&reference_fft.twiddles,"forward")
+        self.fourier_transfer(&mut args, x,&self.twiddles,"forward")
     }
 
     fn backward(&self, x: &mut [C]) {
-        let reference_fft = ComplexFourierTransformHeap::<C>::new(self.nfft);
+        let mut args = Self::fourier_alloc(x, &self.twiddles);
 
-        let mut args = Self::fourier_alloc(x, &reference_fft.twiddles);
-
-        self.fourier_transfer(&mut args, x,&reference_fft.twiddles,"backward")
+        self.fourier_transfer(&mut args, x,&self.twiddles,"backward")
     }
 
-    fn fft_shifted(&self, x: &mut [C]) {
-        let reference_fft = ComplexFourierTransformHeap::<C>::new(self.nfft);
+    fn forward_shifted(&self, x: &mut [C]) {
+        let mut args = Self::fourier_alloc(x, &self.twiddles);
 
-        let mut args = Self::fourier_alloc(x, &reference_fft.twiddles);
-
-        self.fourier_transfer(&mut args, x,&reference_fft.twiddles,"forward_shifted")
+        self.fourier_transfer(&mut args, x,&self.twiddles,"forward_shifted")
     }
 
-    fn ifft_shifted(&self, x: &mut [C]) {
-        let reference_fft = ComplexFourierTransformHeap::<C>::new(self.nfft);
+    fn backward_shifted(&self, x: &mut [C]) {
+        let mut args = Self::fourier_alloc(x, &self.twiddles);
 
-        let mut args = Self::fourier_alloc(x, &reference_fft.twiddles);
-
-        self.fourier_transfer(&mut args, x,&reference_fft.twiddles,"backward_shifted")
+        self.fourier_transfer(&mut args, x,&self.twiddles,"backward_shifted")
     }
 
 }
