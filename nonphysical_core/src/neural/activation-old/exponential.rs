@@ -35,7 +35,7 @@ impl<F: Float> Layer<F> for Exponential<F> {
        f(x) =  log(exp(x)+1)
     */
     fn forward(&self, x: &Self::Matrix) -> Self::Matrix {
-        let mut out = x.explicit_copy();
+        let mut out = x.clone();
         FloatVector::exp_ref(out.data_ref());
         out
     }
@@ -51,7 +51,7 @@ impl<F: Float> Layer<F> for Exponential<F> {
         _epsilon: F,
     ) -> Self::Matrix {
         let factor = FloatVector::exp(memory.data());
-        let mut out = gradient.explicit_copy();
+        let mut out = gradient.clone();
         FloatVector::mul_vec_ref_direct(out.data_ref(), factor);
         out
     }

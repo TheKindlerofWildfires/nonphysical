@@ -9,4 +9,11 @@ nonphysical_core = {path="../nonphysical_core"}
 [target.'cfg(not(target_arch = "nvptx64"))'.dependencies]
 nonphysical_cuda = {path="../nonphysical_cuda"}
 nonphysical_std = {path="../nonphysical_std"}
+
 [lib]
+
+[features]
+crypt = []
+graph = []
+signal = []
+vector = []

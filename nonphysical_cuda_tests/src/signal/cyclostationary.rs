@@ -2,11 +2,11 @@
 mod wavelet_tests {
     use std::{fs::File, io::Write, time::SystemTime};
 
-    use nonphysical_core::{shared::{complex::{Complex, ComplexScaler}, matrix::Matrix, primitive::Primitive}, signal::{cyclostationary::{cyclostationary_heap::CycloStationaryTransformHeap, CycloStationaryTransform}, wavelet::{wavelet_heap::DaubechiesFirstWaveletHeap, DiscreteWavelet}}};
+    use nonphysical_core::{shared::{complex::{Complex, ComplexScaler}, matrix::Matrix, primitive::Primitive}, signal::cyclostationary::{cyclostationary_heap::CycloStationaryTransformHeap, CycloStationaryTransform}};
     use nonphysical_cuda::cuda::runtime::Runtime;
     use nonphysical_std::shared::primitive::F32;
     use nonphysical_core::shared::float::Float;
-    use nonphysical_ptx::signal::{cyclostationary::cuda_cyclostationary::CycloStationaryTransformCuda, wavelet::cuda_wavelet::DaubechiesFirstWaveletCuda};
+    use nonphysical_ptx::signal::cyclostationary::cuda_cyclostationary::CycloStationaryTransformCuda;
     #[test]
     fn fam_128(){
         Runtime::init(0, "../nonphysical_ptx.ptx");
@@ -16,13 +16,13 @@ mod wavelet_tests {
         let vec = vec![ComplexScaler::<F32>::ONE;ncst];
         let ref_cst = CycloStationaryTransformHeap::new(vec);
         let now = SystemTime::now();
-        let ref_out = ref_cst.fam(&mut data_reference);    
-        dbg!(now.elapsed());
+        let _ref_out = ref_cst.fam(&mut data_reference);    
+        let _ = dbg!(now.elapsed());
         let cst = CycloStationaryTransformCuda::new(ncst);
         let now = SystemTime::now();
 
         let out = cst.fam(&mut data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
 
         //dbg!(out.rows,out.cols,&out.data);
         let mut buffer = Vec::new();
@@ -45,13 +45,13 @@ mod wavelet_tests {
         let ref_cst = CycloStationaryTransformHeap::new(vec);
         let now = SystemTime::now();
         let ref_out = ref_cst.fam(&mut data_reference);    
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
         dbg!(ref_out.rows, ref_out.cols);
         let cst = CycloStationaryTransformCuda::new(ncst);
         let now = SystemTime::now();
 
         let out = cst.fam(&mut data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
 
         //dbg!(out.rows,out.cols,&out.data);
         let mut buffer = Vec::new();
@@ -73,13 +73,13 @@ mod wavelet_tests {
         let ref_cst = CycloStationaryTransformHeap::new(vec);
         let now = SystemTime::now();
         let ref_out = ref_cst.fam(&mut data_reference);    
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
         dbg!(ref_out.rows, ref_out.cols);
         let cst = CycloStationaryTransformCuda::new(ncst);
         let now = SystemTime::now();
 
         let out = cst.fam(&mut data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
 
         //dbg!(out.rows,out.cols,&out.data);
         let mut buffer = Vec::new();
@@ -102,13 +102,13 @@ mod wavelet_tests {
         let ref_cst = CycloStationaryTransformHeap::new(vec);
         let now = SystemTime::now();
         let ref_out = ref_cst.fam(&mut data_reference);    
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
         dbg!(ref_out.rows, ref_out.cols);
         let cst = CycloStationaryTransformCuda::new(ncst);
         let now = SystemTime::now();
 
         let out = cst.fam(&mut data);
-        dbg!(now.elapsed());
+        let _ = dbg!(now.elapsed());
 
         //dbg!(out.rows,out.cols,&out.data);
         let mut buffer = Vec::new();
@@ -126,12 +126,10 @@ mod wavelet_tests {
         Runtime::init(0, "../nonphysical_ptx.ptx");
         let ncst = 2048;
         let mut data = (0..ncst*16).map(|i| ComplexScaler::new(F32::usize(i%ncst), F32::ZERO)).collect::<Vec<_>>();
-        let mut data_reference = (0..ncst*16).map(|i| ComplexScaler::new(F32::usize(i%ncst), F32::ZERO)).collect::<Vec<_>>();
-        let vec = vec![ComplexScaler::<F32>::ONE;ncst];
         let cst = CycloStationaryTransformCuda::new(ncst);
         let now = SystemTime::now();
 
-        let out = cst.fam(&mut data);
-        dbg!(now.elapsed());
+        let _ = cst.fam(&mut data);
+        let _ = dbg!(now.elapsed());
     }
 }

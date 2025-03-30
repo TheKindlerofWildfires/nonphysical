@@ -9,9 +9,9 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn product<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-    fn greater<I: Iterator<Item = &'a F>>(iter: I) -> F;
+    fn max<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
-    fn lesser<I: Iterator<Item = &'a F>>(iter: I) -> F;
+    fn min<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
     fn mean<I: Iterator<Item = &'a F>>(iter: I) -> F;
 
@@ -167,12 +167,12 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_vec<I: Iterator<Item = &'a F> + 'a>(iter: I, other: I) -> impl Iterator<Item = F> + 'a;
 
-    fn greater_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn max_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
     ) -> impl Iterator<Item = F> + 'a;
 
-    fn lesser_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn min_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
     ) -> impl Iterator<Item = F> + 'a;
@@ -199,9 +199,9 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
+    fn max_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
-    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
+    fn min_vec_ref<I: Iterator<Item = &'a mut F>, J:Iterator<Item = &'a F> >(iter: I, other: J);
 
     /*
         Common Map -> Reduce operations for ease of use
@@ -295,9 +295,9 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
-    fn greater_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+    fn max_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
-    fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
+    fn min_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F>;
 
     fn add_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
 
@@ -321,17 +321,17 @@ pub trait Vector<'a, F: Float + 'a> {
 
     fn powf_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
 
-    fn greater_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+    fn max_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
 
-    fn lesser_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
+    fn min_vec_ref_direct<I: Iterator<Item = &'a mut F>, J:Iterator<Item = F> >(iter: I, other: J);
     // Reduction operations: [F] -> F
     fn sum_direct<I: Iterator<Item = F>>(iter: I) -> F;
 
     fn product_direct<I: Iterator<Item = F>>(iter: I) -> F;
 
-    fn greater_direct<I: Iterator<Item = F>>(iter: I) -> F;
+    fn max_direct<I: Iterator<Item = F>>(iter: I) -> F;
 
-    fn lesser_direct<I: Iterator<Item = F>>(iter: I) -> F;
+    fn min_direct<I: Iterator<Item = F>>(iter: I) -> F;
 
     fn mean_direct<I: Iterator<Item = F>>(iter: I) -> F;
 

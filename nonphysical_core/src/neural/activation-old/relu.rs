@@ -57,7 +57,7 @@ impl<F: Float> Layer<F> for ReLu<F> {
         _epsilon: F,
     ) -> Self::Matrix {
 
-        let mut output = gradient.explicit_copy();
+        let mut output = gradient.clone();
         output.data_ref().zip(memory.data()).for_each(|(grad,&mem)|{
             match mem>self.parameters.threshold{
                 true =>{

@@ -23,7 +23,7 @@ pub trait Gemm<'a, F: Float + 'a> {
         });
         z
     }
-    fn gemm(x: Self::GemmMatrix, y: Self::GemmMatrix) -> Self::GemmMatrix {
+    fn gemm(x: &Self::GemmMatrix, y: &Self::GemmMatrix) -> Self::GemmMatrix {
         debug_assert!(x.n_cols() == y.n_rows());
         let x_rows = x.n_rows();
         let y_cols = y.n_cols();
@@ -56,7 +56,7 @@ pub trait Gemm<'a, F: Float + 'a> {
     }
 
     #[inline(always)]
-    fn pad(x: Self::GemmMatrix) -> Self::GemmMatrix {
+    fn pad(x: &Self::GemmMatrix) -> Self::GemmMatrix {
         let x_rows = ((x.n_rows() >> 2) << 2) + 4;
         let x_cols = ((x.n_cols() >> 2) << 2) + 4;
         let mut output =Self::GemmMatrix::zero(x_rows, x_cols);

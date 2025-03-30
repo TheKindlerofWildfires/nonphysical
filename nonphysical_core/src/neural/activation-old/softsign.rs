@@ -33,7 +33,7 @@ impl<P: Primitive> Layer<P> for Softsign<P> {
        f(x) =  log(exp(x)+1)
     */
     fn forward(&self, x: &Self::Matrix) -> Self::Matrix {
-        let mut out = x.explicit_copy();
+        let mut out = x.clone();
         FloatVector::descale_vec_ref_direct(out.data_ref(), FloatVector::add_direct(FloatVector::l1_norm(x.data()), P::Primitive::IDENTITY));
         out
     }
@@ -52,7 +52,7 @@ impl<P: Primitive> Layer<P> for Softsign<P> {
     }
 
     fn forward_ref(&self, x: &mut Self::Matrix) {
-        let val = x.explicit_copy();
+        let val = x.clone();
         FloatVector::descale_vec_ref_direct(x.data_ref(), FloatVector::add_direct(FloatVector::l1_norm(val.data()), P::Primitive::IDENTITY));
     }
 

@@ -9,7 +9,7 @@ pub trait Tensor<F: Float>: Sized {
     fn zero(rows: usize, cols: usize) -> Self;
     fn single(rows: usize, cols: usize, c: F) -> Self;
     fn identity(rows: usize, cols: usize) -> Self;
-    fn explicit_copy(&self) -> Self;
+    fn clone(&self) -> Self;
     fn index(&self, row: usize, col: usize) -> usize;
     fn coeff(&self, row: usize, col: usize) -> F;
     fn coeff_ref(&mut self, row: usize, col: usize) -> &mut F;

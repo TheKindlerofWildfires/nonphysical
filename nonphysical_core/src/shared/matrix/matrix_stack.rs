@@ -1,4 +1,7 @@
-use crate::shared::{float::Float, vector::{float_vector::FloatVector, Vector}};
+use crate::shared::{
+    float::Float,
+    vector::{float_vector::FloatVector, Vector},
+};
 use core::{
     borrow::BorrowMut,
     fmt::Debug,
@@ -61,11 +64,6 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
         id
     }
 
-    fn explicit_copy(&self) -> Self {
-        let new_data = self.data;
-
-        Self::new((self.rows, new_data))
-    }
     #[inline(always)]
     fn index(&self, row: usize, col: usize) -> usize {
         row * self.cols + col
@@ -137,7 +135,7 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
     }
 
     #[inline(always)]
-    fn data_rows<'a>(&'a self) -> impl Iterator<Item = &[F]>
+    fn data_rows<'a>(&'a self) -> impl Iterator<Item = &'a [F]>
     where
         F: 'a,
     {
@@ -421,11 +419,17 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
         });
     }
 
-    fn dot(&self, other: &Self)->Self {
+    fn dot(&self, other: &Self) -> Self {
         let mut out = Self::zero(self.rows, 1);
-        self.data_rows().zip(out.data_ref()).enumerate().for_each(|(i,(row,out))|{
-            *out = other.data_col(i).zip(row.iter()).fold(F::ZERO, |acc,(o,s)| acc+*o**s)
-        });        
+        self.data_rows()
+            .zip(out.data_ref())
+            .enumerate()
+            .for_each(|(i, (row, out))| {
+                *out = other
+                    .data_col(i)
+                    .zip(row.iter())
+                    .fold(F::ZERO, |acc, (o, s)| acc + *o * *s)
+            });
         out
     }
 }
@@ -433,7 +437,7 @@ impl<F: Float, const N: usize> Matrix<F> for MatrixStack<F, N> {
 impl<F: Float, const N: usize> Add<F> for MatrixStack<F, N> {
     type Output = Self;
     fn add(self, adder: F) -> Self {
-        let mut out = self.explicit_copy();
+        let mut out = self.clone();
         FloatVector::add_ref(out.data_ref(), adder);
         out
     }
@@ -442,7 +446,7 @@ impl<F: Float, const N: usize> Add<F> for MatrixStack<F, N> {
 impl<F: Float, const N: usize> Mul<F> for MatrixStack<F, N> {
     type Output = Self;
     fn mul(self, scaler: F) -> Self {
-        let mut out = self.explicit_copy();
+        let mut out = self.clone();
         FloatVector::mul_ref(out.data_ref(), scaler);
         out
     }
@@ -458,5 +462,15 @@ impl<F: Float, const N: usize> Debug for MatrixStack<F, N> {
             writeln!(f).unwrap();
         }
         Ok(())
+    }
+}
+
+impl<F: Float, const N: usize> Clone for MatrixStack<F, N> {
+    fn clone(&self) -> Self {
+        Self {
+            rows: self.rows,
+            cols: self.cols,
+            data: self.data,
+        }
     }
 }

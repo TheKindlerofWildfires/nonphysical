@@ -3,7 +3,7 @@ use core::ops::{Add, Mul};
 use super::float::Float;
 pub mod matrix_heap;
 pub mod matrix_stack;
-pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized {
+pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized +Clone{
     type MatrixInit;
     fn new(init: Self::MatrixInit) -> Self;
     fn n_rows(&self) -> usize;
@@ -11,7 +11,6 @@ pub trait Matrix<F: Float>: Add<F> + Mul<F> + Sized {
     fn zero(rows: usize, cols: usize) -> Self;
     fn single(rows: usize, cols: usize, c: F) -> Self;
     fn identity(rows: usize, cols: usize) -> Self;
-    fn explicit_copy(&self) -> Self;
     fn index(&self, row: usize, col: usize) -> usize;
     fn coeff(&self, row: usize, col: usize) -> F;
     fn coeff_ref(&mut self, row: usize, col: usize) -> &mut F;

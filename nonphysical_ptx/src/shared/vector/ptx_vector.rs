@@ -1,6 +1,6 @@
 //Basic idea is to use a macro to generate entry functions for each of the generic functions
 //I think to keep the runtime global and sig sane I'll need to start using global memory
-//in ptx land I don't think I can do signiture matching so we are on our own
+//in ptx land I don't think I can do signature matching so we are on our own
 use crate::cuda::atomic::Reduce;
 use crate::cuda::grid::GridStride;
 use crate::cuda::shared::CuShared;
@@ -60,55 +60,53 @@ pub extern "ptx-kernel" fn vector_sum_f32<'a>(args: &'a mut VectorArgumentsReduc
 pub extern "ptx-kernel" fn vector_product_f32<'a>(
     _args: &'a mut VectorArgumentsReduce<'a, F32, F32>,
 ) {
-    todo!();//Problem where result for non-grid threads is 0 instead of 1
-    /*
-    let iter = GridStride::stride(&_args.data);
-    let mut reduction = CuShared::<F32, 32>::new();
-    let mut result = FloatVector::product(iter); //Handles x16
+    todo!(); //Problem where result for non-grid threads is 0 instead of 1
+             /*
+             let iter = GridStride::stride(&_args.data);
+             let mut reduction = CuShared::<F32, 32>::new();
+             let mut result = FloatVector::product(iter); //Handles x16
 
-    let thread_id = unsafe { _thread_idx_x() } as usize;
-    let block_dim = unsafe { _block_dim_x() } as usize;
-    let lane = thread_id % WARP_SIZE;
-    let _wid = thread_id / WARP_SIZE;
-    if lane == 1 {
-        _args.acc[0] = result;
-    }
-    return;
+             let thread_id = unsafe { _thread_idx_x() } as usize;
+             let block_dim = unsafe { _block_dim_x() } as usize;
+             let lane = thread_id % WARP_SIZE;
+             let _wid = thread_id / WARP_SIZE;
+             if lane == 1 {
+                 _args.acc[0] = result;
+             }
+             return;
 
-    let mut i = WARP_SIZE / 2;
-    while i >= 1 {
-        result *= Shuffler::shuffle_bfly::<0xffffffff>(result, i, WARP_SIZE - 1);
-        i >>= 1;
-    }
-    if lane == 0 {
-        reduction.store(_wid, result);
-        _args.acc[0] = F32::PI;
-    }
-    return;
-    unsafe { _syncthreads() };
+             let mut i = WARP_SIZE / 2;
+             while i >= 1 {
+                 result *= Shuffler::shuffle_bfly::<0xffffffff>(result, i, WARP_SIZE - 1);
+                 i >>= 1;
+             }
+             if lane == 0 {
+                 reduction.store(_wid, result);
+                 _args.acc[0] = F32::PI;
+             }
+             return;
+             unsafe { _syncthreads() };
 
-    result = if thread_id < block_dim / WARP_SIZE {
-        reduction.load(lane)
-    } else {
-        <F32 as Float>::IDENTITY
-    };
-    if _wid == 0 {
-        let mut i = WARP_SIZE / 2;
-        while i >= 1 {
-            result *= Shuffler::shuffle_bfly::<0xffffffff>(result, i, WARP_SIZE - 1);
-            i >>= 1;
-        }
-        if lane == 0 {
-            _args.acc.atomic_mul(0, result);
-        }
-    } */
+             result = if thread_id < block_dim / WARP_SIZE {
+                 reduction.load(lane)
+             } else {
+                 <F32 as Float>::IDENTITY
+             };
+             if _wid == 0 {
+                 let mut i = WARP_SIZE / 2;
+                 while i >= 1 {
+                     result *= Shuffler::shuffle_bfly::<0xffffffff>(result, i, WARP_SIZE - 1);
+                     i >>= 1;
+                 }
+                 if lane == 0 {
+                     _args.acc.atomic_mul(0, result);
+                 }
+             } */
 }
 #[no_mangle]
-pub extern "ptx-kernel" fn vector_greater_f32<'a>(
-    _args: &'a mut VectorArgumentsReduce<'a, F32, F32>,
-) {
+pub extern "ptx-kernel" fn vector_max_f32<'a>(_args: &'a mut VectorArgumentsReduce<'a, F32, F32>) {
     todo!();
-    /* 
+    /*
     let iter = GridStride::stride(&_args.data);
     let mut reduction = CuShared::<F32, 32>::new();
     let mut result = FloatVector::greater(iter); //Handles x16
@@ -153,11 +151,9 @@ pub extern "ptx-kernel" fn vector_greater_f32<'a>(
     }*/
 }
 #[no_mangle]
-pub extern "ptx-kernel" fn vector_lesser_f32<'a>(
-    _args: &'a mut VectorArgumentsReduce<'a, F32, F32>,
-) {
+pub extern "ptx-kernel" fn vector_min_f32<'a>(_args: &'a mut VectorArgumentsReduce<'a, F32, F32>) {
     todo!();
-    /* 
+    /*
     let iter = GridStride::stride(&_args.data);
     let mut reduction = CuShared::<F32, 32>::new();
     let mut result = FloatVector::lesser(iter); //Handles x16
@@ -823,12 +819,12 @@ pub extern "ptx-kernel" fn vector_powf_vec_f32<'a>(
 }
 
 #[no_mangle]
-pub extern "ptx-kernel" fn vector_greater_vec_f32<'a>(
+pub extern "ptx-kernel" fn vector_max_vec_f32<'a>(
     args: &'a mut VectorArgumentsMap<'a, F32, F32, F32>,
 ) {
     let iter = GridStride::stride(&args.data);
     let other = GridStride::stride(&args.map);
-    let out_iter = FloatVector::greater_vec(iter, other);
+    let out_iter = FloatVector::max_vec(iter, other);
     let out_global = GridStride::stride_ref(&mut args.output);
     out_global
         .zip(out_iter)
@@ -836,12 +832,12 @@ pub extern "ptx-kernel" fn vector_greater_vec_f32<'a>(
 }
 
 #[no_mangle]
-pub extern "ptx-kernel" fn vector_lesser_vec_f32<'a>(
+pub extern "ptx-kernel" fn vector_min_vec_f32<'a>(
     args: &'a mut VectorArgumentsMap<'a, F32, F32, F32>,
 ) {
     let iter = GridStride::stride(&args.data);
     let other = GridStride::stride(&args.map);
-    let out_iter = FloatVector::lesser_vec(iter, other);
+    let out_iter = FloatVector::min_vec(iter, other);
     let out_global = GridStride::stride_ref(&mut args.output);
     out_global
         .zip(out_iter)
@@ -921,19 +917,19 @@ pub extern "ptx-kernel" fn vector_powf_vec_ref_f32<'a>(
 }
 
 #[no_mangle]
-pub extern "ptx-kernel" fn vector_greater_vec_ref_f32<'a>(
+pub extern "ptx-kernel" fn vector_max_vec_ref_f32<'a>(
     args: &'a mut VectorArgumentsApply<'a, F32, F32>,
 ) {
     let iter = GridStride::stride_ref(&mut args.data);
     let other = GridStride::stride(&args.map);
-    FloatVector::greater_vec_ref(iter, other);
+    FloatVector::max_vec_ref(iter, other);
 }
 
 #[no_mangle]
-pub extern "ptx-kernel" fn vector_lesser_vec_ref_f32<'a>(
+pub extern "ptx-kernel" fn vector_min_vec_ref_f32<'a>(
     args: &'a mut VectorArgumentsApply<'a, F32, F32>,
 ) {
     let iter = GridStride::stride_ref(&mut args.data);
     let other = GridStride::stride(&args.map);
-    FloatVector::lesser_vec_ref(iter, other);
+    FloatVector::min_vec_ref(iter, other);
 }

@@ -34,7 +34,7 @@ impl<F: Float> Layer<F> for Linear<F> {
        f(x) =  log(exp(x)+1)
     */
     fn forward(&self, x: &Self::Matrix) -> Self::Matrix {
-        x.explicit_copy()
+        x.clone()
     }
     /*
        f'(x) =  1/(exp(-x)+1)
@@ -47,7 +47,7 @@ impl<F: Float> Layer<F> for Linear<F> {
         _lambda: F,
         _epsilon: F,
     ) -> Self::Matrix {
-        gradient.explicit_copy()
+        gradient.clone()
     }
 
     fn forward_ref(&self, _x: &mut Self::Matrix) {

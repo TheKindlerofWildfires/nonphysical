@@ -13,11 +13,11 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.fold(F::IDENTITY, |acc, x| acc.mul(*x))
     }
 
-    fn greater<I: Iterator<Item = &'a F>>(iter: I) -> F {
+    fn max<I: Iterator<Item = &'a F>>(iter: I) -> F {
         iter.fold(F::MIN, |acc, x| acc.greater(*x))
     }
 
-    fn lesser<I: Iterator<Item = &'a F>>(iter: I) -> F {
+    fn min<I: Iterator<Item = &'a F>>(iter: I) -> F {
         iter.fold(F::MIN, |acc, x| acc.lesser(*x))
     }
 
@@ -324,14 +324,14 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| (*x).powf(*other))
     }
 
-    fn greater_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn max_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
     ) -> impl Iterator<Item = F> + 'a {
         iter.zip(other).map(move |(x, other)| (*x).greater(*other))
     }
 
-    fn lesser_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn min_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
     ) -> impl Iterator<Item = F> + 'a {
@@ -395,7 +395,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
             .for_each(|(x, other)| *x = (*x).powf(*other))
     }
 
-    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
+    fn max_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
         iter: I,
         other: J,
     ) {
@@ -403,7 +403,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
             .for_each(|(x, other)| *x = (*x).greater(*other))
     }
 
-    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
+    fn min_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         iter.zip(other)
             .for_each(|(x, other)| *x = (*x).lesser(*other))
     }
@@ -580,11 +580,11 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).map(move |(x, other)| x.powf(other))
     }
 
-    fn greater_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
+    fn max_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
         iter.zip(other).map(move |(x, other)| x.greater(other))
     }
 
-    fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
+    fn min_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
         iter.zip(other).map(move |(x, other)| x.lesser(other))
     }
 
@@ -641,7 +641,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.zip(other).for_each(|(x, other)| *x = (*x).powf(other));
     }
 
-    fn greater_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+    fn max_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
         iter: I,
         other: J,
     ) {
@@ -649,7 +649,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
             .for_each(|(x, other)| *x = (*x).greater(other));
     }
 
-    fn lesser_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+    fn min_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
         iter: I,
         other: J,
     ) {
@@ -665,11 +665,11 @@ impl<'a, F: Float + 'a> Vector<'a, F> for FloatVector {
         iter.fold(F::IDENTITY, |acc, x| acc.mul(x))
     }
 
-    fn greater_direct<I: Iterator<Item = F>>(iter: I) -> F {
+    fn max_direct<I: Iterator<Item = F>>(iter: I) -> F {
         iter.fold(F::MIN, |acc, x| acc.greater(x))
     }
 
-    fn lesser_direct<I: Iterator<Item = F>>(iter: I) -> F {
+    fn min_direct<I: Iterator<Item = F>>(iter: I) -> F {
         iter.fold(F::MIN, |acc, x| acc.lesser(x))
     }
 

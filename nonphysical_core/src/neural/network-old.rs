@@ -86,8 +86,8 @@ impl<T: Float + 'static> Network<T> {
                         .flat_map(|&i| rows_y[i].into_iter().map(|r| r.clone()))
                         .collect::<Vec<_>>();
                     let batch_y = Matrix::new(self.batch_size, batch_y_data);
-                    let batch_y_cp = batch_y.explicit_copy();
-                    let mut batch_x_cp = batch_x.explicit_copy();
+                    let batch_y_cp = batch_y.clone();
+                    let mut batch_x_cp = batch_x.clone();
 
                     //transmute batch_x to pred_y, but batch_x isn't used again
                     self.forward(&mut batch_x);
@@ -138,7 +138,7 @@ impl<T: Float + 'static> Network<T> {
         //the copy operations here are not very well done
         self.layers.iter_mut().for_each(|layer| {
             *input = layer.forward(input);
-            self.memories.push(input.explicit_copy());
+            self.memories.push(input.clone());
         });
     }
 

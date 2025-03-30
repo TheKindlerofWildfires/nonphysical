@@ -124,7 +124,7 @@ impl<R: Real<Primitive = R>> QRDecomposition<R> for RealQRDecomposition<R> {
     }
     
     fn col_permutations(&self) -> Self::Matrix {
-        self.permutations.explicit_copy()
+        self.permutations.clone()
     }
     
     fn householder_sequence(&self,matrix: &Self::Matrix) -> Self::Matrix {

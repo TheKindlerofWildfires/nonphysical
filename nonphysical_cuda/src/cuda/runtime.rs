@@ -57,34 +57,35 @@ impl Runtime {
         // cuInit
         RUNTIME.get_or_init(|| {
             unsafe { CuError::check(cuInit(0)).expect("Failed to initialize a cuda context") };
-             // device check
-        let mut device_num: i32 = 0;
-        CuError::check(unsafe { cuDeviceGetCount(&mut device_num as *mut i32) })
-            .expect("Failed to could the available devices");
-        assert!(device_id < device_num);
+            // device check
+            let mut device_num: i32 = 0;
+            CuError::check(unsafe { cuDeviceGetCount(&mut device_num as *mut i32) })
+                .expect("Failed to could the available devices");
+            assert!(device_id < device_num);
 
-        // context
-        let mut context: CUcontext = ptr::null_mut();
-        CuError::check(unsafe {
-            cuCtxCreate_v2(
-                &mut context as *mut CUcontext,
-                CUctx_flags_enum::CU_CTX_SCHED_AUTO as u32,
-                device_id,
-            )
-        })
-        .expect("Failed to create a cuda context");
+            // context
+            let mut context: CUcontext = ptr::null_mut();
+            CuError::check(unsafe {
+                cuCtxCreate_v2(
+                    &mut context as *mut CUcontext,
+                    CUctx_flags_enum::CU_CTX_SCHED_AUTO as u32,
+                    device_id,
+                )
+            })
+            .expect("Failed to create a cuda context");
 
-        // module
-        let mut module: CUmodule = ptr::null_mut();
-        let kernel_cstr = CString::new(kernel_str).expect("Could not create kernel string");
-        CuError::check(unsafe { cuModuleLoad(&mut module as *mut CUmodule, kernel_cstr.as_ptr()) })
+            // module
+            let mut module: CUmodule = ptr::null_mut();
+            let kernel_cstr = CString::new(kernel_str).expect("Could not create kernel string");
+            CuError::check(unsafe {
+                cuModuleLoad(&mut module as *mut CUmodule, kernel_cstr.as_ptr())
+            })
             .expect("Failed to load the module");
-        // res
-        let context = CuContext(context);
-        let module = CuModule(module);
-        Runtime { context, module }
+            // res
+            let context = CuContext(context);
+            let module = CuModule(module);
+            Runtime { context, module }
         });
-       
     }
 
     pub fn wrap_args<Args>(args: &Args) -> Vec<*mut c_void> {
@@ -147,7 +148,7 @@ impl Runtime {
         args: &Args,
         grid_dim: Dim3,
         block_dim: Dim3,
-        stream:&CuStream
+        stream: &CuStream,
     ) {
         // launch
         let mut args_d = CuGlobalBox::alloc(args);
@@ -222,7 +223,7 @@ impl Runtime {
         .expect("Failed to find function");
 
         unsafe {
-            self.launch_async(function, args, grid_dim, block_dim,stream);
+            self.launch_async(function, args, grid_dim, block_dim, stream);
         }
 
         function
@@ -230,11 +231,12 @@ impl Runtime {
     pub fn sync(&self) {
         CuError::check(unsafe { cuCtxSynchronize() }).expect("Failed to sync with device");
     }
-    pub fn get_property(attribute: usize)->isize{
+    pub fn get_property(attribute: usize) -> isize {
         let mut value = 0;
         let device_num = 0;
         let attribute = attribute as i32;
-        CuError::check(unsafe { cuDeviceGetAttribute(&mut value, attribute, device_num)}).expect("Failed to get attribute");
+        CuError::check(unsafe { cuDeviceGetAttribute(&mut value, attribute, device_num) })
+            .expect("Failed to get attribute");
         value as isize
     }
 }

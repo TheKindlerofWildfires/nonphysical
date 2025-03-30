@@ -29,16 +29,16 @@ mod vector_tests {
     fn greater() {
         Runtime::init(0, "../nonphysical_ptx.ptx");
         let data = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let out = CudaVector::greater(data.iter());
-        let known = FloatVector::greater(data.iter());
+        let out = CudaVector::max(data.iter());
+        let known = FloatVector::max(data.iter());
         assert!((out - known).l2_norm() < F32::EPSILON);
     }
     #[test]
     fn lesser() {
         Runtime::init(0, "../nonphysical_ptx.ptx");
         let data = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let out = CudaVector::lesser(data.iter());
-        let known = FloatVector::lesser(data.iter());
+        let out = CudaVector::min(data.iter());
+        let known = FloatVector::min(data.iter());
         assert!((out - known).l2_norm() < F32::EPSILON);
     }
     #[test]
@@ -769,8 +769,8 @@ mod vector_tests {
         let vec = (0..1024 * 1024)
             .map(|i| F32::usize(i).sin() * F32::usize(i))
             .collect::<Vec<_>>();
-        let out = CudaVector::greater_vec(data.iter(), vec.iter());
-        let known = FloatVector::greater_vec(data.iter(), vec.iter());
+        let out = CudaVector::max_vec(data.iter(), vec.iter());
+        let known = FloatVector::max_vec(data.iter(), vec.iter());
         out.zip(known).for_each(|(o, k)| {
             assert!((o - k).l2_norm() < F32::EPSILON);
         });
@@ -782,8 +782,8 @@ mod vector_tests {
         let vec = (0..1024 * 1024)
             .map(|i| F32::usize(i).sin() * F32::usize(i))
             .collect::<Vec<_>>();
-        let out = CudaVector::lesser_vec(data.iter(), vec.iter());
-        let known = FloatVector::lesser_vec(data.iter(), vec.iter());
+        let out = CudaVector::min_vec(data.iter(), vec.iter());
+        let known = FloatVector::min_vec(data.iter(), vec.iter());
         out.zip(known).for_each(|(o, k)| {
             assert!((o - k).l2_norm() < F32::EPSILON);
         });
@@ -1393,8 +1393,8 @@ mod vector_tests {
             .map(|i| F32::usize(i).sin() * F32::usize(i))
             .collect::<Vec<_>>();
 
-        let out = CudaVector::greater_vec_direct(data.into_iter(), vec.into_iter());
-        let known = FloatVector::greater_vec_direct(reference.into_iter(), ref_vec.into_iter());
+        let out = CudaVector::max_vec_direct(data.into_iter(), vec.into_iter());
+        let known = FloatVector::max_vec_direct(reference.into_iter(), ref_vec.into_iter());
         out.zip(known).for_each(|(o, k)| {
             assert!((o - k).l2_norm() < F32::EPSILON);
         });
@@ -1411,8 +1411,8 @@ mod vector_tests {
             .map(|i| F32::usize(i).sin() * F32::usize(i))
             .collect::<Vec<_>>();
 
-        let out = CudaVector::lesser_vec_direct(data.into_iter(), vec.into_iter());
-        let known = FloatVector::lesser_vec_direct(reference.into_iter(), ref_vec.into_iter());
+        let out = CudaVector::min_vec_direct(data.into_iter(), vec.into_iter());
+        let known = FloatVector::min_vec_direct(reference.into_iter(), ref_vec.into_iter());
         out.zip(known).for_each(|(o, k)| {
             assert!((o - k).l2_norm() < F32::EPSILON);
         });
@@ -1444,8 +1444,8 @@ mod vector_tests {
         Runtime::init(0, "../nonphysical_ptx.ptx");
         let data = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
         let reference = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let out = CudaVector::greater_direct(data.into_iter());
-        let known = FloatVector::greater_direct(reference.into_iter());
+        let out = CudaVector::max_direct(data.into_iter());
+        let known = FloatVector::max_direct(reference.into_iter());
         assert!((out - known).l2_norm() < F32::EPSILON);
     }
     #[test]
@@ -1453,8 +1453,8 @@ mod vector_tests {
         Runtime::init(0, "../nonphysical_ptx.ptx");
         let data = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
         let reference = (0..1024 * 1024).map(|i| F32::usize(i)).collect::<Vec<_>>();
-        let out = CudaVector::lesser_direct(data.into_iter());
-        let known = FloatVector::lesser_direct(reference.into_iter());
+        let out = CudaVector::min_direct(data.into_iter());
+        let known = FloatVector::min_direct(reference.into_iter());
         assert!((out - known).l2_norm() < F32::EPSILON);
     }
     #[test]

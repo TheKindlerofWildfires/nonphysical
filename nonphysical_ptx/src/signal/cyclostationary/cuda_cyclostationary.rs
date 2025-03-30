@@ -5,7 +5,7 @@ use nonphysical_core::{
 };
 use nonphysical_cuda::cuda::global::host::{CuGlobalSlice, CuGlobalSliceRef};
 use nonphysical_cuda::cuda::runtime::Dim3;
-use std::{cmp::min, dbg, vec::Vec};
+use std::{cmp::min, vec::Vec};
 use alloc::string::String;
 use alloc::format;
 use alloc::vec;
@@ -39,7 +39,7 @@ impl<C: Complex> CycloStationaryTransform<C> for CycloStationaryTransformCuda<C>
     
     fn fam(&self, x: &mut [C]) -> Self::Matrix {
         let win_count = x.len() / self.ncst;
-        //Step 1 Precalcuate the phase vector
+        //Step 1 Precalculate the phase vector
         let phase_vec = (0..self.ncst).map(|i|{
             let temp_i = C::Primitive::usize(i)/C::Primitive::usize(self.ncst);
             let omega = C::Primitive::PI *(temp_i-C::Primitive::usize(2).recip());

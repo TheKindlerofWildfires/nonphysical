@@ -8,12 +8,20 @@ use std::vec::Vec;
 pub fn main() {
     println!("Started PTX compile");
     let result = Command::new("cargo")
-        .current_dir("../nonphysical_ptx")
-        .args(["rustc", "--target=nvptx64-nvidia-cuda", "--release", "--", "--emit=asm"])
+        .current_dir("nonphysical_ptx")
+        .args([
+            "rustc",
+            "--target=nvptx64-nvidia-cuda",
+            "--release",
+            "--features",
+            "crypt",
+            "--",
+            "--emit=asm",
+        ])
         .status()
         .expect("Failed to compile PTX");
     println!("Compiled {:?}", result);
-    for entry in fs::read_dir("../target/nvptx64-nvidia-cuda/release/deps/").unwrap() {
+    for entry in fs::read_dir("target/nvptx64-nvidia-cuda/release/deps/").unwrap() {
         let path = entry.unwrap().path();
         let path_str = path.to_string_lossy();
         if !path.is_dir() && path_str.ends_with("s") {
@@ -32,6 +40,7 @@ pub fn main() {
             let headers = blocks.next().unwrap().to_owned();
             let mut new_file = Vec::new();
             new_file.push(headers.to_owned());
+
             for block in blocks {
                 // Extract the function signature
                 if let Some(start_func) = block.find(".func ") {
@@ -56,12 +65,15 @@ pub fn main() {
                                 ".visible {}\n(\n{}\n)\n{}{{\n	trap;\n	exit;\n}}\n{}",
                                 func_signature, params, noreturn, rest
                             );
+
                             new_file.push(result);
+                        } else {
+                            new_file.push(block.to_owned());
                         }
                     }
                 }
             }
-            let mut file = File::create(format!("../{}.ptx", name)).expect("Couldn't write file");
+            let mut file = File::create(format!("{}.ptx", name)).expect("Couldn't write file");
             for chunk in new_file {
                 file.write_all(chunk.as_bytes())
                     .expect("Couldn't write to file");

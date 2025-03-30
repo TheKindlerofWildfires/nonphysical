@@ -7,4 +7,10 @@ edition = "2021"
 nonphysical_core = {path="../nonphysical_core", features=["std"]}
 nonphysical_std = {path="../nonphysical_std"}
 nonphysical_cuda = {path="../nonphysical_cuda"}
-nonphysical_ptx = {path="../nonphysical_ptx"}
+nonphysical_ptx = {path="../nonphysical_ptx", features=["crypt"]}
+
+[features]
+crypt = []
+graph = []
+signal = []
+vector = []

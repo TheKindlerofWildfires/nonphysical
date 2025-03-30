@@ -51,7 +51,7 @@ impl<F: Float> Layer<F> for Tanh<F> {
         _epsilon: F,
     ) -> Self::Matrix {
         let factor = FloatVector::recip_direct(FloatVector::l2_norm_direct(FloatVector::cosh(memory.data())));
-        let mut out = gradient.explicit_copy();
+        let mut out = gradient.clone();
         FloatVector::scale_vec_ref_direct(out.data_ref(), factor);
         out
     }

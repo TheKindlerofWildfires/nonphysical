@@ -119,7 +119,7 @@ impl<T: Float> Layer<T> for MultiplyLayer<T> {
     fn backward(&mut self, x: &Matrix<T>, memory: &Matrix<T>, lambda: T, epsilon: T) -> Matrix<T> {
         let mut dw = memory.transposed().dot(x);
         let dx = x.dot(&self.weights.transposed());
-        let ph = self.weights.explicit_copy() * lambda;
+        let ph = self.weights.clone() * lambda;
         dw = dw.acc(&ph);
         self.weights = self.weights.acc(&(dw * -epsilon));
         dx
@@ -138,7 +138,7 @@ impl<T: Float> Layer<T> for AddLayer<T> {
     }
 
     fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
-        let mut output = x.explicit_copy();
+        let mut output = x.clone();
         output.data_rows_ref().for_each(|row| {
             row.into_iter()
                 .zip(self.biases.data())
@@ -154,7 +154,7 @@ impl<T: Float> Layer<T> for AddLayer<T> {
         _lambda: T,
         epsilon: T,
     ) -> Matrix<T> {
-        let dx = x.explicit_copy();
+        let dx = x.clone();
         //let db = Matrix::single(1, x.rows, Complex::<T>::one()).dot(x); //could pre-alloc
         self.biases = self.biases.acc(&(db * -epsilon));
 
@@ -208,7 +208,7 @@ impl<T: Float> Layer<T> for IdentityLayer<T> {
     }
 
     fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
-        x.explicit_copy()
+        x.clone()
     }
 
     fn backward(
@@ -218,7 +218,7 @@ impl<T: Float> Layer<T> for IdentityLayer<T> {
         _lambda: T,
         _epsilon: T,
     ) -> Matrix<T> {
-        x.explicit_copy()
+        x.clone()
     }
 }
 
@@ -301,9 +301,9 @@ impl<T: Float> Layer<T> for PerceptronLayer<T> {
 
     fn forward(&mut self, x: &Matrix<T>) -> Matrix<T> {
         let mut output = self.mul_layer.forward(x); //broken
-        self.memories.push(output.explicit_copy());
+        self.memories.push(output.clone());
         output = self.add_layer.forward(&output);
-        self.memories.push(output.explicit_copy());
+        self.memories.push(output.clone());
         output = self.activation_layer.forward(&output);
         output
     }

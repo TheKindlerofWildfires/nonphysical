@@ -6,7 +6,10 @@ use core::{
     ops::{Add, Mul},
 };
 
-use crate::shared::{float::Float, vector::{float_vector::FloatVector, Vector}};
+use crate::shared::{
+    float::Float,
+    vector::{float_vector::FloatVector, Vector},
+};
 
 use super::Matrix;
 
@@ -64,11 +67,6 @@ impl<F: Float> Matrix<F> for MatrixHeap<F> {
         id
     }
 
-    fn explicit_copy(&self) -> Self {
-        let new_data = self.data.clone();
-
-        Self::new((self.rows, new_data))
-    }
     #[inline(always)]
     fn index(&self, row: usize, col: usize) -> usize {
         row * self.cols + col
@@ -140,7 +138,7 @@ impl<F: Float> Matrix<F> for MatrixHeap<F> {
     }
 
     #[inline(always)]
-    fn data_rows<'a>(&'a self) -> impl Iterator<Item = &[F]>
+    fn data_rows<'a>(&'a self) -> impl Iterator<Item = &'a [F]>
     where
         F: 'a,
     {
@@ -424,20 +422,21 @@ impl<F: Float> Matrix<F> for MatrixHeap<F> {
         });
     }
 
-    fn dot(&self, other: &Self)->Self {
-        let data = self.data_rows().enumerate().map(|(i,row)|{
-            other.data_col(i).zip(row.iter()).fold(F::ZERO, |acc,(o,s)| acc+*o**s)
+    fn dot(&self, other: &Self) -> Self {
+        let data = self.data_rows().enumerate().map(|(i, row)| {
+            other
+                .data_col(i)
+                .zip(row.iter())
+                .fold(F::ZERO, |acc, (o, s)| acc + *o * *s)
         });
-        Self::new((self.rows,data.collect()))
+        Self::new((self.rows, data.collect()))
     }
 }
-
-
 
 impl<F: Float> Add<F> for MatrixHeap<F> {
     type Output = Self;
     fn add(self, adder: F) -> Self {
-        let mut out = self.explicit_copy();
+        let mut out = self.clone();
         FloatVector::add_ref(out.data_ref(), adder);
         out
     }
@@ -446,7 +445,7 @@ impl<F: Float> Add<F> for MatrixHeap<F> {
 impl<F: Float> Mul<F> for MatrixHeap<F> {
     type Output = Self;
     fn mul(self, scaler: F) -> Self {
-        let mut out = self.explicit_copy();
+        let mut out = self.clone();
         FloatVector::mul_ref(out.data_ref(), scaler);
         out
     }
@@ -462,5 +461,14 @@ impl<T: Float> Debug for MatrixHeap<T> {
             writeln!(f).unwrap();
         }
         Ok(())
+    }
+}
+impl<F: Float> Clone for MatrixHeap<F> {
+    fn clone(&self) -> Self {
+        Self {
+            rows: self.rows,
+            cols: self.cols,
+            data: self.data.clone(),
+        }
     }
 }

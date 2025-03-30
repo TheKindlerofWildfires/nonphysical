@@ -13,19 +13,19 @@ use crate::{
 
 use super::Activation;
 
-pub struct Softplus<F: Float> {
-    parameters: SoftplusParameters<F>,
+pub struct Sigmoid<F: Float> {
+    parameters: SigmoidParameters<F>,
 }
 
-pub struct SoftplusParameters<F: Float> {
+pub struct SigmoidParameters<F: Float> {
     phantom_data: PhantomData<F>,
 }
 
-impl<F: Float> Activation<F> for Softplus<F> {}
+impl<F: Float> Activation<F> for Sigmoid<F> {}
 
-impl<F: Float> Layer<F> for Softplus<F> {
+impl<F: Float> Layer<F> for Sigmoid<F> {
     type Matrix = MatrixHeap<F>;
-    type Parameters = SoftplusParameters<F>;
+    type Parameters = SigmoidParameters<F>;
     fn new(parameters: Self::Parameters, _size: usize, _previous_size: usize) -> Self
     where
         Self: Sized,
@@ -33,14 +33,17 @@ impl<F: Float> Layer<F> for Softplus<F> {
         Self { parameters }
     }
     /*
-       f(x) =  log(exp(x)+1)
+       f(x) =  1/(I+exp(-x))
     */
     fn forward(&self, x: &Self::Matrix) -> Self::Matrix {
-        let data = FloatVector::ln_direct(FloatVector::add_direct(FloatVector::exp(x.data()), F::IDENTITY));
+        let data = FloatVector::recip_direct(FloatVector::add_direct(
+            FloatVector::exp_direct(FloatVector::neg(x.data())),
+            F::IDENTITY,
+        ));
         Matrix::new((x.rows, data.collect::<Vec<_>>()))
     }
     /*
-       f'(x) =  1/(exp(-x)+1)
+       f'(x) =  exp(-x)/(I+exp(-x))^2
 
     */
     fn backward(
@@ -50,16 +53,18 @@ impl<F: Float> Layer<F> for Softplus<F> {
         _lambda: F,
         _epsilon: F,
     ) -> Self::Matrix {
-        let factor = FloatVector::recip_direct(FloatVector::add_direct(FloatVector::exp_direct(FloatVector::neg(memory.data())),F::IDENTITY));
-        let mut out = gradient.explicit_copy();
+        let exp = FloatVector::exp_direct(FloatVector::neg(memory.data()));
+        let factor = exp.map(|exp| exp/(exp+F::IDENTITY).l2_norm());
+        let mut out = gradient.clone();
         FloatVector::mul_vec_ref_direct(out.data_ref(), factor);
         out
     }
 
     fn forward_ref(&self, x: &mut Self::Matrix) {
+        FloatVector::neg_ref(x.data_ref());
         FloatVector::exp_ref(x.data_ref());
         FloatVector::add_ref(x.data_ref(),F::IDENTITY);
-        FloatVector::ln_ref(x.data_ref());
+        FloatVector::recip_ref(x.data_ref());
     }
 
     fn backward_ref(
@@ -69,7 +74,8 @@ impl<F: Float> Layer<F> for Softplus<F> {
         _lambda: F,
         _epsilon: F,
     ) {
-        let factor = FloatVector::recip_direct(FloatVector::add_direct(FloatVector::exp_direct(FloatVector::neg(memory.data())),F::IDENTITY));
+        let exp = FloatVector::exp_direct(FloatVector::neg(memory.data()));
+        let factor = exp.map(|exp| exp/(exp+F::IDENTITY).l2_norm());
         FloatVector::mul_vec_ref_direct(gradient.data_ref(), factor);
     }
 }

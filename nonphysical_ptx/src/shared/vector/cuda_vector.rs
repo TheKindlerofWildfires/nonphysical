@@ -50,19 +50,19 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         acc[0]
     }
 
-    fn greater<I: Iterator<Item = &'a F>>(iter: I) -> F {
+    fn max<I: Iterator<Item = &'a F>>(iter: I) -> F {
         let vector = iter.map(|x| *x).collect::<Vec<_>>();
         let mut acc = vec![F::ZERO];
         let mut arguments = Self::reduce_alloc(&vector, &acc);
-        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "greater");
+        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "max");
         acc[0]
     }
 
-    fn lesser<I: Iterator<Item = &'a F>>(iter: I) -> F {
+    fn min<I: Iterator<Item = &'a F>>(iter: I) -> F {
         let vector = iter.map(|x| *x).collect::<Vec<_>>();
         let mut acc = vec![F::ZERO];
         let mut arguments = Self::reduce_alloc(&vector, &acc);
-        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "lesser");
+        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "min");
         acc[0]
     }
 
@@ -799,7 +799,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         output.into_iter()
     }
 
-    fn greater_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn max_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
     ) -> impl Iterator<Item = F> + 'a {
@@ -807,11 +807,11 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         let other = other.map(|x| *x).collect::<Vec<_>>();
         let mut output = vec![F::ZERO; vector.len()];
         let mut arguments = Self::map_alloc(&vector, &output, &other);
-        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "greater_vec");
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "max_vec");
         output.into_iter()
     }
 
-    fn lesser_vec<I: Iterator<Item = &'a F> + 'a>(
+    fn min_vec<I: Iterator<Item = &'a F> + 'a>(
         iter: I,
         other: I,
     ) -> impl Iterator<Item = F> + 'a {
@@ -819,7 +819,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         let other = other.map(|x| *x).collect::<Vec<_>>();
         let mut output = vec![F::ZERO; vector.len()];
         let mut arguments = Self::map_alloc(&vector, &output, &other);
-        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "lesser_vec");
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "min_vec");
         output.into_iter()
     }
 
@@ -934,7 +934,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
             .for_each(|(r, v)| **r = *v);
     }
 
-    fn greater_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
+    fn max_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(
         iter: I,
         other: J,
     ) {
@@ -942,19 +942,19 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
         let other = other.map(|x| *x).collect::<Vec<_>>();
         let mut arguments = Self::apply_alloc(&vector, &other);
-        Self::apply_transfer(&mut arguments, &mut vector, &other, "greater_vec_ref");
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "max_vec_ref");
         ref_vector
             .iter_mut()
             .zip(vector.iter())
             .for_each(|(r, v)| **r = *v);
     }
 
-    fn lesser_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
+    fn min_vec_ref<I: Iterator<Item = &'a mut F>, J: Iterator<Item = &'a F>>(iter: I, other: J) {
         let mut ref_vector = iter.collect::<Vec<_>>();
         let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
         let other = other.map(|x| *x).collect::<Vec<_>>();
         let mut arguments = Self::apply_alloc(&vector, &other);
-        Self::apply_transfer(&mut arguments, &mut vector, &other, "lesser_vec_ref");
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "min_vec_ref");
         ref_vector
             .iter_mut()
             .zip(vector.iter())
@@ -1316,21 +1316,21 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         output.into_iter()
     }
 
-    fn greater_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
+    fn max_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
         let vector = iter.collect::<Vec<_>>();
         let other = other.collect::<Vec<_>>();
         let mut output = vec![F::ZERO; vector.len()];
         let mut arguments = Self::map_alloc(&vector, &output, &other);
-        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "greater_vec");
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "max_vec");
         output.into_iter()
     }
 
-    fn lesser_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
+    fn min_vec_direct<I: Iterator<Item = F>>(iter: I, other: I) -> impl Iterator<Item = F> {
         let vector = iter.collect::<Vec<_>>();
         let other = other.collect::<Vec<_>>();
         let mut output = vec![F::ZERO; vector.len()];
         let mut arguments = Self::map_alloc(&vector, &output, &other);
-        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "lesser_vec");
+        Self::map_transfer(&mut arguments, &vector, &mut output, &other, "min_vec");
         output.into_iter()
     }
 
@@ -1441,7 +1441,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
             .for_each(|(r, v)| **r = *v);
     }
 
-    fn greater_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+    fn max_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
         iter: I,
         other: J,
     ) {
@@ -1449,14 +1449,14 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
         let other = other.map(|x| x).collect::<Vec<_>>();
         let mut arguments = Self::apply_alloc(&vector, &other);
-        Self::apply_transfer(&mut arguments, &mut vector, &other, "greater_vec_ref");
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "max_vec_ref");
         ref_vector
             .iter_mut()
             .zip(vector.iter())
             .for_each(|(r, v)| **r = *v);
     }
 
-    fn lesser_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
+    fn min_vec_ref_direct<I: Iterator<Item = &'a mut F>, J: Iterator<Item = F>>(
         iter: I,
         other: J,
     ) {
@@ -1464,7 +1464,7 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         let mut vector = ref_vector.iter().map(|x| **x).collect::<Vec<_>>();
         let other = other.map(|x| x).collect::<Vec<_>>();
         let mut arguments = Self::apply_alloc(&vector, &other);
-        Self::apply_transfer(&mut arguments, &mut vector, &other, "lesser_vec_ref");
+        Self::apply_transfer(&mut arguments, &mut vector, &other, "min_vec_ref");
         ref_vector
             .iter_mut()
             .zip(vector.iter())
@@ -1487,19 +1487,19 @@ impl<'a, F: Float + 'a> Vector<'a, F> for CudaVector {
         acc[0]
     }
 
-    fn greater_direct<I: Iterator<Item = F>>(iter: I) -> F {
+    fn max_direct<I: Iterator<Item = F>>(iter: I) -> F {
         let vector = iter.collect::<Vec<_>>();
         let mut acc = vec![F::ZERO];
         let mut arguments = Self::reduce_alloc(&vector, &acc);
-        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "greater");
+        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "max");
         acc[0]
     }
 
-    fn lesser_direct<I: Iterator<Item = F>>(iter: I) -> F {
+    fn min_direct<I: Iterator<Item = F>>(iter: I) -> F {
         let vector = iter.collect::<Vec<_>>();
         let mut acc = vec![F::ZERO];
         let mut arguments = Self::reduce_alloc(&vector, &acc);
-        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "lesser");
+        Self::reduce_transfer(&mut arguments, &vector, &mut acc, "min");
         acc[0]
     }
 
